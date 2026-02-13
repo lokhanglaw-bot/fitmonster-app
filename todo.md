@@ -109,18 +109,18 @@
 - [x] Enhanced monster card with multiple badges
 - [x] Monster stats display (strength, defense, agility icons)
 - [x] Evolution progress bar
-- [ ] "View All" monsters functionality
+- [x] "View All" monsters functionality
 - [x] Hatch Egg feature for multiple monsters
 - [x] Daily Quests section with colored cards
 - [x] Quest progress tracking with coin rewards
-- [ ] Quick action buttons with proper styling
+- [x] Quick action buttons with proper styling
 
 ### Camera/Food Page Enhancements
-- [ ] AI food analysis integration
+- [x] AI food analysis integration
 - [x] "Open Camera" functionality
 - [x] "Choose from Gallery" option
-- [ ] Food nutrition display after analysis
-- [ ] Feed monster animation after food logging
+- [x] Food nutrition display after analysis
+- [x] Feed monster animation after food logging
 
 ### Workout Page Enhancements
 - [x] Manual log workout feature
@@ -201,3 +201,16 @@
 - [x] Save food log to database after analysis
 - [x] Feed monster flow after logging food (EXP reward alert)
 - [ ] Show recent food logs on the food scanner screen
+
+
+## User Feedback - Round 2
+- [x] Fix monster image background (remove transparent/checkered background)
+- [x] Make "Hatch Egg" button functional with egg hatching flow
+- [x] Make "Manual Log" button functional with workout entry form
+- [x] Make "Sync Steps" button functional with step counter
+- [x] Add PvP battle scenes/actions (Attack, Defend, Special)
+- [x] Fix all non-working buttons across the app
+- [x] Add chat system after matching a friend (text messaging)
+- [x] Add photo sharing in chat
+- [x] Add phone call capability in chat (UI + placeholder)
+- [x] Add video call capability in chat (UI + placeholder)

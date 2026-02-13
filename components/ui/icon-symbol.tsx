@@ -28,6 +28,16 @@ const MAPPING = {
   "plus": "add",
   "checkmark": "check",
   "xmark": "close",
+  "message.fill": "chat",
+  "phone.fill": "phone",
+  "video.fill": "videocam",
+  "photo.fill": "photo",
+  "shield.fill": "shield",
+  "flame.fill": "local-fire-department",
+  "star.fill": "star",
+  "clock.fill": "access-time",
+  "play.fill": "play-arrow",
+  "pause.fill": "pause",
 } as IconMapping;
 
 /**

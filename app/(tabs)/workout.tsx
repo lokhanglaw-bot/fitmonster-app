@@ -1,8 +1,17 @@
-import { ScrollView, Text, View, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { useState, useCallback } from "react";
+import {
+  ScrollView,
+  Text,
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Modal,
+  TextInput,
+} from "react-native";
 import { Image } from "expo-image";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { useState } from "react";
 
 const WORKOUT_TYPES = ["All", "Running", "Weight Training", "Yoga", "Basketball"];
 
@@ -20,42 +29,117 @@ const EXERCISES = [
   { id: 11, name: "Basketball", icon: "🏀", met: 6.5, category: "Basketball" },
 ];
 
+type WorkoutLog = {
+  exercise: string;
+  duration: number;
+  exp: number;
+  timestamp: Date;
+};
+
 export default function WorkoutScreen() {
   const colors = useColors();
   const [selectedType, setSelectedType] = useState("All");
   const [totalExp, setTotalExp] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [steps, setSteps] = useState(0);
+  const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
 
-  const filteredExercises =
-    selectedType === "All"
-      ? EXERCISES
-      : EXERCISES.filter((e) => e.category === selectedType);
+  // Manual Log Modal
+  const [showManualLog, setShowManualLog] = useState(false);
+  const [manualExercise, setManualExercise] = useState("");
+  const [manualDuration, setManualDuration] = useState("");
+  const [manualWeight, setManualWeight] = useState("70");
 
-  const handleExercisePress = (exercise: (typeof EXERCISES)[0]) => {
+  // Active Workout Timer
+  const [activeWorkout, setActiveWorkout] = useState<{ exercise: typeof EXERCISES[0]; startTime: Date } | null>(null);
+  const [showTimerModal, setShowTimerModal] = useState(false);
+  const [timerDuration, setTimerDuration] = useState("");
+
+  const filteredExercises = selectedType === "All" ? EXERCISES : EXERCISES.filter((e) => e.category === selectedType);
+
+  const handleExercisePress = useCallback((exercise: typeof EXERCISES[0]) => {
     Alert.alert(
       exercise.name,
-      `MET Value: ${exercise.met}\n\nStart a ${exercise.name} session?\nEXP will be calculated based on duration and intensity.`,
+      `MET Value: ${exercise.met}\n\nHow would you like to log this workout?`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Start",
+          text: "Quick Log (30 min)",
           onPress: () => {
-            setTotalExp((prev) => prev + exercise.met * 10);
+            const exp = Math.round(exercise.met * 3.5 * 70 * 30 / 200);
+            setTotalExp((prev) => prev + exp);
             setCompletedCount((prev) => prev + 1);
+            setWorkoutLogs((prev) => [{ exercise: exercise.name, duration: 30, exp, timestamp: new Date() }, ...prev]);
+            Alert.alert("Workout Logged!", `${exercise.name} - 30 min\n+${exp} EXP earned! 💪`);
+          },
+        },
+        {
+          text: "Custom Duration",
+          onPress: () => {
+            setActiveWorkout({ exercise, startTime: new Date() });
+            setTimerDuration("");
+            setShowTimerModal(true);
           },
         },
       ]
     );
-  };
+  }, []);
 
-  const handleManualLog = () => {
-    Alert.alert("Manual Log", "Manual workout logging form will appear here.");
-  };
+  const handleTimerConfirm = useCallback(() => {
+    if (!activeWorkout || !timerDuration) return;
+    const duration = parseInt(timerDuration, 10);
+    if (isNaN(duration) || duration <= 0) {
+      Alert.alert("Invalid Duration", "Please enter a valid number of minutes.");
+      return;
+    }
+    const weight = parseInt(manualWeight, 10) || 70;
+    const exp = Math.round(activeWorkout.exercise.met * 3.5 * weight * duration / 200);
+    setTotalExp((prev) => prev + exp);
+    setCompletedCount((prev) => prev + 1);
+    setWorkoutLogs((prev) => [{ exercise: activeWorkout.exercise.name, duration, exp, timestamp: new Date() }, ...prev]);
+    setShowTimerModal(false);
+    setActiveWorkout(null);
+    Alert.alert("Workout Logged!", `${activeWorkout.exercise.name} - ${duration} min\n+${exp} EXP earned! 💪`);
+  }, [activeWorkout, timerDuration, manualWeight]);
 
-  const handleSyncSteps = () => {
-    Alert.alert("Sync Steps", "Step syncing will connect to your device's health data.");
-  };
+  const handleManualLog = useCallback(() => {
+    setManualExercise("");
+    setManualDuration("");
+    setShowManualLog(true);
+  }, []);
+
+  const handleManualLogSubmit = useCallback(() => {
+    if (!manualExercise.trim()) {
+      Alert.alert("Required", "Please enter the exercise name.");
+      return;
+    }
+    const duration = parseInt(manualDuration, 10);
+    if (isNaN(duration) || duration <= 0) {
+      Alert.alert("Required", "Please enter a valid duration in minutes.");
+      return;
+    }
+    const weight = parseInt(manualWeight, 10) || 70;
+    const estimatedMet = 5;
+    const exp = Math.round(estimatedMet * 3.5 * weight * duration / 200);
+    setTotalExp((prev) => prev + exp);
+    setCompletedCount((prev) => prev + 1);
+    setWorkoutLogs((prev) => [{ exercise: manualExercise.trim(), duration, exp, timestamp: new Date() }, ...prev]);
+    setShowManualLog(false);
+    Alert.alert("Workout Logged!", `${manualExercise.trim()} - ${duration} min\n+${exp} EXP earned! 💪`);
+  }, [manualExercise, manualDuration, manualWeight]);
+
+  const handleSyncSteps = useCallback(() => {
+    // Simulate step sync since device pedometer isn't available in web preview
+    const simulatedSteps = Math.floor(Math.random() * 3000) + 1000;
+    setSteps((prev) => {
+      const newSteps = prev + simulatedSteps;
+      Alert.alert(
+        "Steps Synced!",
+        `+${simulatedSteps.toLocaleString()} steps synced\nTotal: ${newSteps.toLocaleString()} steps\n\nOn a real device, this will sync from Apple Health / Google Fit.`
+      );
+      return newSteps;
+    });
+  }, []);
 
   return (
     <ScreenContainer>
@@ -92,52 +176,16 @@ export default function WorkoutScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Monster Card */}
-          <View style={[styles.monsterCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.monsterRow}>
-              <Image
-                source={require("@/assets/monsters/bodybuilder-stage1.png")}
-                style={styles.monsterImg}
-                contentFit="contain"
-              />
-              <View style={styles.monsterInfo}>
-                <Text style={[styles.monsterName, { color: colors.foreground }]}>Flexo</Text>
-                <Text style={[styles.monsterLevel, { color: colors.muted }]}>Level 1</Text>
-                <View style={[styles.xpBarTrack, { backgroundColor: colors.background }]}>
-                  <View style={[styles.xpBarFill, { width: "0%", backgroundColor: colors.primary }]} />
-                </View>
-                <Text style={[styles.bestType, { color: colors.muted }]}>Best: Weight Training</Text>
-              </View>
-            </View>
-          </View>
-
           {/* Workout Type Filters */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterRow}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
             {WORKOUT_TYPES.map((type) => (
               <TouchableOpacity
                 key={type}
-                style={[
-                  styles.filterPill,
-                  {
-                    backgroundColor: selectedType === type ? colors.primary : colors.surface,
-                    borderColor: selectedType === type ? colors.primary : colors.border,
-                  },
-                ]}
+                style={[styles.filterPill, { backgroundColor: selectedType === type ? colors.primary : colors.surface, borderColor: selectedType === type ? colors.primary : colors.border }]}
                 onPress={() => setSelectedType(type)}
                 activeOpacity={0.7}
               >
-                <Text
-                  style={[
-                    styles.filterText,
-                    { color: selectedType === type ? "#fff" : colors.muted },
-                  ]}
-                >
-                  {type}
-                </Text>
+                <Text style={[styles.filterText, { color: selectedType === type ? "#fff" : colors.muted }]}>{type}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -158,6 +206,22 @@ export default function WorkoutScreen() {
             ))}
           </View>
 
+          {/* Recent Workouts */}
+          {workoutLogs.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recent Workouts</Text>
+              {workoutLogs.slice(0, 5).map((log, index) => (
+                <View key={index} style={[styles.logItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={styles.logInfo}>
+                    <Text style={[styles.logName, { color: colors.foreground }]}>{log.exercise}</Text>
+                    <Text style={[styles.logDuration, { color: colors.muted }]}>{log.duration} min</Text>
+                  </View>
+                  <Text style={[styles.logExp, { color: colors.primary }]}>+{log.exp} EXP</Text>
+                </View>
+              ))}
+            </>
+          )}
+
           {/* Bottom Stats */}
           <View style={[styles.bottomStats, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.bottomStatItem}>
@@ -171,168 +235,135 @@ export default function WorkoutScreen() {
             </View>
             <View style={[styles.bottomStatDivider, { backgroundColor: colors.border }]} />
             <View style={styles.bottomStatItem}>
-              <Text style={[styles.bottomStatValue, { color: colors.foreground }]}>{steps}</Text>
+              <Text style={[styles.bottomStatValue, { color: colors.foreground }]}>{steps.toLocaleString()}</Text>
               <Text style={[styles.bottomStatLabel, { color: colors.muted }]}>Steps</Text>
             </View>
           </View>
         </View>
       </ScrollView>
+
+      {/* Manual Log Modal */}
+      <Modal visible={showManualLog} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Manual Workout Log</Text>
+            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>Log a workout manually</Text>
+
+            <Text style={[styles.inputLabel, { color: colors.muted }]}>Exercise Name</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
+              placeholder="e.g. Push-ups, Jogging..."
+              placeholderTextColor={colors.muted}
+              value={manualExercise}
+              onChangeText={setManualExercise}
+            />
+
+            <Text style={[styles.inputLabel, { color: colors.muted }]}>Duration (minutes)</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
+              placeholder="e.g. 30"
+              placeholderTextColor={colors.muted}
+              value={manualDuration}
+              onChangeText={setManualDuration}
+              keyboardType="numeric"
+            />
+
+            <Text style={[styles.inputLabel, { color: colors.muted }]}>Body Weight (kg)</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
+              placeholder="e.g. 70"
+              placeholderTextColor={colors.muted}
+              value={manualWeight}
+              onChangeText={setManualWeight}
+              keyboardType="numeric"
+            />
+
+            <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.primary }]} onPress={handleManualLogSubmit}>
+              <Text style={styles.submitText}>Log Workout</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => setShowManualLog(false)}>
+              <Text style={[styles.cancelText, { color: colors.muted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Timer Duration Modal */}
+      <Modal visible={showTimerModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              {activeWorkout?.exercise.name}
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
+              MET: {activeWorkout?.exercise.met} — Enter workout duration
+            </Text>
+
+            <Text style={[styles.inputLabel, { color: colors.muted }]}>Duration (minutes)</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
+              placeholder="e.g. 45"
+              placeholderTextColor={colors.muted}
+              value={timerDuration}
+              onChangeText={setTimerDuration}
+              keyboardType="numeric"
+              returnKeyType="done"
+              onSubmitEditing={handleTimerConfirm}
+            />
+
+            <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.primary }]} onPress={handleTimerConfirm}>
+              <Text style={styles.submitText}>Log Workout</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => { setShowTimerModal(false); setActiveWorkout(null); }}>
+              <Text style={[styles.cancelText, { color: colors.muted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    gap: 16,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "800",
-  },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  expBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  expText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  actionBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 8,
-  },
-  actionIcon: {
-    fontSize: 20,
-  },
-  actionText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  monsterCard: {
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-  },
-  monsterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  monsterImg: {
-    width: 80,
-    height: 80,
-  },
-  monsterInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  monsterName: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  monsterLevel: {
-    fontSize: 13,
-  },
-  xpBarTrack: {
-    height: 6,
-    borderRadius: 3,
-    overflow: "hidden",
-    marginTop: 4,
-  },
-  xpBarFill: {
-    height: "100%",
-    borderRadius: 3,
-  },
-  bestType: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  filterRow: {
-    gap: 8,
-    paddingVertical: 4,
-  },
-  filterPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  filterText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  exerciseGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  exerciseCard: {
-    width: "30%",
-    flexGrow: 1,
-    minWidth: 100,
-    alignItems: "center",
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 6,
-  },
-  exerciseIcon: {
-    fontSize: 32,
-  },
-  exerciseName: {
-    fontSize: 13,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  exerciseMet: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  bottomStats: {
-    flexDirection: "row",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-  },
-  bottomStatItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  bottomStatValue: {
-    fontSize: 22,
-    fontWeight: "800",
-  },
-  bottomStatLabel: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  bottomStatDivider: {
-    width: 1,
-    height: 36,
-    alignSelf: "center",
-  },
+  container: { flex: 1, paddingHorizontal: 20, paddingTop: 8, gap: 16 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  title: { fontSize: 26, fontWeight: "800" },
+  subtitle: { fontSize: 14, marginTop: 2 },
+  expBadge: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16 },
+  expText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  actionRow: { flexDirection: "row", gap: 12 },
+  actionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 14, borderRadius: 16, borderWidth: 1, gap: 8 },
+  actionIcon: { fontSize: 20 },
+  actionText: { fontSize: 14, fontWeight: "600" },
+  filterRow: { gap: 8, paddingVertical: 4 },
+  filterPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  filterText: { fontSize: 13, fontWeight: "600" },
+  exerciseGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  exerciseCard: { width: "30%", flexGrow: 1, minWidth: 100, alignItems: "center", padding: 16, borderRadius: 16, borderWidth: 1, gap: 6 },
+  exerciseIcon: { fontSize: 32 },
+  exerciseName: { fontSize: 13, fontWeight: "600", textAlign: "center" },
+  exerciseMet: { fontSize: 12, fontWeight: "700" },
+  sectionTitle: { fontSize: 18, fontWeight: "700", marginTop: 4 },
+  logItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14, borderRadius: 12, borderWidth: 1 },
+  logInfo: { gap: 2 },
+  logName: { fontSize: 15, fontWeight: "600" },
+  logDuration: { fontSize: 12 },
+  logExp: { fontSize: 14, fontWeight: "700" },
+  bottomStats: { flexDirection: "row", borderRadius: 16, padding: 16, borderWidth: 1 },
+  bottomStatItem: { flex: 1, alignItems: "center" },
+  bottomStatValue: { fontSize: 22, fontWeight: "800" },
+  bottomStatLabel: { fontSize: 12, marginTop: 2 },
+  bottomStatDivider: { width: 1, height: 36, alignSelf: "center" },
+
+  // Modal styles
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
+  modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderWidth: 1, gap: 12 },
+  modalTitle: { fontSize: 22, fontWeight: "800", textAlign: "center" },
+  modalSubtitle: { fontSize: 14, textAlign: "center", marginBottom: 4 },
+  inputLabel: { fontSize: 13, fontWeight: "600", marginTop: 4 },
+  input: { padding: 14, borderRadius: 12, borderWidth: 1, fontSize: 16 },
+  submitBtn: { padding: 16, borderRadius: 16, alignItems: "center", marginTop: 4 },
+  submitText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  cancelBtn: { padding: 14, borderRadius: 12, borderWidth: 1, alignItems: "center" },
+  cancelText: { fontSize: 14, fontWeight: "600" },
 });
