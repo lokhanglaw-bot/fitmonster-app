@@ -298,3 +298,6 @@
 
 ## Bug Fix - Round 13
 - [x] Fix logout button on Home page — replaced Alert.alert with Modal-based confirmation dialog
+
+## Bug Fix - Round 14
+- [x] Fix logout not redirecting to login page after confirmation — converted to shared AuthContext
