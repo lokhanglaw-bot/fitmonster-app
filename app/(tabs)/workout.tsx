@@ -18,21 +18,7 @@ import { useActivity } from "@/lib/activity-context";
 import { useRouter } from "expo-router";
 import { useI18n } from "@/lib/i18n-context";
 
-const WORKOUT_TYPES = ["All", "Running", "Weight Training", "Yoga", "Basketball"];
-
-const EXERCISES = [
-  { id: 1, name: "Running", icon: "🏃", met: 8, category: "Running" },
-  { id: 2, name: "Cycling", icon: "🚴", met: 7.5, category: "Running" },
-  { id: 3, name: "Swimming", icon: "🏊", met: 7, category: "Running" },
-  { id: 4, name: "Walking", icon: "🚶", met: 3.5, category: "Running" },
-  { id: 5, name: "Hiking", icon: "🥾", met: 6, category: "Running" },
-  { id: 6, name: "Jump Rope", icon: "🤸", met: 10, category: "Running" },
-  { id: 7, name: "Bench Press", icon: "🏋️", met: 6, category: "Weight Training" },
-  { id: 8, name: "Squats", icon: "🦵", met: 5.5, category: "Weight Training" },
-  { id: 9, name: "Deadlift", icon: "💪", met: 6, category: "Weight Training" },
-  { id: 10, name: "Yoga Flow", icon: "🧘", met: 3, category: "Yoga" },
-  { id: 11, name: "Basketball", icon: "🏀", met: 6.5, category: "Basketball" },
-];
+// WORKOUT_TYPES and EXERCISES are built inside the component to use i18n
 
 type WorkoutLog = {
   exercise: string;
@@ -43,22 +29,44 @@ type WorkoutLog = {
 
 type BonusType = "none" | "outdoor" | "gym";
 
-// Sample data for demo
-const SAMPLE_LOGS: WorkoutLog[] = [
-  { exercise: "Running", duration: 30, exp: 294, timestamp: new Date(Date.now() - 3600000) },
-  { exercise: "Bench Press", duration: 45, exp: 331, timestamp: new Date(Date.now() - 86400000) },
-  { exercise: "Swimming", duration: 25, exp: 214, timestamp: new Date(Date.now() - 172800000) },
-];
+// SAMPLE_LOGS is built inside the component to use i18n
 
 export default function WorkoutScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, tr } = useI18n();
+
+  const WORKOUT_TYPES = [
+    { key: "All", label: t.allExercises },
+    { key: "Running", label: t.running },
+    { key: "Weight Training", label: t.weightTraining },
+    { key: "Yoga", label: t.yoga },
+    { key: "Basketball", label: t.basketball },
+  ];
+
+  const EXERCISES = [
+    { id: 1, name: t.running, icon: "🏃", met: 8, category: "Running" },
+    { id: 2, name: t.cycling, icon: "🚴", met: 7.5, category: "Running" },
+    { id: 3, name: t.swimming, icon: "🏊", met: 7, category: "Running" },
+    { id: 4, name: t.walkingExercise, icon: "🚶", met: 3.5, category: "Running" },
+    { id: 5, name: t.hiking, icon: "🥾", met: 6, category: "Running" },
+    { id: 6, name: t.jumpRope, icon: "🤸", met: 10, category: "Running" },
+    { id: 7, name: t.benchPress, icon: "🏋️", met: 6, category: "Weight Training" },
+    { id: 8, name: t.squats, icon: "🦵", met: 5.5, category: "Weight Training" },
+    { id: 9, name: t.deadlift, icon: "💪", met: 6, category: "Weight Training" },
+    { id: 10, name: t.yogaFlow, icon: "🧘", met: 3, category: "Yoga" },
+    { id: 11, name: t.basketball, icon: "🏀", met: 6.5, category: "Basketball" },
+  ];
   const [selectedType, setSelectedType] = useState("All");
   const [totalExp, setTotalExp] = useState(839);
   const [completedCount, setCompletedCount] = useState(3);
   const [steps, setSteps] = useState(4280);
-  const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>(SAMPLE_LOGS);
+  const sampleLogs: WorkoutLog[] = useMemo(() => [
+    { exercise: t.running, duration: 30, exp: 294, timestamp: new Date(Date.now() - 3600000) },
+    { exercise: t.benchPress, duration: 45, exp: 331, timestamp: new Date(Date.now() - 86400000) },
+    { exercise: t.swimming, duration: 25, exp: 214, timestamp: new Date(Date.now() - 172800000) },
+  ], [t.running, t.benchPress, t.swimming]);
+  const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>(sampleLogs);
 
   // Selected exercise detail
   const [selectedExercise, setSelectedExercise] = useState<typeof EXERCISES[0] | null>(null);
@@ -119,12 +127,12 @@ export default function WorkoutScreen() {
 
   const handleManualLogSubmit = useCallback(() => {
     if (!manualExercise.trim()) {
-      Alert.alert("Required", "Please enter the exercise name.");
+      Alert.alert(t.required, t.pleaseEnterExercise);
       return;
     }
     const dur = parseInt(manualDuration, 10);
     if (isNaN(dur) || dur <= 0) {
-      Alert.alert("Required", "Please enter a valid duration in minutes.");
+      Alert.alert(t.required, t.pleaseEnterValidDuration);
       return;
     }
     const weight = parseInt(manualWeight, 10) || 70;
@@ -140,7 +148,7 @@ export default function WorkoutScreen() {
       expEarned: exp,
     });
     setShowManualLog(false);
-    Alert.alert("Workout Logged! 💪", `${manualExercise.trim()} - ${dur} min\n+${exp} EXP earned!`);
+    Alert.alert(t.workoutLoggedTitle, tr("workoutLoggedMessage", { exercise: manualExercise.trim(), duration: String(dur), exp: String(exp) }));
   }, [manualExercise, manualDuration, manualWeight, logWorkoutToContext]);
 
   const handleSyncSteps = useCallback(() => {
@@ -150,8 +158,8 @@ export default function WorkoutScreen() {
     setSteps((prev) => {
       const newSteps = prev + simulatedSteps;
       Alert.alert(
-        "Steps Synced! 👣",
-        `+${simulatedSteps.toLocaleString()} steps synced\nTotal: ${newSteps.toLocaleString()} steps\n\nOn a real device, this will sync from Apple Health / Google Fit.`
+        t.stepsSyncedTitle,
+        tr("stepsSyncedMessage", { steps: simulatedSteps.toLocaleString(), total: newSteps.toLocaleString() })
       );
       return newSteps;
     });
@@ -208,21 +216,21 @@ export default function WorkoutScreen() {
             contentContainerStyle={styles.filterRow}
             style={styles.filterScroll}
           >
-            {WORKOUT_TYPES.map((type) => (
+            {WORKOUT_TYPES.map((wt) => (
               <TouchableOpacity
-                key={type}
+                key={wt.key}
                 style={[
                   styles.filterPill,
                   {
-                    backgroundColor: selectedType === type ? colors.primary : colors.surface,
-                    borderColor: selectedType === type ? colors.primary : colors.border,
+                    backgroundColor: selectedType === wt.key ? colors.primary : colors.surface,
+                    borderColor: selectedType === wt.key ? colors.primary : colors.border,
                   },
                 ]}
-                onPress={() => setSelectedType(type)}
+                onPress={() => setSelectedType(wt.key)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.filterText, { color: selectedType === type ? "#fff" : colors.muted }]}>
-                  {type}
+                <Text style={[styles.filterText, { color: selectedType === wt.key ? "#fff" : colors.muted }]}>
+                  {wt.label}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -248,7 +256,7 @@ export default function WorkoutScreen() {
                 >
                   <Text style={styles.exerciseIcon}>{exercise.icon}</Text>
                   <Text style={[styles.exerciseName, { color: colors.foreground }]}>{exercise.name}</Text>
-                  <Text style={[styles.exerciseCategory, { color: colors.muted }]}>{exercise.category}</Text>
+                  <Text style={[styles.exerciseCategory, { color: colors.muted }]}>{exercise.category === "Running" ? t.running : exercise.category === "Weight Training" ? t.weightTraining : exercise.category === "Yoga" ? t.yoga : t.basketball}</Text>
                   <Text style={[styles.exerciseMet, { color: colors.primary }]}>⚡ MET {exercise.met}</Text>
                 </TouchableOpacity>
               );
@@ -266,7 +274,7 @@ export default function WorkoutScreen() {
 
               {/* Duration */}
               <View style={styles.durationRow}>
-                <Text style={[styles.durationLabel, { color: colors.muted }]}>⏱ Duration: {duration} min</Text>
+                <Text style={[styles.durationLabel, { color: colors.muted }]}>⏱ {tr("durationDisplay", { duration: String(duration) })}</Text>
               </View>
 
               {/* Custom Slider */}
@@ -315,8 +323,8 @@ export default function WorkoutScreen() {
                   />
                 </View>
                 <View style={styles.sliderLabels}>
-                  <Text style={[styles.sliderLabelText, { color: colors.muted }]}>5 min</Text>
-                  <Text style={[styles.sliderLabelText, { color: colors.muted }]}>120 min</Text>
+                  <Text style={[styles.sliderLabelText, { color: colors.muted }]}>{t.sliderMin}</Text>
+                  <Text style={[styles.sliderLabelText, { color: colors.muted }]}>{t.sliderMax}</Text>
                 </View>
               </View>
 
@@ -396,7 +404,7 @@ export default function WorkoutScreen() {
                 <View key={index} style={[styles.logItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={styles.logInfo}>
                     <Text style={[styles.logName, { color: colors.foreground }]}>{log.exercise}</Text>
-                    <Text style={[styles.logDuration, { color: colors.muted }]}>{log.duration} min</Text>
+                    <Text style={[styles.logDuration, { color: colors.muted }]}>{log.duration} {t.minutes}</Text>
                   </View>
                   <Text style={[styles.logExp, { color: colors.primary }]}>+{log.exp} EXP</Text>
                 </View>
@@ -440,7 +448,7 @@ export default function WorkoutScreen() {
             <Text style={[styles.inputLabel, { color: colors.muted }]}>{t.exerciseName}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-              placeholder="e.g. Push-ups, Jogging..."
+              placeholder={t.exercisePlaceholder}
               placeholderTextColor={colors.muted}
               value={manualExercise}
               onChangeText={setManualExercise}
@@ -449,7 +457,7 @@ export default function WorkoutScreen() {
             <Text style={[styles.inputLabel, { color: colors.muted }]}>{t.durationMinutes}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-              placeholder="e.g. 30"
+              placeholder={t.durationPlaceholderShort}
               placeholderTextColor={colors.muted}
               value={manualDuration}
               onChangeText={setManualDuration}
@@ -459,7 +467,7 @@ export default function WorkoutScreen() {
             <Text style={[styles.inputLabel, { color: colors.muted }]}>{t.bodyWeight}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-              placeholder="e.g. 70"
+              placeholder={t.weightPlaceholder}
               placeholderTextColor={colors.muted}
               value={manualWeight}
               onChangeText={setManualWeight}

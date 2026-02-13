@@ -319,3 +319,7 @@
 - [x] Fix "Workout" text still showing in English when Chinese is selected
 - [x] Fix "Daily Tasks" text still showing in English when Chinese is selected
 - [x] Audit all screens for any other remaining untranslated hardcoded strings
+
+## Bug Fix - Round 16c
+- [x] Translate workout screen exercise names (Running, Cycling, Swimming, etc.) to Chinese
+- [x] Translate all other hardcoded English strings on the workout screen
