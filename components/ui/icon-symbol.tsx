@@ -38,6 +38,7 @@ const MAPPING = {
   "clock.fill": "access-time",
   "play.fill": "play-arrow",
   "pause.fill": "pause",
+  "rectangle.portrait.and.arrow.right": "logout",
 } as IconMapping;
 
 /**

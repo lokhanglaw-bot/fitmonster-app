@@ -81,7 +81,7 @@ const AI_DAILY_TASKS = [
 export default function HomeScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const trainerName = user?.name || "Trainer";
   const [healthScore, setHealthScore] = useState(72);
@@ -180,6 +180,24 @@ export default function HomeScreen() {
   const handleSettings = useCallback(() => {
     Alert.alert("Settings", "Settings screen coming soon!\n\n• Profile\n• Notifications\n• Theme\n• About");
   }, []);
+
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      "Log Out",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Log Out",
+          style: "destructive",
+          onPress: async () => {
+            await logout();
+            router.replace("/auth");
+          },
+        },
+      ]
+    );
+  }, [logout, router]);
 
   const handleAddRecord = useCallback(() => {
     setRecordType("food");
@@ -541,6 +559,9 @@ export default function HomeScreen() {
             <View style={styles.headerActions}>
               <TouchableOpacity style={[styles.settingsBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleSettings}>
                 <IconSymbol name="gear" size={22} color={colors.muted} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.settingsBtn, { backgroundColor: "#FEE2E2", borderColor: "#FECACA" }]} onPress={handleLogout}>
+                <IconSymbol name="rectangle.portrait.and.arrow.right" size={22} color="#EF4444" />
               </TouchableOpacity>
             </View>
           </View>

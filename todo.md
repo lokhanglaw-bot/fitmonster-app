@@ -259,3 +259,8 @@
 - [x] Add social media sharing buttons to login page for brand visibility
 - [x] Include share options for Twitter/X, Facebook, WhatsApp, and generic More
 - [x] Use native share sheet or direct deep links for each platform
+
+## User Feedback - Round 8
+- [x] Add logout button on home page top-right corner
+- [x] After logout, redirect user to login page
+- [x] New users must register/login first before accessing the app (auth gating)
