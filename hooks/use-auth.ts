@@ -2,6 +2,17 @@ import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const LOCAL_AUTH_KEY = "@fitmonster_local_auth";
+
+export type LocalUser = {
+  id: number;
+  name: string;
+  email: string;
+  loginMethod: "local";
+  lastSignedIn: Date;
+};
 
 type UseAuthOptions = {
   autoFetch?: boolean;
@@ -19,6 +30,28 @@ export function useAuth(options?: UseAuthOptions) {
       setLoading(true);
       setError(null);
 
+      // First check for local auth (email/password login)
+      const localAuthRaw = await AsyncStorage.getItem(LOCAL_AUTH_KEY);
+      if (localAuthRaw) {
+        try {
+          const localUser = JSON.parse(localAuthRaw);
+          console.log("[useAuth] Local auth user found:", localUser.name);
+          const userInfo: Auth.User = {
+            id: localUser.id || 0,
+            openId: localUser.openId || `local-${localUser.email}`,
+            name: localUser.name,
+            email: localUser.email,
+            loginMethod: "local",
+            lastSignedIn: new Date(localUser.lastSignedIn || Date.now()),
+          };
+          setUser(userInfo);
+          return;
+        } catch (e) {
+          console.error("[useAuth] Failed to parse local auth:", e);
+          await AsyncStorage.removeItem(LOCAL_AUTH_KEY);
+        }
+      }
+
       // Web platform: use cookie-based auth, fetch user from API
       if (Platform.OS === "web") {
         console.log("[useAuth] Web platform: fetching user from API...");
@@ -35,7 +68,6 @@ export function useAuth(options?: UseAuthOptions) {
             lastSignedIn: new Date(apiUser.lastSignedIn),
           };
           setUser(userInfo);
-          // Cache user info in localStorage for faster subsequent loads
           await Auth.setUserInfo(userInfo);
           console.log("[useAuth] Web user set from API:", userInfo);
         } else {
@@ -80,12 +112,63 @@ export function useAuth(options?: UseAuthOptions) {
     }
   }, []);
 
+  // Local email/password login — stores user locally and sets authenticated state
+  const localLogin = useCallback(async (name: string, email: string) => {
+    const localUser = {
+      id: Date.now(),
+      openId: `local-${email}`,
+      name,
+      email,
+      loginMethod: "local" as const,
+      lastSignedIn: new Date().toISOString(),
+    };
+    await AsyncStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(localUser));
+    const userInfo: Auth.User = {
+      id: localUser.id,
+      openId: localUser.openId,
+      name: localUser.name,
+      email: localUser.email,
+      loginMethod: "local",
+      lastSignedIn: new Date(localUser.lastSignedIn),
+    };
+    setUser(userInfo);
+    setLoading(false);
+    console.log("[useAuth] Local login successful:", name);
+  }, []);
+
+  // Local email/password signup — same as login but creates new user
+  const localSignup = useCallback(async (name: string, email: string) => {
+    // For local auth, signup and login are the same — just store user info
+    const localUser = {
+      id: Date.now(),
+      openId: `local-${email}`,
+      name,
+      email,
+      loginMethod: "local" as const,
+      lastSignedIn: new Date().toISOString(),
+    };
+    await AsyncStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(localUser));
+    const userInfo: Auth.User = {
+      id: localUser.id,
+      openId: localUser.openId,
+      name: localUser.name,
+      email: localUser.email,
+      loginMethod: "local",
+      lastSignedIn: new Date(localUser.lastSignedIn),
+    };
+    setUser(userInfo);
+    setLoading(false);
+    console.log("[useAuth] Local signup successful:", name);
+  }, []);
+
   const logout = useCallback(async () => {
     try {
-      await Api.logout();
+      // Clear local auth first
+      await AsyncStorage.removeItem(LOCAL_AUTH_KEY);
+      // Try server logout (may fail for local users, that's fine)
+      await Api.logout().catch(() => {});
     } catch (err) {
-      console.error("[Auth] Logout API call failed:", err);
-      // Continue with logout even if API call fails
+      console.error("[Auth] Logout error:", err);
     } finally {
       await Auth.removeSessionToken();
       await Auth.clearUserInfo();
@@ -100,21 +183,41 @@ export function useAuth(options?: UseAuthOptions) {
     console.log("[useAuth] useEffect triggered, autoFetch:", autoFetch, "platform:", Platform.OS);
     if (autoFetch) {
       if (Platform.OS === "web") {
-        // Web: fetch user from API directly (user will login manually if needed)
-        console.log("[useAuth] Web: fetching user from API...");
+        // Web: check local auth first, then API
+        console.log("[useAuth] Web: fetching user...");
         fetchUser();
       } else {
-        // Native: check for cached user info first for faster initial load
-        Auth.getUserInfo().then((cachedUser) => {
-          console.log("[useAuth] Native cached user check:", cachedUser);
-          if (cachedUser) {
-            console.log("[useAuth] Native: setting cached user immediately");
-            setUser(cachedUser);
-            setLoading(false);
-          } else {
-            // No cached user, check session token
-            fetchUser();
+        // Native: check local auth first, then cached user info
+        AsyncStorage.getItem(LOCAL_AUTH_KEY).then((localRaw) => {
+          if (localRaw) {
+            try {
+              const localUser = JSON.parse(localRaw);
+              const userInfo: Auth.User = {
+                id: localUser.id || 0,
+                openId: localUser.openId || `local-${localUser.email}`,
+                name: localUser.name,
+                email: localUser.email,
+                loginMethod: "local",
+                lastSignedIn: new Date(localUser.lastSignedIn || Date.now()),
+              };
+              setUser(userInfo);
+              setLoading(false);
+              return;
+            } catch (e) {
+              // Fall through to OAuth check
+            }
           }
+          // No local auth, check OAuth
+          Auth.getUserInfo().then((cachedUser) => {
+            console.log("[useAuth] Native cached user check:", cachedUser);
+            if (cachedUser) {
+              console.log("[useAuth] Native: setting cached user immediately");
+              setUser(cachedUser);
+              setLoading(false);
+            } else {
+              fetchUser();
+            }
+          });
         });
       }
     } else {
@@ -139,5 +242,7 @@ export function useAuth(options?: UseAuthOptions) {
     isAuthenticated,
     refresh: fetchUser,
     logout,
+    localLogin,
+    localSignup,
   };
 }

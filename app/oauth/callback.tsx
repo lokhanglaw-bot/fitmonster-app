@@ -6,9 +6,11 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function OAuthCallback() {
   const router = useRouter();
+  const { refresh } = useAuth({ autoFetch: false });
   const params = useLocalSearchParams<{
     code?: string;
     state?: string;
@@ -60,10 +62,12 @@ export default function OAuthCallback() {
           }
 
           setStatus("success");
-          console.log("[OAuth] Web authentication successful, redirecting to home...");
+          console.log("[OAuth] Web authentication successful, refreshing auth state...");
+          // Refresh auth state so AuthGate sees the user, then redirect
+          await refresh();
           setTimeout(() => {
             router.replace("/(tabs)");
-          }, 1000);
+          }, 500);
           return;
         }
 
@@ -157,10 +161,11 @@ export default function OAuthCallback() {
           // User info is already in the OAuth callback response
           // No need to fetch from API
           setStatus("success");
-          console.log("[OAuth] Redirecting to home...");
+          console.log("[OAuth] Refreshing auth state and redirecting to home...");
+          await refresh();
           setTimeout(() => {
             router.replace("/(tabs)");
-          }, 1000);
+          }, 500);
           return;
         }
 
@@ -210,13 +215,14 @@ export default function OAuthCallback() {
           }
 
           setStatus("success");
-          console.log("[OAuth] Authentication successful, redirecting to home...");
-
+          console.log("[OAuth] Authentication successful, refreshing auth state...");
+          // Refresh auth state so AuthGate sees the user
+          await refresh();
           // Redirect to home after a short delay
           setTimeout(() => {
             console.log("[OAuth] Executing redirect...");
             router.replace("/(tabs)");
-          }, 1000);
+          }, 500);
         } else {
           console.error("[OAuth] No session token in result:", result);
           setStatus("error");

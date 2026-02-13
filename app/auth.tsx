@@ -19,6 +19,7 @@ import { startOAuthLogin } from "@/lib/auth-helpers";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/use-colors";
+import { useAuth } from "@/hooks/use-auth";
 // Share uses react-native Share API for native, Web Share API for web
 
 type AuthMode = "signin" | "signup" | "forgot";
@@ -35,6 +36,7 @@ export default function AuthScreen() {
   const [forgotSent, setForgotSent] = useState(false);
   const router = useRouter();
   const colors = useColors();
+  const { localLogin, localSignup } = useAuth({ autoFetch: false });
 
   const handleEmailAuth = async () => {
     if (!email || !password) {
@@ -57,11 +59,15 @@ export default function AuthScreen() {
     }
     setLoading(true);
     try {
-      // Email auth placeholder — backend integration needed
-      Alert.alert(
-        "Coming Soon",
-        "Email authentication will be available soon. Please use Google or Apple sign-in for now."
-      );
+      if (mode === "signup") {
+        await localSignup(trainerName.trim(), email.trim());
+      } else {
+        // For sign in, use email as name if no trainer name provided
+        const displayName = email.split("@")[0];
+        await localLogin(displayName, email.trim());
+      }
+      // Auth state is now set, AuthGate will redirect to home
+      router.replace("/(tabs)");
     } catch (error) {
       Alert.alert("Error", "Authentication failed. Please try again.");
     } finally {

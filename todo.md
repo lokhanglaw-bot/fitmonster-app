@@ -290,3 +290,8 @@
 - [x] Update Daily Tasks completion progress bar to reflect actual task completion
 - [x] Update History tab stats to reflect real accumulated data
 - [x] Persist shared activity data with AsyncStorage so it survives app restarts
+
+## User Feedback - Round 12
+- [x] Fix Apple login — shows "Authentication successful! Redirecting..." but stays on login page
+- [x] Remove "Coming Soon" from email login — let users sign in/sign up with username+password locally
+- [x] After email sign in/sign up, navigate user into the app immediately
