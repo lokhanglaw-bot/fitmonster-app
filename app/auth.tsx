@@ -9,6 +9,8 @@ import {
   ScrollView,
   StyleSheet,
   Modal,
+  Linking,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -16,6 +18,7 @@ import { startOAuthLogin } from "@/lib/auth-helpers";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/use-colors";
+import * as Sharing from "expo-sharing";
 
 type AuthMode = "signin" | "signup" | "forgot";
 
@@ -91,6 +94,53 @@ export default function AuthScreen() {
   };
 
   const isSignUp = mode === "signup";
+
+  const SHARE_MESSAGE = "Join me on FitMonster! Raise your fitness monster and get healthy together \uD83D\uDCAA\uD83D\uDC7E";
+  const APP_URL = "https://fitmonster.app";
+
+  const handleShareGeneric = async () => {
+    try {
+      if (Platform.OS === "web") {
+        // Use Web Share API if available
+        if (navigator.share) {
+          await navigator.share({
+            title: "FitMonster",
+            text: SHARE_MESSAGE,
+            url: APP_URL,
+          });
+        } else {
+          // Fallback: copy to clipboard
+          await navigator.clipboard.writeText(`${SHARE_MESSAGE} ${APP_URL}`);
+          Alert.alert("Copied!", "Share link copied to clipboard");
+        }
+      } else {
+        const available = await Sharing.isAvailableAsync();
+        if (available) {
+          await Sharing.shareAsync(APP_URL, {
+            dialogTitle: "Share FitMonster",
+          });
+        }
+      }
+    } catch (error) {
+      // User cancelled or share failed silently
+    }
+  };
+
+  const handleShareToTwitter = () => {
+    const text = encodeURIComponent(SHARE_MESSAGE);
+    const url = encodeURIComponent(APP_URL);
+    Linking.openURL(`https://twitter.com/intent/tweet?text=${text}&url=${url}`);
+  };
+
+  const handleShareToFacebook = () => {
+    const url = encodeURIComponent(APP_URL);
+    Linking.openURL(`https://www.facebook.com/sharer/sharer.php?u=${url}`);
+  };
+
+  const handleShareToWhatsApp = () => {
+    const text = encodeURIComponent(`${SHARE_MESSAGE} ${APP_URL}`);
+    Linking.openURL(`https://wa.me/?text=${text}`);
+  };
 
   return (
     <ScreenContainer edges={["top", "bottom", "left", "right"]} containerClassName="bg-background">
@@ -275,6 +325,48 @@ export default function AuthScreen() {
                 <Text style={[styles.toggleLink, { color: colors.primary }]}>
                   {isSignUp ? "Sign in" : "Sign up now"}
                 </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Social Sharing Section */}
+          <View style={styles.shareSection}>
+            <Text style={[styles.shareTitle, { color: colors.muted }]}>Share FitMonster with friends</Text>
+            <View style={styles.shareRow}>
+              <TouchableOpacity
+                onPress={handleShareToTwitter}
+                style={[styles.shareBtn, { backgroundColor: "#1DA1F2" }]}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.shareBtnIcon}>𝕏</Text>
+                <Text style={styles.shareBtnLabel}>Twitter</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleShareToFacebook}
+                style={[styles.shareBtn, { backgroundColor: "#1877F2" }]}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.shareBtnIcon}>f</Text>
+                <Text style={styles.shareBtnLabel}>Facebook</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleShareToWhatsApp}
+                style={[styles.shareBtn, { backgroundColor: "#25D366" }]}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.shareBtnIcon}>💬</Text>
+                <Text style={styles.shareBtnLabel}>WhatsApp</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleShareGeneric}
+                style={[styles.shareBtn, { backgroundColor: colors.muted }]}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.shareBtnIcon}>↗</Text>
+                <Text style={styles.shareBtnLabel}>More</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -548,11 +640,46 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
+  // Share section
+  shareSection: {
+    width: "100%",
+    maxWidth: 420,
+    alignItems: "center",
+    marginTop: 28,
+  },
+  shareTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 14,
+  },
+  shareRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  shareBtn: {
+    width: 72,
+    height: 64,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  shareBtnIcon: {
+    fontSize: 20,
+    color: "#fff",
+    fontWeight: "800",
+  },
+  shareBtnLabel: {
+    fontSize: 10,
+    color: "#fff",
+    fontWeight: "600",
+  },
+
   // Terms
   terms: {
     fontSize: 12,
     textAlign: "center",
-    marginTop: 28,
+    marginTop: 20,
     lineHeight: 18,
     maxWidth: 340,
   },

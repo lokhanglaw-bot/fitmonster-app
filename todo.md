@@ -254,3 +254,8 @@
 - [x] Add "Sign up now" link and sign up page
 - [x] Show FitMonster logo and branding at top of auth page
 - [x] Add Terms of Service and Privacy Policy footer text
+
+## User Feedback - Round 7
+- [x] Add social media sharing buttons to login page for brand visibility
+- [x] Include share options for Twitter/X, Facebook, WhatsApp, and generic More
+- [x] Use native share sheet or direct deep links for each platform
