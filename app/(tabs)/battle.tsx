@@ -8,6 +8,7 @@ import {
   Alert,
   Modal,
   Animated as RNAnimated,
+  Platform,
 } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,6 +16,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 
 const MOCK_OPPONENTS = [
   {
@@ -47,6 +49,16 @@ const MOCK_OPPONENTS = [
   },
 ];
 
+type Opponent = typeof MOCK_OPPONENTS[0];
+
+type FriendRequest = {
+  id: number;
+  from: Opponent;
+  status: "pending" | "accepted" | "rejected";
+  sentByMe: boolean;
+  timestamp: Date;
+};
+
 type Friend = {
   id: number;
   name: string;
@@ -55,6 +67,7 @@ type Friend = {
   monsterImage: any;
   online: boolean;
   gradient: readonly [string, string];
+  addedAt: Date;
 };
 
 type BattleState = {
@@ -65,7 +78,7 @@ type BattleState = {
   enemyMaxHp: number;
   turn: "player" | "enemy";
   log: string[];
-  opponent: typeof MOCK_OPPONENTS[0];
+  opponent: Opponent;
   result?: "win" | "lose";
   actionLock: boolean;
 };
@@ -73,10 +86,21 @@ type BattleState = {
 export default function BattleScreen() {
   const colors = useColors();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"match" | "friends">("match");
+  const [activeTab, setActiveTab] = useState<"match" | "requests" | "friends">("match");
   const [swipesLeft, setSwipesLeft] = useState(50);
   const [currentOpponent, setCurrentOpponent] = useState(0);
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([
+    // Simulate some incoming requests from other users
+    {
+      id: 101, from: MOCK_OPPONENTS[2], status: "pending", sentByMe: false,
+      timestamp: new Date(Date.now() - 3600000),
+    },
+    {
+      id: 102, from: MOCK_OPPONENTS[3], status: "pending", sentByMe: false,
+      timestamp: new Date(Date.now() - 7200000),
+    },
+  ]);
   const [showBattle, setShowBattle] = useState(false);
   const [battle, setBattle] = useState<BattleState | null>(null);
 
@@ -88,6 +112,10 @@ export default function BattleScreen() {
   const specialFlash = useRef(new RNAnimated.Value(0)).current;
 
   const opponent = MOCK_OPPONENTS[currentOpponent % MOCK_OPPONENTS.length];
+
+  const pendingRequests = friendRequests.filter((r) => r.status === "pending");
+  const incomingRequests = pendingRequests.filter((r) => !r.sentByMe);
+  const sentRequests = pendingRequests.filter((r) => r.sentByMe);
 
   const shakeAnimation = (target: RNAnimated.Value) => {
     RNAnimated.sequence([
@@ -106,35 +134,125 @@ export default function BattleScreen() {
     ]).start();
   };
 
+  // Send friend request (swipe right)
   const handleSwipe = useCallback((direction: "left" | "right" | "star") => {
+    const opp = MOCK_OPPONENTS[currentOpponent % MOCK_OPPONENTS.length];
+
     if (direction === "left") {
+      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setCurrentOpponent((prev) => prev + 1);
       return;
     }
+
     setSwipesLeft((prev) => Math.max(0, prev - 1));
-    const opp = MOCK_OPPONENTS[currentOpponent % MOCK_OPPONENTS.length];
+
+    // Check if already sent a request or already friends
+    const alreadyRequested = friendRequests.some((r) => r.from.id === opp.id);
+    const alreadyFriend = friends.some((f) => f.id === opp.id);
+
+    if (alreadyFriend) {
+      Alert.alert("Already Friends", `${opp.name} is already your friend!`);
+      setCurrentOpponent((prev) => prev + 1);
+      return;
+    }
+
+    if (alreadyRequested) {
+      Alert.alert("Request Sent", `You already have a pending request with ${opp.name}.`);
+      setCurrentOpponent((prev) => prev + 1);
+      return;
+    }
+
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
     if (direction === "star") {
-      Alert.alert("It's a Match! ⭐", `You super liked ${opp.name}!\nThey've been added as a friend.`);
-      setFriends((prev) => {
-        if (prev.find((f) => f.id === opp.id)) return prev;
-        return [...prev, { id: opp.id, name: opp.name, level: opp.level, monsterType: opp.monsterType, monsterImage: opp.monsterImage, online: opp.online, gradient: opp.gradient }];
-      });
+      // Super like = instant mutual match (both agree)
+      Alert.alert(
+        "It's a Match! ⭐",
+        `You super liked ${opp.name}!\nThey accepted your request instantly!`,
+      );
+      setFriends((prev) => [
+        ...prev,
+        {
+          id: opp.id, name: opp.name, level: opp.level,
+          monsterType: opp.monsterType, monsterImage: opp.monsterImage,
+          online: opp.online, gradient: opp.gradient, addedAt: new Date(),
+        },
+      ]);
     } else {
-      const matched = Math.random() > 0.3;
-      if (matched) {
-        Alert.alert("It's a Match! ❤️", `You matched with ${opp.name}!\nThey've been added as a friend.`);
+      // Regular like = send friend request (needs acceptance)
+      Alert.alert(
+        "Friend Request Sent! 💌",
+        `You sent a friend request to ${opp.name}.\nThey need to accept before you can battle!`,
+      );
+      setFriendRequests((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          from: opp,
+          status: "pending",
+          sentByMe: true,
+          timestamp: new Date(),
+        },
+      ]);
+
+      // Simulate the other user accepting after 5-15 seconds
+      const acceptDelay = Math.floor(Math.random() * 10000) + 5000;
+      const reqId = Date.now();
+      setTimeout(() => {
+        setFriendRequests((prev) => {
+          const req = prev.find((r) => r.id === reqId);
+          if (!req || req.status !== "pending") return prev;
+          return prev.map((r) =>
+            r.id === reqId ? { ...r, status: "accepted" as const } : r
+          );
+        });
         setFriends((prev) => {
           if (prev.find((f) => f.id === opp.id)) return prev;
-          return [...prev, { id: opp.id, name: opp.name, level: opp.level, monsterType: opp.monsterType, monsterImage: opp.monsterImage, online: opp.online, gradient: opp.gradient }];
+          return [
+            ...prev,
+            {
+              id: opp.id, name: opp.name, level: opp.level,
+              monsterType: opp.monsterType, monsterImage: opp.monsterImage,
+              online: opp.online, gradient: opp.gradient, addedAt: new Date(),
+            },
+          ];
         });
-      } else {
-        Alert.alert("No Match", `${opp.name} didn't match this time. Keep swiping!`);
-      }
+      }, acceptDelay);
     }
-    setCurrentOpponent((prev) => prev + 1);
-  }, [currentOpponent]);
 
-  const startBattle = useCallback((opp: typeof MOCK_OPPONENTS[0]) => {
+    setCurrentOpponent((prev) => prev + 1);
+  }, [currentOpponent, friendRequests, friends]);
+
+  // Accept incoming friend request
+  const handleAcceptRequest = useCallback((request: FriendRequest) => {
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    setFriendRequests((prev) =>
+      prev.map((r) => (r.id === request.id ? { ...r, status: "accepted" as const } : r))
+    );
+    setFriends((prev) => {
+      if (prev.find((f) => f.id === request.from.id)) return prev;
+      return [
+        ...prev,
+        {
+          id: request.from.id, name: request.from.name, level: request.from.level,
+          monsterType: request.from.monsterType, monsterImage: request.from.monsterImage,
+          online: request.from.online, gradient: request.from.gradient, addedAt: new Date(),
+        },
+      ];
+    });
+    Alert.alert("Friend Added! 🎉", `${request.from.name} is now your friend!\nYou can battle them anytime.`);
+  }, []);
+
+  // Reject incoming friend request
+  const handleRejectRequest = useCallback((request: FriendRequest) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setFriendRequests((prev) =>
+      prev.map((r) => (r.id === request.id ? { ...r, status: "rejected" as const } : r))
+    );
+  }, []);
+
+  const startBattle = useCallback((opp: Opponent) => {
     const playerMaxHp = 150;
     setBattle({
       phase: "intro", playerHp: playerMaxHp, playerMaxHp,
@@ -155,11 +273,8 @@ export default function BattleScreen() {
 
   const handleBattleAction = useCallback((action: "attack" | "defend" | "special") => {
     if (!battle || battle.turn !== "player" || battle.actionLock) return;
-
-    // Lock actions during animation
     setBattle((prev) => prev ? { ...prev, actionLock: true } : null);
 
-    // Play animation based on action
     if (action === "attack") {
       shakeAnimation(enemyShake);
       flashAnimation(attackFlash);
@@ -170,7 +285,6 @@ export default function BattleScreen() {
       flashAnimation(specialFlash);
     }
 
-    // Delay state update to let animation play
     setTimeout(() => {
       setBattle((prev) => {
         if (!prev) return null;
@@ -195,13 +309,11 @@ export default function BattleScreen() {
           return { ...prev, enemyHp: 0, log: newLog, phase: "result", result: "win", turn: "player", actionLock: false };
         }
 
-        // Enemy turn with delay
         const isDefending = action === "defend";
         const enemyDmg = Math.max(5, Math.floor(Math.random() * 18) + 10 - (isDefending ? 10 : 0));
         newPlayerHp = Math.max(0, newPlayerHp - enemyDmg);
         newLog.push(`💥 ${prev.opponent.name}'s monster attacks for ${enemyDmg} damage!`);
 
-        // Shake player after enemy attack
         setTimeout(() => shakeAnimation(playerShake), 200);
 
         if (newPlayerHp <= 0) {
@@ -232,30 +344,68 @@ export default function BattleScreen() {
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.foreground }]}>PvP Battle</Text>
+            <TouchableOpacity
+              style={[styles.mapBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => router.push("/nearby-map" as any)}
+              activeOpacity={0.7}
+            >
+              <IconSymbol name="map.fill" size={18} color={colors.primary} />
+              <Text style={[styles.mapBtnText, { color: colors.primary }]}>Map</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Tab Navigation */}
+          {/* Tab Navigation - 3 tabs */}
           <View style={[styles.tabRow, { backgroundColor: colors.surface }]}>
-            <TouchableOpacity style={[styles.tab, activeTab === "match" && { backgroundColor: colors.primary }]} onPress={() => setActiveTab("match")}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "match" && { backgroundColor: colors.primary }]}
+              onPress={() => setActiveTab("match")}
+            >
               <Text style={[styles.tabText, { color: activeTab === "match" ? "#fff" : colors.muted }]}>Match</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.tab, activeTab === "friends" && { backgroundColor: colors.primary }]} onPress={() => setActiveTab("friends")}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "requests" && { backgroundColor: colors.primary }]}
+              onPress={() => setActiveTab("requests")}
+            >
+              <Text style={[styles.tabText, { color: activeTab === "requests" ? "#fff" : colors.muted }]}>
+                Requests {incomingRequests.length > 0 ? `(${incomingRequests.length})` : ""}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "friends" && { backgroundColor: colors.primary }]}
+              onPress={() => setActiveTab("friends")}
+            >
               <Text style={[styles.tabText, { color: activeTab === "friends" ? "#fff" : colors.muted }]}>
                 Friends {friends.length > 0 ? `(${friends.length})` : ""}
               </Text>
             </TouchableOpacity>
           </View>
 
-          {activeTab === "match" ? (
+          {/* ===== MATCH TAB ===== */}
+          {activeTab === "match" && (
             <>
               <LinearGradient colors={["#7C3AED", "#6D28D9"]} style={styles.banner}>
-                <Text style={styles.bannerText}>Swipe Match to Find Opponents!</Text>
-                <View style={styles.nearbyBadge}><Text style={styles.nearbyText}>{MOCK_OPPONENTS.length} nearby</Text></View>
+                <Text style={styles.bannerText}>Swipe to Find Opponents!</Text>
+                <View style={styles.nearbyBadge}>
+                  <Text style={styles.nearbyText}>{MOCK_OPPONENTS.length} nearby</Text>
+                </View>
               </LinearGradient>
 
               <View style={styles.swipeCounter}>
                 <Text style={[styles.swipeLabel, { color: colors.muted }]}>Today's Swipes</Text>
                 <Text style={[styles.swipeValue, { color: colors.foreground }]}>{swipesLeft}/50</Text>
+              </View>
+
+              {/* How it works info */}
+              <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={{ fontSize: 16 }}>💡</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.infoTitle, { color: colors.foreground }]}>How Matching Works</Text>
+                  <Text style={[styles.infoDesc, { color: colors.muted }]}>
+                    ❤️ Like = Send friend request (they must accept){"\n"}
+                    ⭐ Super Like = Instant match (costs 10 coins){"\n"}
+                    ✖️ Skip = Move to next trainer
+                  </Text>
+                </View>
               </View>
 
               {/* Opponent Card */}
@@ -322,37 +472,144 @@ export default function BattleScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </>
-          ) : (
-            friends.length === 0 ? (
-              <View style={[styles.emptyFriends, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={styles.emptyIcon}>👥</Text>
-                <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Friends Yet</Text>
-                <Text style={[styles.emptyDesc, { color: colors.muted }]}>Match with other trainers to add them as friends!</Text>
-              </View>
-            ) : (
-              friends.map((friend) => (
-                <View key={friend.id} style={[styles.friendCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <LinearGradient colors={[friend.gradient[0], friend.gradient[1]]} style={styles.friendGradient}>
-                    <Image source={friend.monsterImage} style={styles.friendMonster} contentFit="contain" />
-                  </LinearGradient>
-                  <View style={styles.friendInfo}>
-                    <View style={styles.friendNameRow}>
-                      <Text style={[styles.friendName, { color: colors.foreground }]}>{friend.name}</Text>
-                      {friend.online && <View style={styles.onlineDot} />}
-                    </View>
-                    <Text style={[styles.friendLevel, { color: colors.muted }]}>{friend.monsterType} Lv.{friend.level}</Text>
-                  </View>
-                  <View style={styles.friendActions}>
-                    <TouchableOpacity style={[styles.friendActionBtn, { backgroundColor: "#7C3AED" }]} onPress={() => handleFriendAction(friend, "battle")}>
-                      <Text style={styles.friendActionText}>⚔️</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.friendActionBtn, { backgroundColor: colors.primary }]} onPress={() => handleFriendAction(friend, "chat")}>
-                      <IconSymbol name="message.fill" size={18} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
+          )}
+
+          {/* ===== REQUESTS TAB ===== */}
+          {activeTab === "requests" && (
+            <>
+              {/* Incoming Requests */}
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                📥 Incoming Requests ({incomingRequests.length})
+              </Text>
+              {incomingRequests.length === 0 ? (
+                <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={{ fontSize: 32 }}>📭</Text>
+                  <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Incoming Requests</Text>
+                  <Text style={[styles.emptyDesc, { color: colors.muted }]}>When other trainers like you, their requests will appear here.</Text>
                 </View>
-              ))
-            )
+              ) : (
+                incomingRequests.map((req) => (
+                  <View key={req.id} style={[styles.requestCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <LinearGradient colors={[req.from.gradient[0], req.from.gradient[1]]} style={styles.requestGradient}>
+                      <Image source={req.from.monsterImage} style={styles.requestMonster} contentFit="contain" />
+                    </LinearGradient>
+                    <View style={styles.requestInfo}>
+                      <View style={styles.requestNameRow}>
+                        <Text style={[styles.requestName, { color: colors.foreground }]}>{req.from.name}</Text>
+                        {req.from.online && <View style={styles.onlineDot} />}
+                      </View>
+                      <Text style={[styles.requestLevel, { color: colors.muted }]}>
+                        {req.from.monsterType} Lv.{req.from.level} · {req.from.distance}
+                      </Text>
+                      <Text style={[styles.requestTime, { color: colors.muted }]}>
+                        {getTimeAgo(req.timestamp)}
+                      </Text>
+                    </View>
+                    <View style={styles.requestActions}>
+                      <TouchableOpacity
+                        style={[styles.acceptBtn, { backgroundColor: "#22C55E" }]}
+                        onPress={() => handleAcceptRequest(req)}
+                      >
+                        <IconSymbol name="checkmark" size={20} color="#fff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.rejectRequestBtn, { backgroundColor: "#FEE2E2" }]}
+                        onPress={() => handleRejectRequest(req)}
+                      >
+                        <IconSymbol name="xmark" size={20} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+
+              {/* Sent Requests */}
+              <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 16 }]}>
+                📤 Sent Requests ({sentRequests.length})
+              </Text>
+              {sentRequests.length === 0 ? (
+                <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={{ fontSize: 32 }}>💌</Text>
+                  <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Sent Requests</Text>
+                  <Text style={[styles.emptyDesc, { color: colors.muted }]}>Swipe right on trainers to send friend requests!</Text>
+                </View>
+              ) : (
+                sentRequests.map((req) => (
+                  <View key={req.id} style={[styles.requestCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <LinearGradient colors={[req.from.gradient[0], req.from.gradient[1]]} style={styles.requestGradient}>
+                      <Image source={req.from.monsterImage} style={styles.requestMonster} contentFit="contain" />
+                    </LinearGradient>
+                    <View style={styles.requestInfo}>
+                      <Text style={[styles.requestName, { color: colors.foreground }]}>{req.from.name}</Text>
+                      <Text style={[styles.requestLevel, { color: colors.muted }]}>
+                        {req.from.monsterType} Lv.{req.from.level}
+                      </Text>
+                    </View>
+                    <View style={[styles.pendingBadge, { backgroundColor: "#FEF3C7" }]}>
+                      <Text style={{ fontSize: 12, color: "#92400E", fontWeight: "600" }}>⏳ Pending</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </>
+          )}
+
+          {/* ===== FRIENDS TAB ===== */}
+          {activeTab === "friends" && (
+            <>
+              {friends.length === 0 ? (
+                <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={{ fontSize: 40 }}>👥</Text>
+                  <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Friends Yet</Text>
+                  <Text style={[styles.emptyDesc, { color: colors.muted }]}>
+                    Match with other trainers to add them as friends!{"\n"}
+                    Both users must accept to become friends.
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    🏆 Your Battle Friends ({friends.length})
+                  </Text>
+                  {friends.map((friend) => (
+                    <View key={friend.id} style={[styles.friendCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <LinearGradient colors={[friend.gradient[0], friend.gradient[1]]} style={styles.friendGradient}>
+                        <Image source={friend.monsterImage} style={styles.friendMonster} contentFit="contain" />
+                      </LinearGradient>
+                      <View style={styles.friendInfo}>
+                        <View style={styles.friendNameRow}>
+                          <Text style={[styles.friendName, { color: colors.foreground }]}>{friend.name}</Text>
+                          {friend.online && <View style={styles.onlineDot} />}
+                        </View>
+                        <Text style={[styles.friendLevel, { color: colors.muted }]}>{friend.monsterType} Lv.{friend.level}</Text>
+                      </View>
+                      <View style={styles.friendActions}>
+                        <TouchableOpacity
+                          style={[styles.friendActionBtn, { backgroundColor: "#7C3AED" }]}
+                          onPress={() => handleFriendAction(friend, "battle")}
+                        >
+                          <Text style={styles.friendActionText}>⚔️</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.friendActionBtn, { backgroundColor: colors.primary }]}
+                          onPress={() => handleFriendAction(friend, "chat")}
+                        >
+                          <IconSymbol name="message.fill" size={18} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {/* Random Wild Battle always available */}
+              <TouchableOpacity onPress={handleWildBattle} style={{ marginTop: 8 }}>
+                <LinearGradient colors={["#7C3AED", "#6D28D9"]} style={styles.wildBattleBtn}>
+                  <Text style={styles.wildBattleIcon}>⚔️</Text>
+                  <Text style={styles.wildBattleText}>Random Wild Battle</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </>
           )}
         </View>
       </ScrollView>
@@ -371,7 +628,6 @@ export default function BattleScreen() {
 
             {battle?.phase === "fighting" && (
               <>
-                {/* Enemy Side */}
                 <View style={styles.battleSide}>
                   <RNAnimated.View style={[styles.battleMonsterRow, { transform: [{ translateX: enemyShake }] }]}>
                     <LinearGradient colors={[battle.opponent.gradient[0], battle.opponent.gradient[1]]} style={styles.battleGradient}>
@@ -390,7 +646,6 @@ export default function BattleScreen() {
 
                 <Text style={[styles.vsText, { color: colors.primary }]}>VS</Text>
 
-                {/* Player Side */}
                 <View style={styles.battleSide}>
                   <RNAnimated.View style={[styles.battleMonsterRow, { transform: [{ translateX: playerShake }] }]}>
                     <LinearGradient colors={["#DCFCE7", "#BBF7D0"]} style={styles.battleGradient}>
@@ -407,41 +662,26 @@ export default function BattleScreen() {
                   </RNAnimated.View>
                 </View>
 
-                {/* Flash overlays for action feedback */}
                 <RNAnimated.View pointerEvents="none" style={[styles.flashOverlay, { backgroundColor: "#EF4444", opacity: attackFlash }]} />
                 <RNAnimated.View pointerEvents="none" style={[styles.flashOverlay, { backgroundColor: "#3B82F6", opacity: defendFlash }]} />
                 <RNAnimated.View pointerEvents="none" style={[styles.flashOverlay, { backgroundColor: "#F59E0B", opacity: specialFlash }]} />
 
-                {/* Battle Log */}
                 <View style={[styles.battleLog, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   {battle.log.slice(-3).map((msg, i) => (
                     <Text key={i} style={[styles.logMsg, { color: colors.foreground }]}>{msg}</Text>
                   ))}
                 </View>
 
-                {/* Action Buttons */}
                 <View style={styles.battleActions}>
-                  <TouchableOpacity
-                    style={[styles.battleActionBtn, { backgroundColor: battle.actionLock ? "#999" : "#EF4444" }]}
-                    onPress={() => handleBattleAction("attack")}
-                    disabled={battle.actionLock}
-                  >
+                  <TouchableOpacity style={[styles.battleActionBtn, { backgroundColor: battle.actionLock ? "#999" : "#EF4444" }]} onPress={() => handleBattleAction("attack")} disabled={battle.actionLock}>
                     <Text style={styles.battleActionIcon}>⚔️</Text>
                     <Text style={styles.battleActionLabel}>Attack</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.battleActionBtn, { backgroundColor: battle.actionLock ? "#999" : "#3B82F6" }]}
-                    onPress={() => handleBattleAction("defend")}
-                    disabled={battle.actionLock}
-                  >
+                  <TouchableOpacity style={[styles.battleActionBtn, { backgroundColor: battle.actionLock ? "#999" : "#3B82F6" }]} onPress={() => handleBattleAction("defend")} disabled={battle.actionLock}>
                     <Text style={styles.battleActionIcon}>🛡️</Text>
                     <Text style={styles.battleActionLabel}>Defend</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.battleActionBtn, { backgroundColor: battle.actionLock ? "#999" : "#F59E0B" }]}
-                    onPress={() => handleBattleAction("special")}
-                    disabled={battle.actionLock}
-                  >
+                  <TouchableOpacity style={[styles.battleActionBtn, { backgroundColor: battle.actionLock ? "#999" : "#F59E0B" }]} onPress={() => handleBattleAction("special")} disabled={battle.actionLock}>
                     <Text style={styles.battleActionIcon}>🔥</Text>
                     <Text style={styles.battleActionLabel}>Special</Text>
                   </TouchableOpacity>
@@ -475,13 +715,23 @@ export default function BattleScreen() {
   );
 }
 
+function getTimeAgo(date: Date): string {
+  const diff = Date.now() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 8, gap: 16 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   title: { fontSize: 26, fontWeight: "800" },
   tabRow: { flexDirection: "row", borderRadius: 12, padding: 4 },
   tab: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center" },
-  tabText: { fontSize: 14, fontWeight: "600" },
+  tabText: { fontSize: 13, fontWeight: "600" },
   banner: { borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   bannerText: { color: "#fff", fontSize: 15, fontWeight: "700", flex: 1 },
   nearbyBadge: { backgroundColor: "rgba(255,255,255,0.2)", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
@@ -489,6 +739,13 @@ const styles = StyleSheet.create({
   swipeCounter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   swipeLabel: { fontSize: 14 },
   swipeValue: { fontSize: 16, fontWeight: "700" },
+
+  // Info card
+  infoCard: { flexDirection: "row", borderRadius: 16, borderWidth: 1, padding: 14, gap: 10, alignItems: "flex-start" },
+  infoTitle: { fontSize: 14, fontWeight: "700", marginBottom: 4 },
+  infoDesc: { fontSize: 12, lineHeight: 20 },
+
+  // Opponent card
   opponentCard: { borderRadius: 20, padding: 16, borderWidth: 1 },
   cardBadges: { flexDirection: "row", gap: 8, marginBottom: 12 },
   streakBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
@@ -511,6 +768,8 @@ const styles = StyleSheet.create({
   monsterType: { fontSize: 16, fontWeight: "600" },
   statsRow: { flexDirection: "row", gap: 20 },
   statEmoji: { fontSize: 16 },
+
+  // Swipe buttons
   swipeButtons: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 20 },
   swipeBtn: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
   rejectBtn: { borderWidth: 2 },
@@ -522,10 +781,28 @@ const styles = StyleSheet.create({
   wildBattleBtn: { borderRadius: 16, paddingVertical: 18, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
   wildBattleIcon: { fontSize: 20 },
   wildBattleText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  emptyFriends: { borderRadius: 20, borderWidth: 1, padding: 40, alignItems: "center", gap: 8 },
-  emptyIcon: { fontSize: 40 },
+
+  // Section title
+  sectionTitle: { fontSize: 18, fontWeight: "700" },
+
+  // Empty card
+  emptyCard: { borderRadius: 20, borderWidth: 1, padding: 32, alignItems: "center", gap: 8 },
   emptyTitle: { fontSize: 18, fontWeight: "700" },
-  emptyDesc: { fontSize: 14, textAlign: "center" },
+  emptyDesc: { fontSize: 14, textAlign: "center", lineHeight: 22 },
+
+  // Request card
+  requestCard: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 16, borderWidth: 1, gap: 12 },
+  requestGradient: { borderRadius: 12, width: 56, height: 56, alignItems: "center", justifyContent: "center" },
+  requestMonster: { width: 44, height: 44 },
+  requestInfo: { flex: 1 },
+  requestNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  requestName: { fontSize: 16, fontWeight: "700" },
+  requestLevel: { fontSize: 13, marginTop: 2 },
+  requestTime: { fontSize: 11, marginTop: 2 },
+  requestActions: { flexDirection: "row", gap: 8 },
+  acceptBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  rejectRequestBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  pendingBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
 
   // Friend card
   friendCard: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 16, borderWidth: 1, gap: 12 },
@@ -570,4 +847,6 @@ const styles = StyleSheet.create({
   resultSub: { fontSize: 16, textAlign: "center", lineHeight: 24 },
   resultBtn: { paddingHorizontal: 40, paddingVertical: 14, borderRadius: 16, marginTop: 12 },
   resultBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  mapBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
+  mapBtnText: { fontSize: 13, fontWeight: "600" },
 });

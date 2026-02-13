@@ -301,3 +301,9 @@
 
 ## Bug Fix - Round 14
 - [x] Fix logout not redirecting to login page after confirmation — converted to shared AuthContext
+
+## User Feedback - Round 15
+- [x] Build auto-logging workout tracking page — tapping an exercise (e.g. Running) opens a timer page that auto-logs duration, calories, EXP
+- [x] Build friend matching system — users send friend requests, both must accept, friends appear in friends list
+- [x] Build nearby users map — show user location and nearby FitMonster users (with location sharing consent)
+- [x] Integrate friends list into Battle tab for PvP battles

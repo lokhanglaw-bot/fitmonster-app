@@ -96,6 +96,8 @@ export default function RootLayout() {
               <Stack.Screen name="auth" options={{ presentation: "fullScreenModal" }} />
               <Stack.Screen name="chat" options={{ presentation: "fullScreenModal" }} />
               <Stack.Screen name="oauth/callback" />
+              <Stack.Screen name="workout-tracking" options={{ presentation: "fullScreenModal" }} />
+              <Stack.Screen name="nearby-map" options={{ presentation: "fullScreenModal" }} />
             </Stack>
             <StatusBar style="auto" />
           </AuthGate>

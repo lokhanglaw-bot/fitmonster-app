@@ -39,6 +39,12 @@ const MAPPING = {
   "play.fill": "play-arrow",
   "pause.fill": "pause",
   "rectangle.portrait.and.arrow.right": "logout",
+  "location.fill": "location-on",
+  "map.fill": "map",
+  "person.2.fill": "people",
+  "person.badge.plus": "person-add",
+  "checkmark.circle.fill": "check-circle",
+  "clock.arrow.circlepath": "history",
 } as IconMapping;
 
 /**

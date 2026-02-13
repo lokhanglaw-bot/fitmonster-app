@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useActivity } from "@/lib/activity-context";
+import { useRouter } from "expo-router";
 
 const WORKOUT_TYPES = ["All", "Running", "Weight Training", "Yoga", "Basketball"];
 
@@ -50,6 +51,7 @@ const SAMPLE_LOGS: WorkoutLog[] = [
 
 export default function WorkoutScreen() {
   const colors = useColors();
+  const router = useRouter();
   const [selectedType, setSelectedType] = useState("All");
   const [totalExp, setTotalExp] = useState(839);
   const [completedCount, setCompletedCount] = useState(3);
@@ -93,24 +95,19 @@ export default function WorkoutScreen() {
 
   const handleStartTraining = useCallback(() => {
     if (!selectedExercise) return;
-    setTotalExp((prev) => prev + expGained);
-    setCompletedCount((prev) => prev + 1);
-    setWorkoutLogs((prev) => [
-      { exercise: selectedExercise.name, duration, exp: expGained, timestamp: new Date() },
-      ...prev,
-    ]);
-    // Update shared activity state so home quests update in real time
-    logWorkoutToContext({
-      exercise: selectedExercise.name,
-      duration,
-      expEarned: expGained,
+    // Navigate to the workout tracking page with live timer
+    router.push({
+      pathname: "/workout-tracking" as any,
+      params: {
+        exerciseName: selectedExercise.name,
+        exerciseIcon: selectedExercise.icon,
+        exerciseMet: String(selectedExercise.met),
+        bonus: bonus,
+        targetDuration: String(duration),
+      },
     });
-    Alert.alert(
-      "Workout Complete! 💪",
-      `${selectedExercise.name} - ${duration} min\n+${expGained} EXP earned!${bonus !== "none" ? `\n${bonus === "outdoor" ? "Outdoor" : "Gym"} bonus applied!` : ""}`
-    );
     setSelectedExercise(null);
-  }, [selectedExercise, duration, expGained, bonus, logWorkoutToContext]);
+  }, [selectedExercise, duration, bonus, router]);
 
   const handleManualLog = useCallback(() => {
     setManualExercise("");
