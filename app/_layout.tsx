@@ -21,6 +21,7 @@ import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-run
 import { AuthGate } from "@/components/auth-gate";
 import { ActivityProvider } from "@/lib/activity-context";
 import { AuthProvider } from "@/lib/auth-context";
+import { I18nProvider } from "@/lib/i18n-context";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -85,6 +86,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
+          <I18nProvider>
           <AuthProvider>
           <ActivityProvider>
           <AuthGate>
@@ -103,6 +105,7 @@ export default function RootLayout() {
           </AuthGate>
           </ActivityProvider>
           </AuthProvider>
+          </I18nProvider>
         </QueryClientProvider>
       </trpc.Provider>
     </GestureHandlerRootView>

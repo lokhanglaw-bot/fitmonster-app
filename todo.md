@@ -4,7 +4,7 @@
 - [x] Set up Expo Router file-based routing with tabs
 - [x] Migrate authentication system from Loveable to Expo auth
 - [ ] Configure Supabase integration for backend
-- [ ] Set up i18n for multi-language support
+- [x] Set up i18n for multi-language support
 - [x] Configure theme system with light/dark mode
 
 ## Screens
@@ -80,7 +80,7 @@
 - [ ] Health data integration
 - [ ] Offline support with sync
 - [ ] Push notifications
-- [ ] Multi-language support
+- [x] Multi-language support
 
 ## Testing & Polish
 - [ ] Test all user flows end-to-end
@@ -173,7 +173,7 @@
 - [ ] Swipe gesture support
 - [ ] Tab navigation components
 - [ ] Settings menu in header
-- [ ] Multi-language support (Chinese/English)
+- [x] Multi-language support (Chinese/English)
 - [ ] Responsive card layouts
 - [ ] Icon system for stats
 - [ ] Coin reward indicators
@@ -307,3 +307,10 @@
 - [x] Build friend matching system — users send friend requests, both must accept, friends appear in friends list
 - [x] Build nearby users map — show user location and nearby FitMonster users (with location sharing consent)
 - [x] Integrate friends list into Battle tab for PvP battles
+
+## User Feedback - Round 16
+- [x] Replace settings button (next to logout) with language toggle button
+- [x] Create i18n context with English and Chinese translations
+- [x] Default language is English, user can switch to Chinese
+- [x] Persist language preference with AsyncStorage
+- [x] Translate all content across all screens (Home, Workout, Camera/Food, Battle, Dashboard, Auth, Chat, Workout Tracking, Nearby Map)

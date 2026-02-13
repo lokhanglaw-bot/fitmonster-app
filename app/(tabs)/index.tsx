@@ -18,6 +18,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useActivity } from "@/lib/activity-context";
+import { useI18n } from "@/lib/i18n-context";
 
 const MONSTER_TYPES = [
   { type: "Bodybuilder", icon: "💪", color: "#EF4444", desc: "High strength, balanced defense", gradient: ["#FEE2E2", "#FECACA"] as const },
@@ -85,6 +86,7 @@ export default function HomeScreen() {
   const { user, logout } = useAuth();
 
   const { state: activity, addRecordFood, addRecordWorkout } = useActivity();
+  const { language, setLanguage, t, tr } = useI18n();
 
   const trainerName = user?.name || "Trainer";
   const todaySteps = activity.todaySteps;
@@ -186,9 +188,9 @@ export default function HomeScreen() {
     setShowHatchModal(false);
   }, []);
 
-  const handleSettings = useCallback(() => {
-    Alert.alert("Settings", "Settings screen coming soon!\n\n• Profile\n• Notifications\n• Theme\n• About");
-  }, []);
+  const handleToggleLanguage = useCallback(() => {
+    setLanguage(language === "en" ? "zh" : "en");
+  }, [language, setLanguage]);
 
   const handleLogout = useCallback(() => {
     setShowLogoutModal(true);
@@ -295,7 +297,7 @@ export default function HomeScreen() {
 
         <View style={styles.barContainer}>
           <View style={styles.barLabelRow}>
-            <Text style={[styles.barLabel, { color: colors.muted }]}>Evolution</Text>
+            <Text style={[styles.barLabel, { color: colors.muted }]}>{t.evolution}</Text>
             <Text style={[styles.barValue, { color: colors.muted }]}>{monster.evolutionProgress}/{monster.evolutionMax}</Text>
           </View>
           <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
@@ -310,21 +312,21 @@ export default function HomeScreen() {
             onPress={() => router.push("/(tabs)/workout")}
           >
             <Text style={styles.monsterActionIcon}>🏋️</Text>
-            <Text style={styles.monsterActionText}>Train</Text>
+            <Text style={styles.monsterActionText}>{t.train}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.monsterActionBtn, { backgroundColor: "#22C55E" }]}
             onPress={() => router.push("/(tabs)/camera")}
           >
             <Text style={styles.monsterActionIcon}>🍖</Text>
-            <Text style={styles.monsterActionText}>Feed</Text>
+            <Text style={styles.monsterActionText}>{t.feed}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.monsterActionBtn, { backgroundColor: "#EF4444" }]}
             onPress={() => router.push("/(tabs)/battle")}
           >
             <Text style={styles.monsterActionIcon}>⚔️</Text>
-            <Text style={styles.monsterActionText}>Battle</Text>
+            <Text style={styles.monsterActionText}>{t.battle}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -335,9 +337,9 @@ export default function HomeScreen() {
     <>
       {/* My Monster Team */}
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>My Monster Team</Text>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t.myMonsterTeam}</Text>
         <TouchableOpacity onPress={() => setShowMonsterList(true)}>
-          <Text style={[styles.viewAll, { color: colors.primary }]}>View All</Text>
+          <Text style={[styles.viewAll, { color: colors.primary }]}>{t.viewAll}</Text>
         </TouchableOpacity>
       </View>
 
@@ -346,28 +348,28 @@ export default function HomeScreen() {
       {/* Hatch Egg Button */}
       <TouchableOpacity style={[styles.hatchBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleHatchEgg}>
         <Text style={styles.hatchIcon}>🥚</Text>
-        <Text style={[styles.hatchText, { color: colors.foreground }]}>Hatch Egg</Text>
+        <Text style={[styles.hatchText, { color: colors.foreground }]}>{t.hatchEgg}</Text>
       </TouchableOpacity>
 
       {/* Quick Actions */}
       <LinearGradient colors={["#22C55E", "#16A34A"]} style={styles.actionBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
         <TouchableOpacity style={styles.actionBtnInner} onPress={() => router.push("/(tabs)/camera")}>
           <Text style={styles.actionIcon}>📸</Text>
-          <View><Text style={styles.actionTitle}>Photo Feed</Text><Text style={styles.actionSubtitle}>Scan Food Analysis</Text></View>
+          <View><Text style={styles.actionTitle}>{t.photoFeed}</Text><Text style={styles.actionSubtitle}>{t.scanFoodAnalysis}</Text></View>
         </TouchableOpacity>
       </LinearGradient>
 
       <LinearGradient colors={["#3B82F6", "#2563EB"]} style={styles.actionBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
         <TouchableOpacity style={styles.actionBtnInner} onPress={() => router.push("/(tabs)/battle")}>
           <Text style={styles.actionIcon}>⚔️</Text>
-          <View><Text style={styles.actionTitle}>Quick Battle</Text><Text style={styles.actionSubtitle}>PvP Matching</Text></View>
+          <View><Text style={styles.actionTitle}>{t.quickBattle}</Text><Text style={styles.actionSubtitle}>{t.pvpMatching}</Text></View>
         </TouchableOpacity>
       </LinearGradient>
 
       {/* Daily Quests */}
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Daily Quests</Text>
-        <Text style={[styles.questCount, { color: colors.muted }]}>{completedQuests}/3 Completed</Text>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t.dailyQuests}</Text>
+        <Text style={[styles.questCount, { color: colors.muted }]}>{completedQuests}/3 {t.completed}</Text>
       </View>
 
       {quests.map((quest) => (
@@ -392,8 +394,8 @@ export default function HomeScreen() {
   const renderDailyTasksTab = () => (
     <>
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>✨ AI Daily Tasks</Text>
-        <TouchableOpacity onPress={handleRefreshTasks}><Text style={[styles.viewAll, { color: colors.primary }]}>Refresh</Text></TouchableOpacity>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>✨ {t.aiDailyTasks}</Text>
+        <TouchableOpacity onPress={handleRefreshTasks}><Text style={[styles.viewAll, { color: colors.primary }]}>{t.refresh}</Text></TouchableOpacity>
       </View>
 
       {AI_DAILY_TASKS.map((task, idx) => (
@@ -406,7 +408,7 @@ export default function HomeScreen() {
           </View>
 
           {/* Completion Progress */}
-          <Text style={[styles.completionLabel, { color: colors.muted }]}>Completion Progress</Text>
+          <Text style={[styles.completionLabel, { color: colors.muted }]}>{t.completionProgress}</Text>
           <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
             <View style={[styles.barFill, { width: dailyTaskView === "workout" ? `${Math.min((completedQuests / 3) * 100, 100)}%` : "33%", backgroundColor: "#22C55E" }]} />
           </View>
@@ -414,10 +416,10 @@ export default function HomeScreen() {
           {/* Workout / Diet toggle */}
           <View style={[styles.toggleRow, { backgroundColor: colors.background }]}>
             <TouchableOpacity style={[styles.toggleBtn, { backgroundColor: dailyTaskView === "workout" ? "#22C55E" : "transparent" }]} onPress={() => setDailyTaskView("workout")}>
-              <Text style={dailyTaskView === "workout" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>🏋️ Workout</Text>
+              <Text style={dailyTaskView === "workout" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>🏋️ {t.workout}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.toggleBtn, { backgroundColor: dailyTaskView === "diet" ? "#22C55E" : "transparent" }]} onPress={() => setDailyTaskView("diet")}>
-              <Text style={dailyTaskView === "diet" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>🍽️ Diet</Text>
+              <Text style={dailyTaskView === "diet" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>🍽️ {t.diet}</Text>
             </TouchableOpacity>
           </View>
 
@@ -449,12 +451,12 @@ export default function HomeScreen() {
 
               <TouchableOpacity onPress={() => router.push("/(tabs)/camera")}>
                 <LinearGradient colors={["#22C55E", "#16A34A"]} style={styles.workoutBtn}>
-                  <Text style={styles.workoutBtnText}>🍖 Log Meal  ›</Text>
+                  <Text style={styles.workoutBtnText}>🍖 {t.logMeal}  ›</Text>
                 </LinearGradient>
               </TouchableOpacity>
 
               <View style={styles.skillRow}>
-                <Text style={styles.skillLabel}>⚡ Complete to unlock skill</Text>
+                <Text style={styles.skillLabel}>⚡ {t.completeToUnlockSkill}</Text>
                 <View style={[styles.skillBadge, { backgroundColor: "#22C55E" }]}>
                   <Text style={styles.skillBadgeText}>Nutrition Boost</Text>
                 </View>
@@ -486,12 +488,12 @@ export default function HomeScreen() {
 
             <TouchableOpacity onPress={handleStartWorkout}>
               <LinearGradient colors={["#22C55E", "#16A34A"]} style={styles.workoutBtn}>
-                <Text style={styles.workoutBtnText}>🏋️ Workout  ›</Text>
+                <Text style={styles.workoutBtnText}>🏋️ {t.workout}  ›</Text>
               </LinearGradient>
             </TouchableOpacity>
 
             <View style={styles.skillRow}>
-              <Text style={styles.skillLabel}>⚡ Complete to unlock skill</Text>
+              <Text style={styles.skillLabel}>⚡ {t.completeToUnlockSkill}</Text>
               <View style={[styles.skillBadge, { backgroundColor: "#22C55E" }]}>
                 <Text style={styles.skillBadgeText}>{task.skill}</Text>
               </View>
@@ -510,26 +512,26 @@ export default function HomeScreen() {
       {/* Stats Cards Row */}
       <View style={styles.historyStatsRow}>
         <View style={[styles.historyStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.historyStatLabel, { color: "#EF4444" }]}>🍽️ Calories In</Text>
+          <Text style={[styles.historyStatLabel, { color: "#EF4444" }]}>🍽️ {t.caloriesIn}</Text>
           <Text style={[styles.historyStatValue, { color: colors.foreground }]}>{caloriesIn}</Text>
-          <Text style={[styles.historyStatSub, { color: colors.muted }]}>This week kcal</Text>
+          <Text style={[styles.historyStatSub, { color: colors.muted }]}>{t.thisWeek} kcal</Text>
         </View>
         <View style={[styles.historyStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.historyStatLabel, { color: "#F59E0B" }]}>🔥 Calories Burned</Text>
+          <Text style={[styles.historyStatLabel, { color: "#F59E0B" }]}>🔥 {t.caloriesBurned}</Text>
           <Text style={[styles.historyStatValue, { color: colors.foreground }]}>{caloriesBurned}</Text>
-          <Text style={[styles.historyStatSub, { color: colors.muted }]}>This week kcal</Text>
+          <Text style={[styles.historyStatSub, { color: colors.muted }]}>{t.thisWeek} kcal</Text>
         </View>
       </View>
       <View style={styles.historyStatsRow}>
         <View style={[styles.historyStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.historyStatLabel, { color: "#3B82F6" }]}>🏋️ Workout Duration</Text>
+          <Text style={[styles.historyStatLabel, { color: "#3B82F6" }]}>🏋️ {t.workoutDuration}</Text>
           <Text style={[styles.historyStatValue, { color: colors.foreground }]}>{workoutDuration}</Text>
-          <Text style={[styles.historyStatSub, { color: colors.muted }]}>This week min</Text>
+          <Text style={[styles.historyStatSub, { color: colors.muted }]}>{t.thisWeek} min</Text>
         </View>
         <View style={[styles.historyStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.historyStatLabel, { color: "#22C55E" }]}>🥩 Avg Protein</Text>
+          <Text style={[styles.historyStatLabel, { color: "#22C55E" }]}>🥩 {t.avgProtein}</Text>
           <Text style={[styles.historyStatValue, { color: colors.foreground }]}>{avgProtein}g</Text>
-          <Text style={[styles.historyStatSub, { color: colors.muted }]}>Daily avg</Text>
+          <Text style={[styles.historyStatSub, { color: colors.muted }]}>{t.dailyAvg}</Text>
         </View>
       </View>
 
@@ -563,7 +565,7 @@ export default function HomeScreen() {
         </View>
         <TouchableOpacity onPress={handleAddRecord}>
           <View style={[styles.addRecordInline, { backgroundColor: colors.primary }]}>
-            <Text style={styles.addRecordInlineText}>+ Add Record</Text>
+            <Text style={styles.addRecordInlineText}>+ {t.addRecord}</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -572,7 +574,7 @@ export default function HomeScreen() {
       {historyViewMode === "chart" && (
         <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.chartTitle, { color: colors.foreground }]}>
-            {historySubTab === "calories" ? "🔥 Daily Calorie Trend" : historySubTab === "macros" ? "🥩 Daily Protein Trend" : "🏋️ Workout Duration Trend"}
+            {historySubTab === "calories" ? `🔥 ${t.dailyCalorieTrend}` : historySubTab === "macros" ? `🥩 ${t.dailyProteinTrend}` : `🏋️ ${t.workoutDurationTrend}`}
           </Text>
           <View style={styles.chartArea}>
             {["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"].map((day, i) => {
@@ -596,7 +598,7 @@ export default function HomeScreen() {
 
       {historyViewMode === "calendar" && (
         <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.chartTitle, { color: colors.foreground }]}>📅 Weekly Calendar</Text>
+          <Text style={[styles.chartTitle, { color: colors.foreground }]}>📅 {t.weeklyCalendar}</Text>
           <View style={styles.calendarGrid}>
             {["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"].map((day, i) => {
               const data = chartData[historySubTab];
@@ -618,7 +620,7 @@ export default function HomeScreen() {
 
       {historyViewMode === "list" && (
         <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.chartTitle, { color: colors.foreground }]}>📋 Daily Records</Text>
+          <Text style={[styles.chartTitle, { color: colors.foreground }]}>📋 {t.dailyRecords}</Text>
           {["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"].map((day, i) => {
             const data = chartData[historySubTab];
             const unit = historySubTab === "calories" ? "kcal" : historySubTab === "macros" ? "g protein" : "min";
@@ -627,7 +629,7 @@ export default function HomeScreen() {
               <View key={day} style={[styles.listRow, { borderBottomColor: colors.border }]}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   {isToday && <View style={[styles.todayDot, { backgroundColor: colors.primary }]} />}
-                  <Text style={[styles.listDay, { color: isToday ? colors.primary : colors.foreground }]}>{day}{isToday ? " (Today)" : ""}</Text>
+                  <Text style={[styles.listDay, { color: isToday ? colors.primary : colors.foreground }]}>{day}{isToday ? ` (${t.today})` : ""}</Text>
                 </View>
                 <Text style={[styles.listValue, { color: data[i] > 0 ? colors.foreground : colors.muted }]}>
                   {data[i] > 0 ? `${data[i]} ${unit}` : "—"}
@@ -647,12 +649,12 @@ export default function HomeScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={[styles.greeting, { color: colors.foreground }]}>Hi, {trainerName}!</Text>
-              <Text style={[styles.subtitle, { color: colors.muted }]}>Stay healthy and strong today 💪</Text>
+              <Text style={[styles.greeting, { color: colors.foreground }]}>{tr("greeting", { name: trainerName })}</Text>
+              <Text style={[styles.subtitle, { color: colors.muted }]}>{t.stayHealthy}</Text>
             </View>
             <View style={styles.headerActions}>
-              <TouchableOpacity style={[styles.settingsBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleSettings}>
-                <IconSymbol name="gear" size={22} color={colors.muted} />
+              <TouchableOpacity style={[styles.langBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleToggleLanguage}>
+                <Text style={[styles.langBtnText, { color: colors.primary }]}>{language === "en" ? "中" : "EN"}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.settingsBtn, { backgroundColor: "#FEE2E2", borderColor: "#FECACA" }]} onPress={handleLogout}>
                 <IconSymbol name="rectangle.portrait.and.arrow.right" size={22} color="#EF4444" />
@@ -665,17 +667,17 @@ export default function HomeScreen() {
             <View style={styles.statsLeft}>
               <Text style={styles.heartIcon}>🤍</Text>
               <Text style={styles.statValueLg}>{healthScore}</Text>
-              <Text style={styles.statLabelLg}>Health Score</Text>
+              <Text style={styles.statLabelLg}>{t.healthScore}</Text>
             </View>
             <View style={styles.statsRight}>
               <View style={styles.statSmall}>
                 <Text style={styles.statSmallIcon}>👣</Text>
                 <Text style={styles.statSmallValue}>{todaySteps}</Text>
-                <Text style={styles.statSmallLabel}>Today's Steps</Text>
+                <Text style={styles.statSmallLabel}>{t.steps}</Text>
               </View>
               <View style={styles.statSmall}>
                 <Text style={styles.statSmallIcon}>✨</Text>
-                <Text style={styles.statSmallValue}>{netExp} Net EXP</Text>
+                <Text style={styles.statSmallValue}>{netExp} {t.netExp}</Text>
               </View>
             </View>
           </LinearGradient>
@@ -683,13 +685,13 @@ export default function HomeScreen() {
           {/* Tab Navigation: Home / Daily Tasks / History */}
           <View style={[styles.tabRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <TouchableOpacity style={[styles.tab, activeTab === "home" && styles.activeTab]} onPress={() => setActiveTab("home")}>
-              <Text style={[styles.tabText, { color: activeTab === "home" ? colors.foreground : colors.muted }]}>🏠 Home</Text>
+              <Text style={[styles.tabText, { color: activeTab === "home" ? colors.foreground : colors.muted }]}>🏠 {t.homeTabs.home}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.tab, activeTab === "daily" && styles.activeTab]} onPress={() => setActiveTab("daily")}>
-              <Text style={[styles.tabText, { color: activeTab === "daily" ? colors.foreground : colors.muted }]}>📋 Daily Tasks</Text>
+              <Text style={[styles.tabText, { color: activeTab === "daily" ? colors.foreground : colors.muted }]}>📋 {t.homeTabs.dailyTasks}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.tab, activeTab === "history" && styles.activeTab]} onPress={() => setActiveTab("history")}>
-              <Text style={[styles.tabText, { color: activeTab === "history" ? colors.foreground : colors.muted }]}>🕐 History</Text>
+              <Text style={[styles.tabText, { color: activeTab === "history" ? colors.foreground : colors.muted }]}>🕐 {t.homeTabs.history}</Text>
             </TouchableOpacity>
           </View>
 
@@ -898,6 +900,8 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 26, fontWeight: "800" },
   subtitle: { fontSize: 14, marginTop: 2 },
   settingsBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  langBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  langBtnText: { fontSize: 16, fontWeight: "800" },
 
   // Stats Card
   statsCard: { borderRadius: 20, padding: 20, flexDirection: "row", alignItems: "center" },

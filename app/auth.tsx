@@ -20,6 +20,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/use-colors";
 import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/lib/i18n-context";
 // Share uses react-native Share API for native, Web Share API for web
 
 type AuthMode = "signin" | "signup" | "forgot";
@@ -37,23 +38,24 @@ export default function AuthScreen() {
   const router = useRouter();
   const colors = useColors();
   const { localLogin, localSignup } = useAuth({ autoFetch: false });
+  const { t } = useI18n();
 
   const handleEmailAuth = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+      Alert.alert(t.error || "Error", t.pleaseFillAllFields || "Please fill in all fields");
       return;
     }
     if (mode === "signup") {
       if (!trainerName.trim()) {
-        Alert.alert("Error", "Please enter your trainer name");
+        Alert.alert(t.error || "Error", t.pleaseEnterTrainerName || "Please enter your trainer name");
         return;
       }
       if (password !== confirmPassword) {
-        Alert.alert("Error", "Passwords do not match");
+        Alert.alert(t.error || "Error", t.passwordsDoNotMatch || "Passwords do not match");
         return;
       }
       if (password.length < 6) {
-        Alert.alert("Error", "Password must be at least 6 characters");
+        Alert.alert(t.error || "Error", t.passwordTooShort || "Password must be at least 6 characters");
         return;
       }
     }
@@ -69,7 +71,7 @@ export default function AuthScreen() {
       // Auth state is now set, AuthGate will redirect to home
       router.replace("/(tabs)");
     } catch (error) {
-      Alert.alert("Error", "Authentication failed. Please try again.");
+      Alert.alert(t.error || "Error", t.authFailed || "Authentication failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -80,14 +82,14 @@ export default function AuthScreen() {
     try {
       await startOAuthLogin();
     } catch (error) {
-      Alert.alert("Error", `${provider} login failed. Please try again.`);
+      Alert.alert(t.error || "Error", `${provider} ${t.loginFailed || "login failed. Please try again."}`);
       setLoading(false);
     }
   };
 
   const handleForgotPassword = () => {
     if (!forgotEmail.trim()) {
-      Alert.alert("Error", "Please enter your email address");
+      Alert.alert(t.error || "Error", t.pleaseEnterEmail || "Please enter your email address");
       return;
     }
     // Simulate sending reset email
@@ -102,7 +104,7 @@ export default function AuthScreen() {
 
   const isSignUp = mode === "signup";
 
-  const SHARE_MESSAGE = "Join me on FitMonster! Raise your fitness monster and get healthy together \uD83D\uDCAA\uD83D\uDC7E";
+  const SHARE_MESSAGE = t.shareMessage || "Join me on FitMonster! Raise your fitness monster and get healthy together \uD83D\uDCAA\uD83D\uDC7E";
   const APP_URL = "https://fitmonster.app";
 
   const handleShareGeneric = async () => {
@@ -118,7 +120,7 @@ export default function AuthScreen() {
         } else {
           // Fallback: copy to clipboard
           await navigator.clipboard.writeText(`${SHARE_MESSAGE} ${APP_URL}`);
-          Alert.alert("Copied!", "Share link copied to clipboard");
+          Alert.alert(t.copied || "Copied!", t.shareLinkCopied || "Share link copied to clipboard");
         }
       } else {
         await Share.share({
@@ -167,7 +169,7 @@ export default function AuthScreen() {
             </View>
             <Text style={[styles.appName, { color: colors.primary }]}>FitMonster</Text>
             <Text style={[styles.tagline, { color: colors.muted }]}>
-              Raise your fitness monster 💪
+              {t.raiseYourMonster}
             </Text>
           </View>
 
@@ -177,7 +179,7 @@ export default function AuthScreen() {
             <View style={styles.cardTitleRow}>
               <Text style={styles.cardTitleIcon}>✨</Text>
               <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-                {isSignUp ? "Sign Up" : "Sign In"}
+                {isSignUp ? t.signUp : t.signIn}
               </Text>
             </View>
 
@@ -190,7 +192,7 @@ export default function AuthScreen() {
             >
               <Text style={styles.googleIcon}>G</Text>
               <Text style={[styles.socialBtnText, { color: colors.foreground }]}>
-                Continue with Google
+                {t.continueWithGoogle}
               </Text>
             </TouchableOpacity>
 
@@ -202,14 +204,14 @@ export default function AuthScreen() {
             >
               <Text style={styles.appleIcon}></Text>
               <Text style={[styles.socialBtnText, { color: colors.foreground }]}>
-                Continue with Apple
+                {t.continueWithApple}
               </Text>
             </TouchableOpacity>
 
             {/* Divider */}
             <View style={styles.divider}>
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.muted }]}>Or continue with</Text>
+              <Text style={[styles.dividerText, { color: colors.muted }]}>{t.orContinueWith}</Text>
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
 
@@ -218,12 +220,12 @@ export default function AuthScreen() {
               <View style={styles.inputGroup}>
                 <View style={styles.labelRow}>
                   <Text style={styles.labelIcon}>👤</Text>
-                  <Text style={[styles.label, { color: colors.foreground }]}>Trainer Name</Text>
+                  <Text style={[styles.label, { color: colors.foreground }]}>{t.trainerName}</Text>
                 </View>
                 <TextInput
                   value={trainerName}
                   onChangeText={setTrainerName}
-                  placeholder="Enter your trainer name"
+                  placeholder={t.enterTrainerName || "Enter your trainer name"}
                   placeholderTextColor={colors.muted}
                   style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
                   editable={!loading}
@@ -236,12 +238,12 @@ export default function AuthScreen() {
             <View style={styles.inputGroup}>
               <View style={styles.labelRow}>
                 <Text style={styles.labelIcon}>✉️</Text>
-                <Text style={[styles.label, { color: colors.foreground }]}>Email</Text>
+                <Text style={[styles.label, { color: colors.foreground }]}>{t.email}</Text>
               </View>
               <TextInput
                 value={email}
                 onChangeText={setEmail}
-                placeholder="your@email.com"
+                placeholder={t.emailPlaceholder || "your@email.com"}
                 placeholderTextColor={colors.muted}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -256,18 +258,18 @@ export default function AuthScreen() {
               <View style={styles.passwordHeader}>
                 <View style={styles.labelRow}>
                   <Text style={styles.labelIcon}>🔒</Text>
-                  <Text style={[styles.label, { color: colors.foreground }]}>Password</Text>
+                  <Text style={[styles.label, { color: colors.foreground }]}>{t.password}</Text>
                 </View>
                 {!isSignUp && (
                   <TouchableOpacity onPress={() => setShowForgotModal(true)}>
-                    <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot password?</Text>
+                    <Text style={[styles.forgotText, { color: colors.primary }]}>{t.forgotPassword}</Text>
                   </TouchableOpacity>
                 )}
               </View>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Enter password"
+                placeholder={t.enterPassword || "Enter password"}
                 placeholderTextColor={colors.muted}
                 secureTextEntry
                 style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
@@ -280,12 +282,12 @@ export default function AuthScreen() {
               <View style={styles.inputGroup}>
                 <View style={styles.labelRow}>
                   <Text style={styles.labelIcon}>🔒</Text>
-                  <Text style={[styles.label, { color: colors.foreground }]}>Confirm Password</Text>
+                  <Text style={[styles.label, { color: colors.foreground }]}>{t.confirmPassword}</Text>
                 </View>
                 <TextInput
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
-                  placeholder="Confirm your password"
+                  placeholder={t.confirmYourPassword || "Confirm your password"}
                   placeholderTextColor={colors.muted}
                   secureTextEntry
                   style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
@@ -310,7 +312,7 @@ export default function AuthScreen() {
                 {loading ? (
                   <ActivityIndicator color="white" />
                 ) : (
-                  <Text style={styles.submitText}>{isSignUp ? "Sign Up" : "Sign In"}</Text>
+                  <Text style={styles.submitText}>{isSignUp ? t.signUp : t.signIn}</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
@@ -318,7 +320,7 @@ export default function AuthScreen() {
             {/* Toggle Sign In / Sign Up */}
             <View style={styles.toggleRow}>
               <Text style={[styles.toggleText, { color: colors.muted }]}>
-                {isSignUp ? "Already have an account? " : "Don't have an account? "}
+                {isSignUp ? t.alreadyHaveAccount : t.dontHaveAccount}
               </Text>
               <TouchableOpacity
                 onPress={() => {
@@ -329,7 +331,7 @@ export default function AuthScreen() {
                 disabled={loading}
               >
                 <Text style={[styles.toggleLink, { color: colors.primary }]}>
-                  {isSignUp ? "Sign in" : "Sign up now"}
+                  {isSignUp ? t.signIn : t.signUpNow}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -337,7 +339,7 @@ export default function AuthScreen() {
 
           {/* Social Sharing Section */}
           <View style={styles.shareSection}>
-            <Text style={[styles.shareTitle, { color: colors.muted }]}>Share FitMonster with friends</Text>
+            <Text style={[styles.shareTitle, { color: colors.muted }]}>{t.shareFitMonster}</Text>
             <View style={styles.shareRow}>
               <TouchableOpacity
                 onPress={handleShareToTwitter}
@@ -345,7 +347,7 @@ export default function AuthScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.shareBtnIcon}>𝕏</Text>
-                <Text style={styles.shareBtnLabel}>Twitter</Text>
+                <Text style={styles.shareBtnLabel}>{t.twitter || "Twitter"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -354,7 +356,7 @@ export default function AuthScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.shareBtnIcon}>f</Text>
-                <Text style={styles.shareBtnLabel}>Facebook</Text>
+                <Text style={styles.shareBtnLabel}>{t.facebook || "Facebook"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -363,7 +365,7 @@ export default function AuthScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.shareBtnIcon}>💬</Text>
-                <Text style={styles.shareBtnLabel}>WhatsApp</Text>
+                <Text style={styles.shareBtnLabel}>{t.whatsapp || "WhatsApp"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -372,16 +374,16 @@ export default function AuthScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.shareBtnIcon}>↗</Text>
-                <Text style={styles.shareBtnLabel}>More</Text>
+                <Text style={styles.shareBtnLabel}>{t.more || "More"}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Terms */}
           <Text style={[styles.terms, { color: colors.muted }]}>
-            By continuing, you agree to our{" "}
-            <Text style={{ fontWeight: "600" }}>Terms of Service</Text> and{" "}
-            <Text style={{ fontWeight: "600" }}>Privacy Policy</Text>
+            {t.termsPrefix}{" "}
+            <Text style={{ fontWeight: "600" }}>{t.termsOfService}</Text> {t.and}{" "}
+            <Text style={{ fontWeight: "600" }}>{t.privacyPolicy}</Text>
           </Text>
         </View>
       </ScrollView>
@@ -394,16 +396,16 @@ export default function AuthScreen() {
               <>
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalIcon}>🔑</Text>
-                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>Reset Password</Text>
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.resetPassword}</Text>
                 </View>
                 <Text style={[styles.modalDesc, { color: colors.muted }]}>
-                  Enter your email address and we'll send you a link to reset your password.
+                  {t.resetPasswordDesc}
                 </Text>
 
                 <View style={styles.inputGroup}>
                   <View style={styles.labelRow}>
                     <Text style={styles.labelIcon}>✉️</Text>
-                    <Text style={[styles.label, { color: colors.foreground }]}>Email Address</Text>
+                    <Text style={[styles.label, { color: colors.foreground }]}>{t.emailAddress}</Text>
                   </View>
                   <TextInput
                     value={forgotEmail}
@@ -423,7 +425,7 @@ export default function AuthScreen() {
                     end={{ x: 1, y: 0 }}
                     style={styles.submitBtn}
                   >
-                    <Text style={styles.submitText}>Send Reset Link</Text>
+                    <Text style={styles.submitText}>{t.sendResetLink}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
 
@@ -431,7 +433,7 @@ export default function AuthScreen() {
                   style={[styles.cancelBtn, { borderColor: colors.border }]}
                   onPress={closeForgotModal}
                 >
-                  <Text style={[styles.cancelText, { color: colors.muted }]}>Cancel</Text>
+                  <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -441,12 +443,12 @@ export default function AuthScreen() {
                     <Text style={styles.successIcon}>✅</Text>
                   </View>
                   <Text style={[styles.modalTitle, { color: colors.foreground, marginTop: 16 }]}>
-                    Check Your Email
+                    {t.checkYourEmail}
                   </Text>
                   <Text style={[styles.modalDesc, { color: colors.muted, textAlign: "center" }]}>
-                    We've sent a password reset link to{"\n"}
+                    {t.resetLinkSent}{"\n"}
                     <Text style={{ fontWeight: "700", color: colors.foreground }}>{forgotEmail}</Text>
-                    {"\n\n"}Please check your inbox and follow the instructions to reset your password.
+                    {"\n\n"}{t.checkInboxInstructions}
                   </Text>
                 </View>
 
@@ -457,7 +459,7 @@ export default function AuthScreen() {
                     end={{ x: 1, y: 0 }}
                     style={styles.submitBtn}
                   >
-                    <Text style={styles.submitText}>Back to Sign In</Text>
+                    <Text style={styles.submitText}>{t.backToSignIn}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </>

@@ -3,9 +3,11 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useI18n } from "@/lib/i18n-context";
 
 export default function DashboardScreen() {
   const colors = useColors();
+  const { t } = useI18n();
 
   // Sample data for demo
   const todaySteps = 6280;
@@ -38,25 +40,25 @@ export default function DashboardScreen() {
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.foreground }]}>Today's Fitness Overview</Text>
-            <Text style={[styles.subtitle, { color: colors.muted }]}>Track your health progress</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>{t.todaysFitnessOverview}</Text>
+            <Text style={[styles.subtitle, { color: colors.muted }]}>{t.trackYourProgress}</Text>
           </View>
 
           {/* Steps & Calories Row */}
           <View style={styles.statsRow}>
             <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={styles.statCardIcon}>👣</Text>
-              <Text style={[styles.statCardTitle, { color: colors.muted }]}>Today's Steps</Text>
+              <Text style={[styles.statCardTitle, { color: colors.muted }]}>{t.todaySteps}</Text>
               <Text style={[styles.statCardValue, { color: colors.foreground }]}>{todaySteps.toLocaleString()}</Text>
               <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
                 <View style={[styles.progressFill, { width: `${stepsPercent}%`, backgroundColor: "#3B82F6" }]} />
               </View>
-              <Text style={[styles.goalText, { color: colors.muted }]}>Goal: {stepsGoal.toLocaleString()} steps</Text>
+              <Text style={[styles.goalText, { color: colors.muted }]}>{t.stepsGoal}</Text>
             </View>
 
             <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={styles.statCardIcon}>🔥</Text>
-              <Text style={[styles.statCardTitle, { color: colors.muted }]}>Burned Calories</Text>
+              <Text style={[styles.statCardTitle, { color: colors.muted }]}>{t.burnedCalories}</Text>
               <Text style={[styles.statCardValue, { color: colors.foreground }]}>{caloriesBurned}</Text>
               <Text style={[styles.formulaText, { color: colors.muted }]}>
                 = MET x Weight x Duration
@@ -66,65 +68,65 @@ export default function DashboardScreen() {
 
           {/* Net EXP Card */}
           <View style={[styles.expCard, { backgroundColor: "#7C3AED" }]}>
-            <Text style={styles.expCardTitle}>Today's Net EXP</Text>
+            <Text style={styles.expCardTitle}>{t.todaysNetExp}</Text>
             <Text style={styles.expCardValue}>{netExp}</Text>
             <View style={styles.expBreakdown}>
               <View style={styles.expRow}>
-                <Text style={styles.expLabel}>Calorie Surplus</Text>
+                <Text style={styles.expLabel}>{t.calorieSurplus}</Text>
                 <Text style={styles.expAmount}>{caloriesIntake - caloriesBurned} kcal</Text>
               </View>
               <View style={styles.expRow}>
-                <Text style={styles.expLabel}>Nutrition EXP</Text>
+                <Text style={styles.expLabel}>{t.nutritionExp}</Text>
                 <Text style={styles.expAmount}>{nutritionExp}</Text>
               </View>
               <View style={styles.expRow}>
-                <Text style={styles.expLabel}>Workout EXP</Text>
+                <Text style={styles.expLabel}>{t.workoutExp}</Text>
                 <Text style={styles.expAmount}>{workoutExp}</Text>
               </View>
               <View style={[styles.expDivider, { backgroundColor: "rgba(255,255,255,0.2)" }]} />
               <View style={styles.expRow}>
-                <Text style={styles.expLabel}>Intake</Text>
+                <Text style={styles.expLabel}>{t.intake}</Text>
                 <Text style={styles.expAmount}>{caloriesIntake} kcal</Text>
               </View>
               <View style={styles.expRow}>
-                <Text style={styles.expLabel}>Burned</Text>
+                <Text style={styles.expLabel}>{t.burned}</Text>
                 <Text style={styles.expAmount}>{caloriesBurned} kcal</Text>
               </View>
               <View style={[styles.balanceBadge, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
-                <Text style={styles.balanceText}>⚖️ Balanced</Text>
+                <Text style={styles.balanceText}>⚖️ {t.balanced}</Text>
               </View>
             </View>
           </View>
 
           {/* Step Bonus Effects */}
           <View style={[styles.bonusCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Step Bonus Effects</Text>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t.stepBonusEffects}</Text>
             <View style={styles.bonusRow}>
               <View style={[styles.bonusItem, { backgroundColor: colors.background }]}>
                 <Text style={styles.bonusIcon}>⚡</Text>
-                <Text style={[styles.bonusLabel, { color: colors.muted }]}>EXP Bonus</Text>
+                <Text style={[styles.bonusLabel, { color: colors.muted }]}>{t.expBonus}</Text>
                 <Text style={[styles.bonusValue, { color: colors.primary }]}>x{expBonus}</Text>
               </View>
               <View style={[styles.bonusItem, { backgroundColor: colors.background }]}>
                 <Text style={styles.bonusIcon}>🥩</Text>
-                <Text style={[styles.bonusLabel, { color: colors.muted }]}>Protein Efficiency</Text>
+                <Text style={[styles.bonusLabel, { color: colors.muted }]}>{t.proteinEfficiency}</Text>
                 <Text style={[styles.bonusValue, { color: colors.primary }]}>x{proteinEfficiency}</Text>
               </View>
             </View>
             <Text style={[styles.bonusHint, { color: colors.muted }]}>
-              Walk more steps to increase your bonus multipliers!
+              {t.walkMoreStepsHint}
             </Text>
           </View>
 
           {/* Nutrition Card */}
           <View style={[styles.nutritionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Today's Nutrition</Text>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t.totalNutrition}</Text>
             <View style={styles.nutritionRow}>
-              <Text style={[styles.nutritionLabel, { color: colors.muted }]}>Daily Calorie Need</Text>
+              <Text style={[styles.nutritionLabel, { color: colors.muted }]}>{t.dailyCalorieNeed}</Text>
               <Text style={[styles.nutritionValue, { color: colors.foreground }]}>{dailyCalorieNeed} kcal</Text>
             </View>
             <View style={styles.nutritionRow}>
-              <Text style={[styles.nutritionLabel, { color: colors.muted }]}>Protein Intake</Text>
+              <Text style={[styles.nutritionLabel, { color: colors.muted }]}>{t.proteinIntake}</Text>
               <Text style={[styles.nutritionValue, { color: colors.foreground }]}>{proteinIntake}g / {proteinGoal}g</Text>
             </View>
             <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
@@ -134,7 +136,7 @@ export default function DashboardScreen() {
 
           {/* Monster Growth Status */}
           <View style={[styles.monsterGrowth, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Monster Growth Status</Text>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t.monsterGrowth}</Text>
             <View style={styles.monsterGrowthRow}>
               <LinearGradient colors={["#DCFCE7", "#BBF7D0"]} style={styles.monsterThumbGradient}>
                 <Image
@@ -145,7 +147,7 @@ export default function DashboardScreen() {
               </LinearGradient>
               <View style={styles.monsterGrowthInfo}>
                 <Text style={[styles.monsterGrowthName, { color: colors.foreground }]}>Flexo</Text>
-                <Text style={[styles.monsterGrowthLevel, { color: colors.muted }]}>Level 5</Text>
+                <Text style={[styles.monsterGrowthLevel, { color: colors.muted }]}>{t.level} 5</Text>
                 <View style={styles.growthBarContainer}>
                   <Text style={[styles.growthBarLabel, { color: colors.muted }]}>EXP</Text>
                   <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
@@ -153,12 +155,12 @@ export default function DashboardScreen() {
                   </View>
                 </View>
                 <View style={styles.growthBarContainer}>
-                  <Text style={[styles.growthBarLabel, { color: colors.muted }]}>Evolution</Text>
+                  <Text style={[styles.growthBarLabel, { color: colors.muted }]}>{t.evolution}</Text>
                   <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
                     <View style={[styles.progressFill, { width: "35%", backgroundColor: "#F59E0B" }]} />
                   </View>
                 </View>
-                <Text style={[styles.stageText, { color: colors.muted }]}>Stage 1/3</Text>
+                <Text style={[styles.stageText, { color: colors.muted }]}>{t.evolutionStage} 1/3</Text>
                 <View style={styles.growthStats}>
                   <Text style={styles.growthStat}>🥩 22</Text>
                   <Text style={styles.growthStat}>🛡️ 15</Text>
@@ -170,7 +172,7 @@ export default function DashboardScreen() {
 
           {/* Daily Quest Progress */}
           <View style={[styles.questSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Daily Quest Progress</Text>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t.dailyQuestProgress}</Text>
             {quests.map((quest, index) => (
               <View key={index} style={[styles.questItem, { borderBottomColor: colors.border }]}>
                 <View style={styles.questItemHeader}>

@@ -17,6 +17,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { useI18n } from "@/lib/i18n-context";
 
 type Message = {
   id: string;
@@ -40,6 +41,7 @@ const AUTO_REPLIES = [
 export default function ChatScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { t } = useI18n();
   const { friendId, friendName } = useLocalSearchParams<{ friendId: string; friendName: string }>();
   const [messages, setMessages] = useState<Message[]>([
     { id: "1", text: `Hey! Ready to battle? 💪`, sender: "them", timestamp: new Date(Date.now() - 60000) },
@@ -87,9 +89,9 @@ export default function ChatScreen() {
 
   const handleCall = useCallback((type: "voice" | "video") => {
     Alert.alert(
-      `${type === "voice" ? "Voice" : "Video"} Call`,
-      `Calling ${friendName}...\n\nThis feature requires a real-time communication service and will be available when deployed with WebRTC integration.`,
-      [{ text: "OK" }]
+      `${type === "voice" ? (t.voiceCall || "Voice Call") : (t.videoCall || "Video Call")}`,
+      `${t.calling || "Calling"} ${friendName}...\n\n${t.callFeatureDesc || "This feature requires a real-time communication service and will be available when deployed with WebRTC integration."}`,
+      [{ text: t.ok }]
     );
   }, [friendName]);
 
@@ -121,8 +123,8 @@ export default function ChatScreen() {
             <IconSymbol name="arrow.left" size={24} color={colors.foreground} />
           </TouchableOpacity>
           <View style={styles.chatHeaderInfo}>
-            <Text style={[styles.chatHeaderName, { color: colors.foreground }]}>{friendName || "Friend"}</Text>
-            <Text style={[styles.chatHeaderStatus, { color: "#22C55E" }]}>Online</Text>
+            <Text style={[styles.chatHeaderName, { color: colors.foreground }]}>{friendName || (t.friend || "Friend")}</Text>
+            <Text style={[styles.chatHeaderStatus, { color: "#22C55E" }]}>{t.online}</Text>
           </View>
           <View style={styles.chatHeaderActions}>
             <TouchableOpacity style={styles.headerActionBtn} onPress={() => handleCall("voice")}>
@@ -151,7 +153,7 @@ export default function ChatScreen() {
           </TouchableOpacity>
           <TextInput
             style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-            placeholder="Type a message..."
+            placeholder={t.typeMessage}
             placeholderTextColor={colors.muted}
             value={inputText}
             onChangeText={setInputText}

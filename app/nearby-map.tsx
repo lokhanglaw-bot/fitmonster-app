@@ -17,6 +17,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
+import { useI18n } from "@/lib/i18n-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -62,6 +63,7 @@ const NEARBY_USERS = [
 export default function NearbyMapScreen() {
   const router = useRouter();
   const colors = useColors();
+  const { t } = useI18n();
   const [locationGranted, setLocationGranted] = useState(false);
   const [sharingLocation, setSharingLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -95,27 +97,27 @@ export default function NearbyMapScreen() {
   const handleToggleSharing = useCallback((value: boolean) => {
     if (value && !locationGranted) {
       Alert.alert(
-        "Location Permission Required",
-        "Please enable location access in your device settings to share your location with nearby trainers.",
-        [{ text: "OK" }]
+        t.locationPermissionRequired || "Location Permission Required",
+        t.locationPermissionMessage || "Please enable location access in your device settings to share your location with nearby trainers.",
+        [{ text: t.ok }]
       );
       return;
     }
     setSharingLocation(value);
     if (value) {
       Alert.alert(
-        "Location Sharing Enabled",
-        "Nearby trainers can now see you on the map. Your location is only shared while the app is open.",
-        [{ text: "OK" }]
+        t.locationSharingEnabled || "Location Sharing Enabled",
+        t.locationSharingEnabledMessage || "Nearby trainers can now see you on the map. Your location is only shared while the app is open.",
+        [{ text: t.ok }]
       );
     }
   }, [locationGranted]);
 
   const handleSendRequest = useCallback((user: typeof NEARBY_USERS[0]) => {
     Alert.alert(
-      "Friend Request Sent! 💌",
-      `You sent a friend request to ${user.name}.\nThey need to accept before you can battle!`,
-      [{ text: "OK" }]
+      t.friendRequestSentTitle || "Friend Request Sent!",
+      `${t.friendRequestSentTo || "You sent a friend request to"} ${user.name}.\n${t.needToAccept || "They need to accept before you can battle!"}`,
+      [{ text: t.ok }]
     );
   }, []);
 
@@ -161,7 +163,7 @@ export default function NearbyMapScreen() {
           >
             <Text style={{ fontSize: 18 }}>←</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Nearby Trainers</Text>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t.nearbyTrainers}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -184,7 +186,7 @@ export default function NearbyMapScreen() {
               <View style={[styles.myPinInner, { backgroundColor: colors.primary }]}>
                 <Text style={{ fontSize: 16 }}>📍</Text>
               </View>
-              <Text style={[styles.pinLabel, { color: colors.primary }]}>You</Text>
+              <Text style={[styles.pinLabel, { color: colors.primary }]}>{t.you || "You"}</Text>
               {sharingLocation && (
                 <View style={styles.pulseRing} />
               )}
@@ -225,9 +227,9 @@ export default function NearbyMapScreen() {
           <View style={styles.sharingInfo}>
             <IconSymbol name="location.fill" size={20} color={sharingLocation ? colors.primary : colors.muted} />
             <View>
-              <Text style={[styles.sharingTitle, { color: colors.foreground }]}>Share My Location</Text>
+              <Text style={[styles.sharingTitle, { color: colors.foreground }]}>{t.shareLocation}</Text>
               <Text style={[styles.sharingDesc, { color: colors.muted }]}>
-                {sharingLocation ? "Visible to nearby trainers" : "Others can't see you on the map"}
+                {sharingLocation ? (t.visibleToNearby || "Visible to nearby trainers") : (t.notVisibleOnMap || "Others can't see you on the map")}
               </Text>
             </View>
           </View>
@@ -255,14 +257,14 @@ export default function NearbyMapScreen() {
               style={[styles.challengeBtn, { backgroundColor: "#7C3AED" }]}
               onPress={() => handleSendRequest(selectedUser)}
             >
-              <Text style={styles.challengeBtnText}>Add Friend</Text>
+              <Text style={styles.challengeBtnText}>{t.addFriend}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {/* Nearby users list */}
         <Text style={[styles.listTitle, { color: colors.foreground }]}>
-          🏃 {NEARBY_USERS.filter((u) => u.online).length} trainers active nearby
+          🏃 {NEARBY_USERS.filter((u) => u.online).length} {t.trainersActiveNearby || "trainers active nearby"}
         </Text>
         <FlatList
           data={NEARBY_USERS}

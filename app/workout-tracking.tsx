@@ -24,6 +24,7 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useKeepAwake } from "expo-keep-awake";
+import { useI18n } from "@/lib/i18n-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -33,6 +34,7 @@ export default function WorkoutTrackingScreen() {
   const router = useRouter();
   const colors = useColors();
   const { logWorkout } = useActivity();
+  const { t } = useI18n();
   const params = useLocalSearchParams<{
     exerciseName?: string;
     exerciseIcon?: string;
@@ -49,7 +51,7 @@ export default function WorkoutTrackingScreen() {
   const bodyWeight = 70; // kg default
 
   const bonusMultiplier = bonusType === "outdoor" ? 1.5 : bonusType === "gym" ? 2.0 : 1.0;
-  const bonusLabel = bonusType === "outdoor" ? "🌳 Outdoor x1.5" : bonusType === "gym" ? "🏋️ Gym x2.0" : null;
+  const bonusLabel = bonusType === "outdoor" ? `🌳 ${t.outdoorBonus}` : bonusType === "gym" ? `🏋️ ${t.gymBonus}` : null;
 
   // Timer state
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -153,9 +155,9 @@ export default function WorkoutTrackingScreen() {
   const handleFinishEarly = useCallback(() => {
     if (elapsedSeconds < 60) {
       Alert.alert(
-        "Too Short",
-        "You need to exercise for at least 1 minute to log this workout.",
-        [{ text: "OK" }]
+        t.tooShort || "Too Short",
+        t.tooShortMessage || "You need to exercise for at least 1 minute to log this workout.",
+        [{ text: t.ok }]
       );
       return;
     }
@@ -183,7 +185,7 @@ export default function WorkoutTrackingScreen() {
             <Text style={{ fontSize: 18 }}>←</Text>
           </TouchableOpacity>
           <Text style={[styles.topTitle, { color: colors.foreground }]}>
-            {isCompleted ? "Workout Complete!" : "Workout in Progress"}
+            {isCompleted ? t.workoutComplete : (t.workoutInProgress || "Workout in Progress")}
           </Text>
           <View style={{ width: 40 }} />
         </View>
@@ -194,7 +196,7 @@ export default function WorkoutTrackingScreen() {
             <View style={[styles.completionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={{ fontSize: 64 }}>🎉</Text>
               <Text style={[styles.completionTitle, { color: colors.foreground }]}>
-                Great Job!
+                {t.greatJob || "Great Job!"}
               </Text>
               <Text style={[styles.completionExercise, { color: colors.primary }]}>
                 {exerciseIcon} {exerciseName}
@@ -205,27 +207,27 @@ export default function WorkoutTrackingScreen() {
                   <Text style={[styles.completionStatValue, { color: colors.foreground }]}>
                     {formatTime(elapsedSeconds)}
                   </Text>
-                  <Text style={[styles.completionStatLabel, { color: colors.muted }]}>Duration</Text>
+                  <Text style={[styles.completionStatLabel, { color: colors.muted }]}>{t.duration}</Text>
                 </View>
                 <View style={[styles.completionDivider, { backgroundColor: colors.border }]} />
                 <View style={styles.completionStatItem}>
                   <Text style={[styles.completionStatValue, { color: "#F59E0B" }]}>
                     +{finalExp}
                   </Text>
-                  <Text style={[styles.completionStatLabel, { color: colors.muted }]}>EXP</Text>
+                  <Text style={[styles.completionStatLabel, { color: colors.muted }]}>{t.expReward}</Text>
                 </View>
                 <View style={[styles.completionDivider, { backgroundColor: colors.border }]} />
                 <View style={styles.completionStatItem}>
                   <Text style={[styles.completionStatValue, { color: "#EF4444" }]}>
                     {finalCalories}
                   </Text>
-                  <Text style={[styles.completionStatLabel, { color: colors.muted }]}>Calories</Text>
+                  <Text style={[styles.completionStatLabel, { color: colors.muted }]}>{t.calories}</Text>
                 </View>
               </View>
 
               {bonusLabel && (
                 <View style={[styles.bonusBadge, { backgroundColor: "#FEF3C7" }]}>
-                  <Text style={{ fontSize: 14, color: "#92400E" }}>{bonusLabel} bonus applied!</Text>
+                  <Text style={{ fontSize: 14, color: "#92400E" }}>{bonusLabel} {t.bonusApplied || "bonus applied!"}</Text>
                 </View>
               )}
             </View>
@@ -241,7 +243,7 @@ export default function WorkoutTrackingScreen() {
                 end={{ x: 1, y: 0 }}
                 style={styles.doneBtnGradient}
               >
-                <Text style={styles.doneBtnText}>Done</Text>
+                <Text style={styles.doneBtnText}>{t.done}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -285,7 +287,7 @@ export default function WorkoutTrackingScreen() {
                 />
               </View>
               <Text style={[styles.progressText, { color: colors.muted }]}>
-                {Math.round(progressPercent)}% complete
+                {Math.round(progressPercent)}% {t.completed || "complete"}
               </Text>
             </View>
 
@@ -294,17 +296,17 @@ export default function WorkoutTrackingScreen() {
               <View style={[styles.liveStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={{ fontSize: 20 }}>🔥</Text>
                 <Text style={[styles.liveStatValue, { color: "#EF4444" }]}>{currentCalories}</Text>
-                <Text style={[styles.liveStatLabel, { color: colors.muted }]}>Calories</Text>
+                <Text style={[styles.liveStatLabel, { color: colors.muted }]}>{t.calories}</Text>
               </View>
               <View style={[styles.liveStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={{ fontSize: 20 }}>⭐</Text>
                 <Text style={[styles.liveStatValue, { color: "#F59E0B" }]}>{currentExp}</Text>
-                <Text style={[styles.liveStatLabel, { color: colors.muted }]}>EXP</Text>
+                <Text style={[styles.liveStatLabel, { color: colors.muted }]}>{t.expReward}</Text>
               </View>
               <View style={[styles.liveStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={{ fontSize: 20 }}>⏱️</Text>
                 <Text style={[styles.liveStatValue, { color: colors.primary }]}>{Math.ceil(elapsedMinutes)}</Text>
-                <Text style={[styles.liveStatLabel, { color: colors.muted }]}>Minutes</Text>
+                <Text style={[styles.liveStatLabel, { color: colors.muted }]}>{t.minutes}</Text>
               </View>
             </View>
 
@@ -317,7 +319,7 @@ export default function WorkoutTrackingScreen() {
               >
                 <Text style={{ fontSize: 24 }}>{isRunning ? "⏸️" : "▶️"}</Text>
                 <Text style={[styles.controlBtnText, { color: isRunning ? "#92400E" : "#166534" }]}>
-                  {isRunning ? "Pause" : "Resume"}
+                  {isRunning ? t.pause : t.resume}
                 </Text>
               </TouchableOpacity>
 
@@ -333,7 +335,7 @@ export default function WorkoutTrackingScreen() {
                   style={styles.finishBtnGradient}
                 >
                   <Text style={{ fontSize: 20 }}>🏁</Text>
-                  <Text style={styles.finishBtnText}>Finish Workout</Text>
+                  <Text style={styles.finishBtnText}>{t.finish}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>

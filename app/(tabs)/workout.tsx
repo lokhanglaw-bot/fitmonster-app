@@ -16,6 +16,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useActivity } from "@/lib/activity-context";
 import { useRouter } from "expo-router";
+import { useI18n } from "@/lib/i18n-context";
 
 const WORKOUT_TYPES = ["All", "Running", "Weight Training", "Yoga", "Basketball"];
 
@@ -52,6 +53,7 @@ const SAMPLE_LOGS: WorkoutLog[] = [
 export default function WorkoutScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { t } = useI18n();
   const [selectedType, setSelectedType] = useState("All");
   const [totalExp, setTotalExp] = useState(839);
   const [completedCount, setCompletedCount] = useState(3);
@@ -178,8 +180,8 @@ export default function WorkoutScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={[styles.title, { color: colors.foreground }]}>Workout</Text>
-              <Text style={[styles.subtitle, { color: colors.muted }]}>Start Training 💪</Text>
+              <Text style={[styles.title, { color: colors.foreground }]}>{t.tabWorkout}</Text>
+              <Text style={[styles.subtitle, { color: colors.muted }]}>{t.startTraining} 💪</Text>
             </View>
             <View style={{ flexDirection: "row", gap: 8 }}>
               <TouchableOpacity
@@ -319,7 +321,7 @@ export default function WorkoutScreen() {
               </View>
 
               {/* Bonus Section */}
-              <Text style={[styles.bonusTitle, { color: colors.foreground }]}>Bonus</Text>
+              <Text style={[styles.bonusTitle, { color: colors.foreground }]}>{t.bonus}</Text>
               <View style={styles.bonusRow}>
                 <TouchableOpacity
                   style={[
@@ -335,7 +337,7 @@ export default function WorkoutScreen() {
                 >
                   <Text style={styles.bonusIcon}>📍</Text>
                   <View>
-                    <Text style={[styles.bonusName, { color: colors.foreground }]}>Outdoor</Text>
+                    <Text style={[styles.bonusName, { color: colors.foreground }]}>{t.outdoor}</Text>
                     <Text style={[styles.bonusMultiplier, { color: colors.primary }]}>x1.5</Text>
                   </View>
                 </TouchableOpacity>
@@ -353,7 +355,7 @@ export default function WorkoutScreen() {
                 >
                   <Text style={styles.bonusIcon}>🏋️</Text>
                   <View>
-                    <Text style={[styles.bonusName, { color: colors.foreground }]}>Gym</Text>
+                    <Text style={[styles.bonusName, { color: colors.foreground }]}>{t.gym}</Text>
                     <Text style={[styles.bonusMultiplier, { color: colors.primary }]}>x2.0</Text>
                   </View>
                 </TouchableOpacity>
@@ -362,11 +364,11 @@ export default function WorkoutScreen() {
               {/* EXP & Calories Preview */}
               <View style={[styles.previewCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
                 <View style={styles.previewRow}>
-                  <Text style={[styles.previewLabel, { color: colors.foreground }]}>EXP Gained</Text>
+                  <Text style={[styles.previewLabel, { color: colors.foreground }]}>{t.expGained}</Text>
                   <Text style={[styles.previewValue, { color: colors.primary }]}>+{expGained}</Text>
                 </View>
                 <View style={styles.previewRow}>
-                  <Text style={[styles.previewLabel, { color: colors.foreground }]}>Calories Burned</Text>
+                  <Text style={[styles.previewLabel, { color: colors.foreground }]}>{t.caloriesBurned}</Text>
                   <Text style={[styles.previewCalories, { color: "#F59E0B" }]}>~{caloriesBurned} kcal</Text>
                 </View>
               </View>
@@ -380,7 +382,7 @@ export default function WorkoutScreen() {
                   style={styles.startBtn}
                 >
                   <Text style={styles.startBtnIcon}>▶</Text>
-                  <Text style={styles.startBtnText}>Start Training</Text>
+                  <Text style={styles.startBtnText}>{t.startTraining}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -389,7 +391,7 @@ export default function WorkoutScreen() {
           {/* Recent Workouts */}
           {workoutLogs.length > 0 && (
             <>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recent Workouts</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t.recentWorkouts}</Text>
               {workoutLogs.slice(0, 5).map((log, index) => (
                 <View key={index} style={[styles.logItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={styles.logInfo}>
@@ -406,13 +408,13 @@ export default function WorkoutScreen() {
           <View style={[styles.bottomStats, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.bottomStatItem}>
               <Text style={styles.bottomStatIcon}>📈</Text>
-              <Text style={[styles.bottomStatLabel, { color: colors.muted }]}>Workout</Text>
+              <Text style={[styles.bottomStatLabel, { color: colors.muted }]}>{t.tabWorkout}</Text>
             </View>
           </View>
           <View style={[styles.statsRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.primary }]}>{completedCount}</Text>
-              <Text style={[styles.statLabel, { color: colors.muted }]}>Completed</Text>
+              <Text style={[styles.statLabel, { color: colors.muted }]}>{t.completed}</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
             <View style={styles.statItem}>
@@ -422,7 +424,7 @@ export default function WorkoutScreen() {
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.primary }]}>{steps.toLocaleString()}</Text>
-              <Text style={[styles.statLabel, { color: colors.muted }]}>Steps</Text>
+              <Text style={[styles.statLabel, { color: colors.muted }]}>{t.steps}</Text>
             </View>
           </View>
         </View>
@@ -432,10 +434,10 @@ export default function WorkoutScreen() {
       <Modal visible={showManualLog} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Manual Workout Log</Text>
-            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>Log a workout manually</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.manualWorkoutLog}</Text>
+            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>{t.logWorkoutManually}</Text>
 
-            <Text style={[styles.inputLabel, { color: colors.muted }]}>Exercise Name</Text>
+            <Text style={[styles.inputLabel, { color: colors.muted }]}>{t.exerciseName}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
               placeholder="e.g. Push-ups, Jogging..."
@@ -444,7 +446,7 @@ export default function WorkoutScreen() {
               onChangeText={setManualExercise}
             />
 
-            <Text style={[styles.inputLabel, { color: colors.muted }]}>Duration (minutes)</Text>
+            <Text style={[styles.inputLabel, { color: colors.muted }]}>{t.durationMinutes}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
               placeholder="e.g. 30"
@@ -454,7 +456,7 @@ export default function WorkoutScreen() {
               keyboardType="numeric"
             />
 
-            <Text style={[styles.inputLabel, { color: colors.muted }]}>Body Weight (kg)</Text>
+            <Text style={[styles.inputLabel, { color: colors.muted }]}>{t.bodyWeight}</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
               placeholder="e.g. 70"
@@ -465,10 +467,10 @@ export default function WorkoutScreen() {
             />
 
             <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.primary }]} onPress={handleManualLogSubmit}>
-              <Text style={styles.submitText}>Log Workout</Text>
+              <Text style={styles.submitText}>{t.logWorkout}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => setShowManualLog(false)}>
-              <Text style={[styles.cancelText, { color: colors.muted }]}>Cancel</Text>
+              <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
             </TouchableOpacity>
           </View>
         </View>

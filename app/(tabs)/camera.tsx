@@ -21,6 +21,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import { useActivity } from "@/lib/activity-context";
+import { useI18n } from "@/lib/i18n-context";
 
 type FoodItem = {
   name: string;
@@ -51,6 +52,7 @@ type AnalysisState =
 
 export default function CameraScreen() {
   const colors = useColors();
+  const { t } = useI18n();
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [analysisState, setAnalysisState] = useState<AnalysisState>({ status: "idle" });
   const [isSaving, setIsSaving] = useState(false);
@@ -287,9 +289,9 @@ export default function CameraScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Food Scanner</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{t.foodScanner}</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>
-            AI analyzes food nutrition to feed your monster
+            {t.aiAnalyzesFood}
           </Text>
         </View>
 
@@ -302,10 +304,10 @@ export default function CameraScreen() {
             <View style={styles.analyzingContent}>
               <ActivityIndicator size="large" color={colors.primary} />
               <Text style={[styles.analyzingText, { color: colors.foreground }]}>
-                Analyzing your meal...
+                {t.analyzingMeal}
               </Text>
               <Text style={[styles.analyzingSubtext, { color: colors.muted }]}>
-                AI is identifying food items and calculating nutrition
+                {t.aiIdentifying}
               </Text>
             </View>
           </View>
@@ -321,7 +323,7 @@ export default function CameraScreen() {
               onPress={handleReset}
               activeOpacity={0.8}
             >
-              <Text style={styles.retryBtnText}>Try Again</Text>
+              <Text style={styles.retryBtnText}>{t.retry}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -346,37 +348,37 @@ export default function CameraScreen() {
             </View>
 
             <View style={[styles.totalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.totalTitle, { color: colors.foreground }]}>Total Nutrition</Text>
+              <Text style={[styles.totalTitle, { color: colors.foreground }]}>{t.totalNutrition}</Text>
               <View style={styles.totalGrid}>
                 <View style={[styles.totalItem, { backgroundColor: "#FEF3C7" }]}>
                   <Text style={styles.totalEmoji}>🔥</Text>
                   <Text style={[styles.totalValue, { color: "#F59E0B" }]}>{analysisState.analysis.totalCalories}</Text>
-                  <Text style={[styles.totalLabel, { color: colors.muted }]}>Calories</Text>
+                  <Text style={[styles.totalLabel, { color: colors.muted }]}>{t.calories}</Text>
                 </View>
                 <View style={[styles.totalItem, { backgroundColor: "#FEE2E2" }]}>
                   <Text style={styles.totalEmoji}>🥩</Text>
                   <Text style={[styles.totalValue, { color: "#EF4444" }]}>{analysisState.analysis.totalProtein}g</Text>
-                  <Text style={[styles.totalLabel, { color: colors.muted }]}>Protein</Text>
+                  <Text style={[styles.totalLabel, { color: colors.muted }]}>{t.proteinShort}</Text>
                 </View>
                 <View style={[styles.totalItem, { backgroundColor: "#DBEAFE" }]}>
                   <Text style={styles.totalEmoji}>🍞</Text>
                   <Text style={[styles.totalValue, { color: "#3B82F6" }]}>{analysisState.analysis.totalCarbs}g</Text>
-                  <Text style={[styles.totalLabel, { color: colors.muted }]}>Carbs</Text>
+                  <Text style={[styles.totalLabel, { color: colors.muted }]}>{t.carbsShort}</Text>
                 </View>
                 <View style={[styles.totalItem, { backgroundColor: "#EDE9FE" }]}>
                   <Text style={styles.totalEmoji}>🧈</Text>
                   <Text style={[styles.totalValue, { color: "#8B5CF6" }]}>{analysisState.analysis.totalFat}g</Text>
-                  <Text style={[styles.totalLabel, { color: colors.muted }]}>Fat</Text>
+                  <Text style={[styles.totalLabel, { color: colors.muted }]}>{t.fatShort}</Text>
                 </View>
               </View>
             </View>
 
             <View style={[styles.healthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.healthTitle, { color: colors.foreground }]}>Health Score</Text>
+              <Text style={[styles.healthTitle, { color: colors.foreground }]}>{t.healthScore}</Text>
               {renderHealthBar(analysisState.analysis.healthScore)}
             </View>
 
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Food Items</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t.foodItems}</Text>
             <FlatList
               data={analysisState.analysis.foods}
               renderItem={renderFoodItem}
@@ -398,13 +400,13 @@ export default function CameraScreen() {
                   ) : (
                     <>
                       <Text style={styles.saveBtnEmoji}>🍖</Text>
-                      <Text style={styles.saveBtnText}>Feed Monster & Save Log</Text>
+                      <Text style={styles.saveBtnText}>{t.feedMonsterSave}</Text>
                     </>
                   )}
                 </TouchableOpacity>
               ) : (
                 <View style={[styles.savedBadge, { backgroundColor: "#DCFCE7", borderColor: "#22C55E" }]}>
-                  <Text style={styles.savedText}>✅ Saved! Monster fed successfully</Text>
+                  <Text style={styles.savedText}>✅ {t.monsterFed}</Text>
                 </View>
               )}
               <TouchableOpacity
@@ -413,7 +415,7 @@ export default function CameraScreen() {
                 activeOpacity={0.8}
               >
                 <IconSymbol name="camera.fill" size={20} color={colors.primary} />
-                <Text style={[styles.newScanBtnText, { color: colors.primary }]}>Scan Another Meal</Text>
+                <Text style={[styles.newScanBtnText, { color: colors.primary }]}>{t.scanAnotherMeal}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -427,10 +429,10 @@ export default function CameraScreen() {
                 <IconSymbol name="camera.fill" size={48} color={colors.muted} />
               </View>
               <Text style={[styles.cameraTitle, { color: colors.foreground }]}>
-                Take or upload food photo
+                {t.takeOrUploadPhoto}
               </Text>
               <Text style={[styles.cameraSubtitle, { color: colors.muted }]}>
-                AI will automatically analyze nutrition
+                {t.aiAutoAnalyze}
               </Text>
             </View>
 
@@ -441,7 +443,7 @@ export default function CameraScreen() {
                 activeOpacity={0.8}
               >
                 <IconSymbol name="camera.fill" size={22} color="#fff" />
-                <Text style={styles.primaryBtnText}>Open Camera</Text>
+                <Text style={styles.primaryBtnText}>{t.openCamera}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -451,7 +453,7 @@ export default function CameraScreen() {
               >
                 <IconSymbol name="plus" size={22} color={colors.primary} />
                 <Text style={[styles.secondaryBtnText, { color: colors.primary }]}>
-                  Choose from Gallery
+                  {t.chooseFromGallery}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -481,8 +483,8 @@ export default function CameraScreen() {
               <Text style={styles.expFloatText}>+{feedExp} EXP 🎉</Text>
             </Animated.View>
 
-            <Text style={styles.feedTitle}>Monster Fed!</Text>
-            <Text style={styles.feedSubtitle}>Your monster is getting stronger!</Text>
+            <Text style={styles.feedTitle}>{t.monsterFed}</Text>
+            <Text style={styles.feedSubtitle}>{t.monsterGettingStronger}</Text>
           </Animated.View>
         </View>
       )}

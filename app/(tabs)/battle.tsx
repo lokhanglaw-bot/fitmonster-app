@@ -17,6 +17,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { useI18n } from "@/lib/i18n-context";
 
 const MOCK_OPPONENTS = [
   {
@@ -86,6 +87,7 @@ type BattleState = {
 export default function BattleScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<"match" | "requests" | "friends">("match");
   const [swipesLeft, setSwipesLeft] = useState(50);
   const [currentOpponent, setCurrentOpponent] = useState(0);
@@ -343,14 +345,14 @@ export default function BattleScreen() {
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}>
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.foreground }]}>PvP Battle</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>{t.pvpBattle}</Text>
             <TouchableOpacity
               style={[styles.mapBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={() => router.push("/nearby-map" as any)}
               activeOpacity={0.7}
             >
               <IconSymbol name="map.fill" size={18} color={colors.primary} />
-              <Text style={[styles.mapBtnText, { color: colors.primary }]}>Map</Text>
+              <Text style={[styles.mapBtnText, { color: colors.primary }]}>{t.map}</Text>
             </TouchableOpacity>
           </View>
 
@@ -360,14 +362,14 @@ export default function BattleScreen() {
               style={[styles.tab, activeTab === "match" && { backgroundColor: colors.primary }]}
               onPress={() => setActiveTab("match")}
             >
-              <Text style={[styles.tabText, { color: activeTab === "match" ? "#fff" : colors.muted }]}>Match</Text>
+              <Text style={[styles.tabText, { color: activeTab === "match" ? "#fff" : colors.muted }]}>{t.match}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tab, activeTab === "requests" && { backgroundColor: colors.primary }]}
               onPress={() => setActiveTab("requests")}
             >
               <Text style={[styles.tabText, { color: activeTab === "requests" ? "#fff" : colors.muted }]}>
-                Requests {incomingRequests.length > 0 ? `(${incomingRequests.length})` : ""}
+                {t.requests} {incomingRequests.length > 0 ? `(${incomingRequests.length})` : ""}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -375,7 +377,7 @@ export default function BattleScreen() {
               onPress={() => setActiveTab("friends")}
             >
               <Text style={[styles.tabText, { color: activeTab === "friends" ? "#fff" : colors.muted }]}>
-                Friends {friends.length > 0 ? `(${friends.length})` : ""}
+                {t.friends} {friends.length > 0 ? `(${friends.length})` : ""}
               </Text>
             </TouchableOpacity>
           </View>
@@ -384,14 +386,14 @@ export default function BattleScreen() {
           {activeTab === "match" && (
             <>
               <LinearGradient colors={["#7C3AED", "#6D28D9"]} style={styles.banner}>
-                <Text style={styles.bannerText}>Swipe to Find Opponents!</Text>
+                <Text style={styles.bannerText}>{t.swipeToFind}</Text>
                 <View style={styles.nearbyBadge}>
                   <Text style={styles.nearbyText}>{MOCK_OPPONENTS.length} nearby</Text>
                 </View>
               </LinearGradient>
 
               <View style={styles.swipeCounter}>
-                <Text style={[styles.swipeLabel, { color: colors.muted }]}>Today's Swipes</Text>
+                <Text style={[styles.swipeLabel, { color: colors.muted }]}>{t.todaysSwipes}</Text>
                 <Text style={[styles.swipeValue, { color: colors.foreground }]}>{swipesLeft}/50</Text>
               </View>
 
@@ -399,11 +401,11 @@ export default function BattleScreen() {
               <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={{ fontSize: 16 }}>💡</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.infoTitle, { color: colors.foreground }]}>How Matching Works</Text>
+                  <Text style={[styles.infoTitle, { color: colors.foreground }]}>{t.howMatchingWorks}</Text>
                   <Text style={[styles.infoDesc, { color: colors.muted }]}>
-                    ❤️ Like = Send friend request (they must accept){"\n"}
-                    ⭐ Super Like = Instant match (costs 10 coins){"\n"}
-                    ✖️ Skip = Move to next trainer
+                    {t.matchInfoLike}{"\n"}
+                    {t.matchInfoSuperLike}{"\n"}
+                    {t.matchInfoSkip}
                   </Text>
                 </View>
               </View>
@@ -468,7 +470,7 @@ export default function BattleScreen() {
               <TouchableOpacity onPress={handleWildBattle}>
                 <LinearGradient colors={["#7C3AED", "#6D28D9"]} style={styles.wildBattleBtn}>
                   <Text style={styles.wildBattleIcon}>⚔️</Text>
-                  <Text style={styles.wildBattleText}>Random Wild Battle</Text>
+                  <Text style={styles.wildBattleText}>{t.randomWildBattle}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </>
@@ -479,13 +481,13 @@ export default function BattleScreen() {
             <>
               {/* Incoming Requests */}
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                📥 Incoming Requests ({incomingRequests.length})
+                📥 {t.incomingRequests} ({incomingRequests.length})
               </Text>
               {incomingRequests.length === 0 ? (
                 <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={{ fontSize: 32 }}>📭</Text>
-                  <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Incoming Requests</Text>
-                  <Text style={[styles.emptyDesc, { color: colors.muted }]}>When other trainers like you, their requests will appear here.</Text>
+                  <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t.noIncomingRequests}</Text>
+                  <Text style={[styles.emptyDesc, { color: colors.muted }]}>{t.noIncomingRequestsDesc}</Text>
                 </View>
               ) : (
                 incomingRequests.map((req) => (
@@ -525,13 +527,13 @@ export default function BattleScreen() {
 
               {/* Sent Requests */}
               <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 16 }]}>
-                📤 Sent Requests ({sentRequests.length})
+                📤 {t.sentRequests} ({sentRequests.length})
               </Text>
               {sentRequests.length === 0 ? (
                 <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={{ fontSize: 32 }}>💌</Text>
-                  <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Sent Requests</Text>
-                  <Text style={[styles.emptyDesc, { color: colors.muted }]}>Swipe right on trainers to send friend requests!</Text>
+                  <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t.noSentRequests}</Text>
+                  <Text style={[styles.emptyDesc, { color: colors.muted }]}>{t.noSentRequestsDesc}</Text>
                 </View>
               ) : (
                 sentRequests.map((req) => (
@@ -546,7 +548,7 @@ export default function BattleScreen() {
                       </Text>
                     </View>
                     <View style={[styles.pendingBadge, { backgroundColor: "#FEF3C7" }]}>
-                      <Text style={{ fontSize: 12, color: "#92400E", fontWeight: "600" }}>⏳ Pending</Text>
+                      <Text style={{ fontSize: 12, color: "#92400E", fontWeight: "600" }}>⏳ {t.pending}</Text>
                     </View>
                   </View>
                 ))
@@ -560,16 +562,15 @@ export default function BattleScreen() {
               {friends.length === 0 ? (
                 <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={{ fontSize: 40 }}>👥</Text>
-                  <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Friends Yet</Text>
+                  <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t.noFriendsYet}</Text>
                   <Text style={[styles.emptyDesc, { color: colors.muted }]}>
-                    Match with other trainers to add them as friends!{"\n"}
-                    Both users must accept to become friends.
+                    {t.noFriendsYetDesc}
                   </Text>
                 </View>
               ) : (
                 <>
                   <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                    🏆 Your Battle Friends ({friends.length})
+                    🏆 {t.yourBattleFriends} ({friends.length})
                   </Text>
                   {friends.map((friend) => (
                     <View key={friend.id} style={[styles.friendCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -606,7 +607,7 @@ export default function BattleScreen() {
               <TouchableOpacity onPress={handleWildBattle} style={{ marginTop: 8 }}>
                 <LinearGradient colors={["#7C3AED", "#6D28D9"]} style={styles.wildBattleBtn}>
                   <Text style={styles.wildBattleIcon}>⚔️</Text>
-                  <Text style={styles.wildBattleText}>Random Wild Battle</Text>
+                  <Text style={styles.wildBattleText}>{t.randomWildBattle}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </>
@@ -621,7 +622,7 @@ export default function BattleScreen() {
             {battle?.phase === "intro" && (
               <View style={styles.battleIntro}>
                 <Text style={styles.battleIntroEmoji}>⚔️</Text>
-                <Text style={[styles.battleIntroText, { color: colors.foreground }]}>BATTLE START!</Text>
+                <Text style={[styles.battleIntroText, { color: colors.foreground }]}>{t.battleStart}</Text>
                 <Text style={[styles.battleIntroSub, { color: colors.muted }]}>vs {battle.opponent.name}</Text>
               </View>
             )}
@@ -675,15 +676,15 @@ export default function BattleScreen() {
                 <View style={styles.battleActions}>
                   <TouchableOpacity style={[styles.battleActionBtn, { backgroundColor: battle.actionLock ? "#999" : "#EF4444" }]} onPress={() => handleBattleAction("attack")} disabled={battle.actionLock}>
                     <Text style={styles.battleActionIcon}>⚔️</Text>
-                    <Text style={styles.battleActionLabel}>Attack</Text>
+                    <Text style={styles.battleActionLabel}>{t.attack}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.battleActionBtn, { backgroundColor: battle.actionLock ? "#999" : "#3B82F6" }]} onPress={() => handleBattleAction("defend")} disabled={battle.actionLock}>
                     <Text style={styles.battleActionIcon}>🛡️</Text>
-                    <Text style={styles.battleActionLabel}>Defend</Text>
+                    <Text style={styles.battleActionLabel}>{t.defend}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.battleActionBtn, { backgroundColor: battle.actionLock ? "#999" : "#F59E0B" }]} onPress={() => handleBattleAction("special")} disabled={battle.actionLock}>
                     <Text style={styles.battleActionIcon}>🔥</Text>
-                    <Text style={styles.battleActionLabel}>Special</Text>
+                    <Text style={styles.battleActionLabel}>{t.special}</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -693,18 +694,18 @@ export default function BattleScreen() {
               <View style={styles.battleResult}>
                 <Text style={styles.resultEmoji}>{battle.result === "win" ? "🏆" : "💀"}</Text>
                 <Text style={[styles.resultTitle, { color: colors.foreground }]}>
-                  {battle.result === "win" ? "VICTORY!" : "DEFEATED"}
+                  {battle.result === "win" ? t.victory : t.defeat}
                 </Text>
                 <Text style={[styles.resultSub, { color: colors.muted }]}>
                   {battle.result === "win"
-                    ? `You defeated ${battle.opponent.name}!\n+50 EXP  +25 🪙`
-                    : `${battle.opponent.name} was too strong.\nTrain harder and try again!`}
+                    ? `${t.victoryMessage}\n+50 EXP  +25 🪙`
+                    : t.defeatMessage}
                 </Text>
                 <TouchableOpacity
                   style={[styles.resultBtn, { backgroundColor: colors.primary }]}
                   onPress={() => { setShowBattle(false); setBattle(null); }}
                 >
-                  <Text style={styles.resultBtnText}>Continue</Text>
+                  <Text style={styles.resultBtnText}>{t.continueBtn}</Text>
                 </TouchableOpacity>
               </View>
             )}
