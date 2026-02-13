@@ -20,6 +20,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
+import { useActivity } from "@/lib/activity-context";
 
 type FoodItem = {
   name: string;
@@ -166,11 +167,23 @@ export default function CameraScreen() {
     [analyzeMutation]
   );
 
+  const { logFood } = useActivity();
+
   const handleSaveLog = useCallback(async () => {
     if (analysisState.status !== "done") return;
     setIsSaving(true);
     const { analysis, imageUrl } = analysisState;
     const expEarned = Math.round(analysis.healthScore * 10 + analysis.totalProtein * 0.5);
+
+    // Update shared activity state so quests update in real time
+    logFood({
+      name: analysis.summary || analysis.foods.map((f) => f.name).join(", "),
+      calories: analysis.totalCalories,
+      protein: analysis.totalProtein,
+      carbs: analysis.totalCarbs,
+      fat: analysis.totalFat,
+      expEarned,
+    });
 
     // Play the feed monster animation immediately for visual feedback
     setSaved(true);

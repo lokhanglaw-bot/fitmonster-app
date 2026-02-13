@@ -14,6 +14,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useActivity } from "@/lib/activity-context";
 
 const WORKOUT_TYPES = ["All", "Running", "Weight Training", "Yoga", "Basketball"];
 
@@ -88,6 +89,8 @@ export default function WorkoutScreen() {
     setBonus("none");
   }, []);
 
+  const { logWorkout: logWorkoutToContext, syncSteps: syncStepsToContext } = useActivity();
+
   const handleStartTraining = useCallback(() => {
     if (!selectedExercise) return;
     setTotalExp((prev) => prev + expGained);
@@ -96,12 +99,18 @@ export default function WorkoutScreen() {
       { exercise: selectedExercise.name, duration, exp: expGained, timestamp: new Date() },
       ...prev,
     ]);
+    // Update shared activity state so home quests update in real time
+    logWorkoutToContext({
+      exercise: selectedExercise.name,
+      duration,
+      expEarned: expGained,
+    });
     Alert.alert(
       "Workout Complete! 💪",
       `${selectedExercise.name} - ${duration} min\n+${expGained} EXP earned!${bonus !== "none" ? `\n${bonus === "outdoor" ? "Outdoor" : "Gym"} bonus applied!` : ""}`
     );
     setSelectedExercise(null);
-  }, [selectedExercise, duration, expGained, bonus]);
+  }, [selectedExercise, duration, expGained, bonus, logWorkoutToContext]);
 
   const handleManualLog = useCallback(() => {
     setManualExercise("");
@@ -125,12 +134,20 @@ export default function WorkoutScreen() {
     setTotalExp((prev) => prev + exp);
     setCompletedCount((prev) => prev + 1);
     setWorkoutLogs((prev) => [{ exercise: manualExercise.trim(), duration: dur, exp, timestamp: new Date() }, ...prev]);
+    // Update shared activity state
+    logWorkoutToContext({
+      exercise: manualExercise.trim(),
+      duration: dur,
+      expEarned: exp,
+    });
     setShowManualLog(false);
     Alert.alert("Workout Logged! 💪", `${manualExercise.trim()} - ${dur} min\n+${exp} EXP earned!`);
-  }, [manualExercise, manualDuration, manualWeight]);
+  }, [manualExercise, manualDuration, manualWeight, logWorkoutToContext]);
 
   const handleSyncSteps = useCallback(() => {
     const simulatedSteps = Math.floor(Math.random() * 3000) + 1000;
+    // Update shared activity state for step quests
+    syncStepsToContext(simulatedSteps);
     setSteps((prev) => {
       const newSteps = prev + simulatedSteps;
       Alert.alert(
@@ -139,7 +156,7 @@ export default function WorkoutScreen() {
       );
       return newSteps;
     });
-  }, []);
+  }, [syncStepsToContext]);
 
   // Slider helpers
   const sliderMin = 5;

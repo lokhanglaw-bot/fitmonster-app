@@ -17,6 +17,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useActivity } from "@/lib/activity-context";
 
 const MONSTER_TYPES = [
   { type: "Bodybuilder", icon: "💪", color: "#EF4444", desc: "High strength, balanced defense", gradient: ["#FEE2E2", "#FECACA"] as const },
@@ -83,10 +84,12 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
+  const { state: activity, addRecordFood, addRecordWorkout } = useActivity();
+
   const trainerName = user?.name || "Trainer";
-  const [healthScore, setHealthScore] = useState(72);
-  const [todaySteps, setTodaySteps] = useState(4280);
-  const [netExp, setNetExp] = useState(839);
+  const todaySteps = activity.todaySteps;
+  const netExp = activity.todayTotalExp;
+  const healthScore = Math.min(100, 50 + Math.round(activity.todayProtein * 0.2) + Math.round(activity.todayWorkoutMinutes * 0.3) + Math.round(activity.todaySteps * 0.002));
   const [coins, setCoins] = useState(350);
   const [activeTab, setActiveTab] = useState<"home" | "daily" | "history">("home");
 
@@ -108,10 +111,11 @@ export default function HomeScreen() {
   const [historySubTab, setHistorySubTab] = useState<"calories" | "macros" | "workout">("calories");
   const [dailyTaskView, setDailyTaskView] = useState<"workout" | "diet">("workout");
   const [historyViewMode, setHistoryViewMode] = useState<"chart" | "calendar" | "list">("chart");
-  const [caloriesIn] = useState(8420);
-  const [caloriesBurned] = useState(3150);
-  const [workoutDuration] = useState(185);
-  const [avgProtein] = useState(95);
+  // Derive history stats from shared activity state
+  const caloriesIn = activity.todayCaloriesIn;
+  const caloriesBurned = activity.todayCaloriesBurned;
+  const workoutDuration = activity.todayWorkoutMinutes;
+  const avgProtein = activity.todayProtein;
 
   // Add Record modal
   const [showAddRecord, setShowAddRecord] = useState(false);
@@ -120,17 +124,17 @@ export default function HomeScreen() {
   const [recordCalories, setRecordCalories] = useState("");
   const [recordDuration, setRecordDuration] = useState("");
 
-  // Sample chart data
+  // Chart data from shared activity state (weekly arrays)
   const chartData = {
-    calories: [1850, 2100, 1650, 1920, 2300, 1780, 1200],
-    macros: [95, 110, 85, 102, 120, 88, 65],
-    workout: [45, 60, 30, 55, 75, 40, 0],
+    calories: activity.weeklyCalories,
+    macros: activity.weeklyProtein,
+    workout: activity.weeklyWorkout,
   };
 
   const quests = [
-    { id: 1, icon: "🥩", title: "Protein Champion", description: "Consume 100g protein today", progress: 68, target: 100, reward: 50, bgColor: "#22C55E" },
-    { id: 2, icon: "🚶", title: "Walking Master", description: "Walk 5,000 steps today", progress: todaySteps, target: 5000, reward: 50, bgColor: "#3B82F6" },
-    { id: 3, icon: "💪", title: "Strength Training", description: "Complete a 30-min workout", progress: 25, target: 30, reward: 100, bgColor: "#F59E0B" },
+    { id: 1, icon: "🥩", title: "Protein Champion", description: "Consume 100g protein today", progress: activity.todayProtein, target: 100, reward: 50, bgColor: "#22C55E" },
+    { id: 2, icon: "🚶", title: "Walking Master", description: "Walk 5,000 steps today", progress: activity.todaySteps, target: 5000, reward: 50, bgColor: "#3B82F6" },
+    { id: 3, icon: "💪", title: "Strength Training", description: "Complete a 30-min workout", progress: activity.todayWorkoutMinutes, target: 30, reward: 100, bgColor: "#F59E0B" },
   ];
 
   const activeMonster = monsters[0];
@@ -223,9 +227,15 @@ export default function HomeScreen() {
       return;
     }
     setShowAddRecord(false);
+    // Update shared activity state
+    if (recordType === "food") {
+      addRecordFood(recordName.trim(), parseInt(recordCalories, 10) || 0);
+    } else {
+      addRecordWorkout(recordName.trim(), parseInt(recordDuration, 10) || 0);
+    }
     const detail = recordType === "food" ? `${recordCalories} kcal` : `${recordDuration} min`;
     Alert.alert("Record Saved! ✅", `${recordName} — ${detail}\nYour stats have been updated.`);
-  }, [recordType, recordName, recordCalories, recordDuration]);
+  }, [recordType, recordName, recordCalories, recordDuration, addRecordFood, addRecordWorkout]);
 
   const handleRefreshTasks = useCallback(() => {
     Alert.alert("Refreshed!", "AI Daily Tasks have been updated with new suggestions.");

@@ -280,3 +280,13 @@
 - [x] Fix Daily Tasks completion progress bar - connect to actual progress instead of hardcoded 0%
 - [x] Fix History tab view toggle icons (📊📅📋) - make functional with chart/calendar/list views
 - [x] Fix sharing on native - use Share API instead of Sharing.shareAsync with URL
+
+## User Feedback - Round 11
+- [x] Create shared activity context/store for cross-screen fitness data
+- [x] Wire food logging (camera screen) to update protein intake and meal count in shared state
+- [x] Wire workout completion (workout screen) to update workout duration and EXP in shared state
+- [x] Wire steps sync (workout screen) to update step count in shared state
+- [x] Update Home screen quests to read real-time progress from shared state
+- [x] Update Daily Tasks completion progress bar to reflect actual task completion
+- [x] Update History tab stats to reflect real accumulated data
+- [x] Persist shared activity data with AsyncStorage so it survives app restarts
