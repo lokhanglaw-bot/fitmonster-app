@@ -190,3 +190,14 @@
 - [x] tRPC API endpoints for quest system
 - [x] tRPC API endpoints for daily stats
 - [x] Seeded 6 initial daily quests
+
+
+## AI Food Analysis Feature
+- [x] Read server LLM docs and understand multimodal capabilities
+- [x] Create server-side food analysis tRPC endpoint with LLM
+- [x] Add image picker (camera + gallery) to food scanner screen
+- [x] Upload food photo and send to AI for analysis
+- [x] Display nutrition results (calories, protein, carbs, fat)
+- [x] Save food log to database after analysis
+- [x] Feed monster flow after logging food (EXP reward alert)
+- [ ] Show recent food logs on the food scanner screen

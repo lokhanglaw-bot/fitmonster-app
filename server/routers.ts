@@ -4,6 +4,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import { invokeLLM } from "./_core/llm";
+import { storagePut } from "./storage";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -120,6 +122,85 @@ export const appRouter = router({
           ...input,
         });
         return { id };
+      }),
+
+    // AI Food Analysis - upload base64 image, get nutrition data
+    analyze: publicProcedure
+      .input(
+        z.object({
+          imageBase64: z.string(), // base64 encoded image data
+          mimeType: z.string().default("image/jpeg"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        // 1. Upload image to S3 so LLM can access it
+        const imageBuffer = Buffer.from(input.imageBase64, "base64");
+        const fileKey = `food-analysis/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+        const { url: imageUrl } = await storagePut(fileKey, imageBuffer, input.mimeType);
+
+        // 2. Call LLM with the image for food analysis
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `You are a professional nutritionist AI. Analyze the food image and return a JSON object with the following structure:
+{
+  "foods": [
+    {
+      "name": "string - name of the food item",
+      "portion": "string - estimated portion size (e.g., '1 cup', '200g')",
+      "calories": number,
+      "protein": number (in grams),
+      "carbs": number (in grams),
+      "fat": number (in grams),
+      "fiber": number (in grams)
+    }
+  ],
+  "totalCalories": number,
+  "totalProtein": number,
+  "totalCarbs": number,
+  "totalFat": number,
+  "mealType": "breakfast" | "lunch" | "dinner" | "snack",
+  "healthScore": number (1-10, how healthy is this meal),
+  "summary": "string - brief description of the meal"
+}
+
+Be accurate with nutritional estimates. If you cannot identify the food, still provide your best guess. Always return valid JSON.`,
+            },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "Analyze this food image and provide detailed nutrition information." },
+                { type: "image_url", image_url: { url: imageUrl, detail: "high" } },
+              ],
+            },
+          ],
+          response_format: { type: "json_object" },
+        });
+
+        // 3. Parse the LLM response
+        const content = response.choices[0]?.message?.content;
+        const contentStr = typeof content === "string" ? content : "";
+        let analysisResult;
+        try {
+          analysisResult = JSON.parse(contentStr);
+        } catch {
+          analysisResult = {
+            foods: [{ name: "Unknown food", portion: "1 serving", calories: 200, protein: 10, carbs: 25, fat: 8, fiber: 3 }],
+            totalCalories: 200,
+            totalProtein: 10,
+            totalCarbs: 25,
+            totalFat: 8,
+            mealType: "snack",
+            healthScore: 5,
+            summary: "Could not fully analyze the image. Showing estimated values.",
+          };
+        }
+
+        return {
+          imageUrl,
+          analysis: analysisResult,
+        };
       }),
   }),
 
