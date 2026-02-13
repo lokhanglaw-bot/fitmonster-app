@@ -229,3 +229,10 @@
 - [x] Add Daily Calorie Trend chart in History tab
 - [x] Add Calories/Macros/Workout sub-tabs in History
 - [x] Test all buttons and flows thoroughly before delivery
+
+
+## User Feedback - Round 4
+- [x] Add animation/effect to "Feed Monster & Save Log" button on food scanner
+- [x] Fix workout category filter pills stretching too tall when selected
+- [x] Fix History tab "Add Record" button - opens proper form modal
+- [x] Add sample/demo data to all screens so features are visible

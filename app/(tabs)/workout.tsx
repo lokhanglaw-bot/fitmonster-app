@@ -10,6 +10,7 @@ import {
   TextInput,
 } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 
@@ -36,13 +37,28 @@ type WorkoutLog = {
   timestamp: Date;
 };
 
+// Sample data for demo
+const SAMPLE_LOGS: WorkoutLog[] = [
+  { exercise: "Running", duration: 30, exp: 294, timestamp: new Date(Date.now() - 3600000) },
+  { exercise: "Bench Press", duration: 45, exp: 331, timestamp: new Date(Date.now() - 86400000) },
+  { exercise: "Swimming", duration: 25, exp: 214, timestamp: new Date(Date.now() - 172800000) },
+];
+
+const MONSTER_IMAGES: Record<string, any> = {
+  "Bodybuilder-1": require("@/assets/monsters/bodybuilder-stage1.png"),
+};
+
+const MONSTER_GRADIENTS: Record<string, readonly [string, string]> = {
+  Bodybuilder: ["#DCFCE7", "#BBF7D0"],
+};
+
 export default function WorkoutScreen() {
   const colors = useColors();
   const [selectedType, setSelectedType] = useState("All");
-  const [totalExp, setTotalExp] = useState(0);
-  const [completedCount, setCompletedCount] = useState(0);
-  const [steps, setSteps] = useState(0);
-  const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
+  const [totalExp, setTotalExp] = useState(839);
+  const [completedCount, setCompletedCount] = useState(3);
+  const [steps, setSteps] = useState(4280);
+  const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>(SAMPLE_LOGS);
 
   // Manual Log Modal
   const [showManualLog, setShowManualLog] = useState(false);
@@ -70,7 +86,7 @@ export default function WorkoutScreen() {
             setTotalExp((prev) => prev + exp);
             setCompletedCount((prev) => prev + 1);
             setWorkoutLogs((prev) => [{ exercise: exercise.name, duration: 30, exp, timestamp: new Date() }, ...prev]);
-            Alert.alert("Workout Logged!", `${exercise.name} - 30 min\n+${exp} EXP earned! 💪`);
+            Alert.alert("Workout Logged! 💪", `${exercise.name} - 30 min\n+${exp} EXP earned!`);
           },
         },
         {
@@ -99,7 +115,7 @@ export default function WorkoutScreen() {
     setWorkoutLogs((prev) => [{ exercise: activeWorkout.exercise.name, duration, exp, timestamp: new Date() }, ...prev]);
     setShowTimerModal(false);
     setActiveWorkout(null);
-    Alert.alert("Workout Logged!", `${activeWorkout.exercise.name} - ${duration} min\n+${exp} EXP earned! 💪`);
+    Alert.alert("Workout Logged! 💪", `${activeWorkout.exercise.name} - ${duration} min\n+${exp} EXP earned!`);
   }, [activeWorkout, timerDuration, manualWeight]);
 
   const handleManualLog = useCallback(() => {
@@ -125,16 +141,15 @@ export default function WorkoutScreen() {
     setCompletedCount((prev) => prev + 1);
     setWorkoutLogs((prev) => [{ exercise: manualExercise.trim(), duration, exp, timestamp: new Date() }, ...prev]);
     setShowManualLog(false);
-    Alert.alert("Workout Logged!", `${manualExercise.trim()} - ${duration} min\n+${exp} EXP earned! 💪`);
+    Alert.alert("Workout Logged! 💪", `${manualExercise.trim()} - ${duration} min\n+${exp} EXP earned!`);
   }, [manualExercise, manualDuration, manualWeight]);
 
   const handleSyncSteps = useCallback(() => {
-    // Simulate step sync since device pedometer isn't available in web preview
     const simulatedSteps = Math.floor(Math.random() * 3000) + 1000;
     setSteps((prev) => {
       const newSteps = prev + simulatedSteps;
       Alert.alert(
-        "Steps Synced!",
+        "Steps Synced! 👣",
         `+${simulatedSteps.toLocaleString()} steps synced\nTotal: ${newSteps.toLocaleString()} steps\n\nOn a real device, this will sync from Apple Health / Google Fit.`
       );
       return newSteps;
@@ -176,21 +191,46 @@ export default function WorkoutScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Workout Type Filters */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          {/* Monster Card - compact */}
+          <View style={[styles.monsterRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <LinearGradient colors={["#DCFCE7", "#BBF7D0"]} style={styles.monsterThumb}>
+              <Image source={MONSTER_IMAGES["Bodybuilder-1"]} style={styles.monsterImg} contentFit="contain" />
+            </LinearGradient>
+            <View style={styles.monsterInfo}>
+              <Text style={[styles.monsterName, { color: colors.foreground }]}>Flexo</Text>
+              <Text style={[styles.monsterLevel, { color: colors.muted }]}>Level 1</Text>
+              <Text style={[styles.monsterBest, { color: colors.muted }]}>Best: Weight Training</Text>
+            </View>
+          </View>
+
+          {/* Workout Type Filters - FIXED: horizontal scroll with fixed height pills */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+            style={styles.filterScroll}
+          >
             {WORKOUT_TYPES.map((type) => (
               <TouchableOpacity
                 key={type}
-                style={[styles.filterPill, { backgroundColor: selectedType === type ? colors.primary : colors.surface, borderColor: selectedType === type ? colors.primary : colors.border }]}
+                style={[
+                  styles.filterPill,
+                  {
+                    backgroundColor: selectedType === type ? colors.primary : colors.surface,
+                    borderColor: selectedType === type ? colors.primary : colors.border,
+                  },
+                ]}
                 onPress={() => setSelectedType(type)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.filterText, { color: selectedType === type ? "#fff" : colors.muted }]}>{type}</Text>
+                <Text style={[styles.filterText, { color: selectedType === type ? "#fff" : colors.muted }]}>
+                  {type}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          {/* Exercise Grid */}
+          {/* Exercise Grid - FIXED: 3 columns with fixed width, no flexGrow */}
           <View style={styles.exerciseGrid}>
             {filteredExercises.map((exercise) => (
               <TouchableOpacity
@@ -335,14 +375,36 @@ const styles = StyleSheet.create({
   actionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 14, borderRadius: 16, borderWidth: 1, gap: 8 },
   actionIcon: { fontSize: 20 },
   actionText: { fontSize: 14, fontWeight: "600" },
-  filterRow: { gap: 8, paddingVertical: 4 },
-  filterPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+
+  // Monster compact row
+  monsterRow: { flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 16, borderWidth: 1, gap: 12 },
+  monsterThumb: { width: 60, height: 60, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  monsterImg: { width: 48, height: 48 },
+  monsterInfo: { flex: 1 },
+  monsterName: { fontSize: 16, fontWeight: "700" },
+  monsterLevel: { fontSize: 13 },
+  monsterBest: { fontSize: 12, marginTop: 2 },
+
+  // Filter pills - FIXED: explicit height, no flex stretching
+  filterScroll: { maxHeight: 44 },
+  filterRow: { gap: 8, paddingVertical: 2, alignItems: "center" },
+  filterPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, height: 36, justifyContent: "center" },
   filterText: { fontSize: 13, fontWeight: "600" },
+
+  // Exercise grid - FIXED: percentage-based width, no flexGrow
   exerciseGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  exerciseCard: { width: "30%", flexGrow: 1, minWidth: 100, alignItems: "center", padding: 16, borderRadius: 16, borderWidth: 1, gap: 6 },
+  exerciseCard: {
+    width: "30.5%",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 6,
+  },
   exerciseIcon: { fontSize: 32 },
   exerciseName: { fontSize: 13, fontWeight: "600", textAlign: "center" },
   exerciseMet: { fontSize: 12, fontWeight: "700" },
+
   sectionTitle: { fontSize: 18, fontWeight: "700", marginTop: 4 },
   logItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14, borderRadius: 12, borderWidth: 1 },
   logInfo: { gap: 2 },
@@ -356,7 +418,7 @@ const styles = StyleSheet.create({
   bottomStatDivider: { width: 1, height: 36, alignSelf: "center" },
 
   // Modal styles
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderWidth: 1, gap: 12 },
   modalTitle: { fontSize: 22, fontWeight: "800", textAlign: "center" },
   modalSubtitle: { fontSize: 14, textAlign: "center", marginBottom: 4 },

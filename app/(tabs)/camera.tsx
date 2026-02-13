@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Text,
   View,
@@ -9,10 +9,13 @@ import {
   ScrollView,
   Platform,
   FlatList,
+  Animated,
+  Modal,
 } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import { LinearGradient } from "expo-linear-gradient";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -52,8 +55,44 @@ export default function CameraScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Feed monster animation state
+  const [showFeedAnimation, setShowFeedAnimation] = useState(false);
+  const [feedExp, setFeedExp] = useState(0);
+  const feedScale = useRef(new Animated.Value(0)).current;
+  const feedOpacity = useRef(new Animated.Value(0)).current;
+  const sparkleRotate = useRef(new Animated.Value(0)).current;
+  const expFloat = useRef(new Animated.Value(0)).current;
+
   const analyzeMutation = trpc.foodLogs.analyze.useMutation();
   const saveMutation = trpc.foodLogs.create.useMutation();
+
+  const playFeedAnimation = useCallback((exp: number) => {
+    setFeedExp(exp);
+    setShowFeedAnimation(true);
+    feedScale.setValue(0);
+    feedOpacity.setValue(0);
+    sparkleRotate.setValue(0);
+    expFloat.setValue(0);
+
+    Animated.sequence([
+      // Monster appears with bounce
+      Animated.parallel([
+        Animated.spring(feedScale, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }),
+        Animated.timing(feedOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+      ]),
+      // Sparkle rotation + EXP float up
+      Animated.parallel([
+        Animated.timing(sparkleRotate, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(expFloat, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ]),
+      // Hold for a moment
+      Animated.delay(600),
+      // Fade out
+      Animated.timing(feedOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+    ]).start(() => {
+      setShowFeedAnimation(false);
+    });
+  }, [feedScale, feedOpacity, sparkleRotate, expFloat]);
 
   const pickAndAnalyze = useCallback(
     async (source: "camera" | "gallery") => {
@@ -87,10 +126,8 @@ export default function CameraScreen() {
         setAnalysisState({ status: "analyzing" });
         setSaved(false);
 
-        // Read image as base64
         let base64: string;
         if (Platform.OS === "web") {
-          // On web, fetch the blob and convert to base64
           const response = await fetch(asset.uri);
           const blob = await response.blob();
           base64 = await new Promise<string>((resolve, reject) => {
@@ -108,7 +145,6 @@ export default function CameraScreen() {
           });
         }
 
-        // Send to server for AI analysis
         const response = await analyzeMutation.mutateAsync({
           imageBase64: base64,
           mimeType: asset.mimeType || "image/jpeg",
@@ -147,11 +183,8 @@ export default function CameraScreen() {
         expEarned,
       });
       setSaved(true);
-      Alert.alert(
-        "Food Logged!",
-        `Your monster earned ${expEarned} EXP from this meal! 🎉`,
-        [{ text: "OK" }]
-      );
+      // Play the feed monster animation
+      playFeedAnimation(expEarned);
     } catch (error: any) {
       if (error.data?.code === "UNAUTHORIZED") {
         Alert.alert("Login Required", "Please log in to save food logs.");
@@ -161,7 +194,7 @@ export default function CameraScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [analysisState, saveMutation]);
+  }, [analysisState, saveMutation, playFeedAnimation]);
 
   const handleReset = useCallback(() => {
     setSelectedImageUri(null);
@@ -218,6 +251,21 @@ export default function CameraScreen() {
     </View>
   );
 
+  const spinInterpolate = sparkleRotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
+  const expTranslateY = expFloat.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -60],
+  });
+
+  const expOpacity = expFloat.interpolate({
+    inputRange: [0, 0.3, 0.7, 1],
+    outputRange: [0, 1, 1, 0],
+  });
+
   return (
     <ScreenContainer>
       <ScrollView
@@ -253,7 +301,7 @@ export default function CameraScreen() {
 
         {/* Error State */}
         {analysisState.status === "error" && (
-          <View style={[styles.errorCard, { backgroundColor: "#1a0a0a", borderColor: "#EF4444" }]}>
+          <View style={[styles.errorCard, { backgroundColor: "#FEF2F2", borderColor: "#EF4444" }]}>
             <Text style={styles.errorIcon}>⚠️</Text>
             <Text style={[styles.errorText, { color: "#EF4444" }]}>{analysisState.message}</Text>
             <TouchableOpacity
@@ -269,12 +317,10 @@ export default function CameraScreen() {
         {/* Results State */}
         {analysisState.status === "done" && (
           <View style={styles.resultsContainer}>
-            {/* Food Image */}
             {selectedImageUri && (
               <Image source={{ uri: selectedImageUri }} style={styles.resultImage} contentFit="cover" />
             )}
 
-            {/* Summary Card */}
             <View style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.summaryText, { color: colors.foreground }]}>
                 {analysisState.analysis.summary}
@@ -287,48 +333,37 @@ export default function CameraScreen() {
               </View>
             </View>
 
-            {/* Total Nutrition Overview */}
             <View style={[styles.totalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.totalTitle, { color: colors.foreground }]}>Total Nutrition</Text>
               <View style={styles.totalGrid}>
-                <View style={[styles.totalItem, { backgroundColor: "#F59E0B20" }]}>
+                <View style={[styles.totalItem, { backgroundColor: "#FEF3C7" }]}>
                   <Text style={styles.totalEmoji}>🔥</Text>
-                  <Text style={[styles.totalValue, { color: "#F59E0B" }]}>
-                    {analysisState.analysis.totalCalories}
-                  </Text>
+                  <Text style={[styles.totalValue, { color: "#F59E0B" }]}>{analysisState.analysis.totalCalories}</Text>
                   <Text style={[styles.totalLabel, { color: colors.muted }]}>Calories</Text>
                 </View>
-                <View style={[styles.totalItem, { backgroundColor: "#EF444420" }]}>
+                <View style={[styles.totalItem, { backgroundColor: "#FEE2E2" }]}>
                   <Text style={styles.totalEmoji}>🥩</Text>
-                  <Text style={[styles.totalValue, { color: "#EF4444" }]}>
-                    {analysisState.analysis.totalProtein}g
-                  </Text>
+                  <Text style={[styles.totalValue, { color: "#EF4444" }]}>{analysisState.analysis.totalProtein}g</Text>
                   <Text style={[styles.totalLabel, { color: colors.muted }]}>Protein</Text>
                 </View>
-                <View style={[styles.totalItem, { backgroundColor: "#3B82F620" }]}>
+                <View style={[styles.totalItem, { backgroundColor: "#DBEAFE" }]}>
                   <Text style={styles.totalEmoji}>🍞</Text>
-                  <Text style={[styles.totalValue, { color: "#3B82F6" }]}>
-                    {analysisState.analysis.totalCarbs}g
-                  </Text>
+                  <Text style={[styles.totalValue, { color: "#3B82F6" }]}>{analysisState.analysis.totalCarbs}g</Text>
                   <Text style={[styles.totalLabel, { color: colors.muted }]}>Carbs</Text>
                 </View>
-                <View style={[styles.totalItem, { backgroundColor: "#8B5CF620" }]}>
+                <View style={[styles.totalItem, { backgroundColor: "#EDE9FE" }]}>
                   <Text style={styles.totalEmoji}>🧈</Text>
-                  <Text style={[styles.totalValue, { color: "#8B5CF6" }]}>
-                    {analysisState.analysis.totalFat}g
-                  </Text>
+                  <Text style={[styles.totalValue, { color: "#8B5CF6" }]}>{analysisState.analysis.totalFat}g</Text>
                   <Text style={[styles.totalLabel, { color: colors.muted }]}>Fat</Text>
                 </View>
               </View>
             </View>
 
-            {/* Health Score */}
             <View style={[styles.healthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.healthTitle, { color: colors.foreground }]}>Health Score</Text>
               {renderHealthBar(analysisState.analysis.healthScore)}
             </View>
 
-            {/* Individual Food Items */}
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Food Items</Text>
             <FlatList
               data={analysisState.analysis.foods}
@@ -338,7 +373,6 @@ export default function CameraScreen() {
               ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
             />
 
-            {/* Action Buttons */}
             <View style={styles.resultActions}>
               {!saved ? (
                 <TouchableOpacity
@@ -357,7 +391,7 @@ export default function CameraScreen() {
                   )}
                 </TouchableOpacity>
               ) : (
-                <View style={[styles.savedBadge, { backgroundColor: "#22C55E20", borderColor: "#22C55E" }]}>
+                <View style={[styles.savedBadge, { backgroundColor: "#DCFCE7", borderColor: "#22C55E" }]}>
                   <Text style={styles.savedText}>✅ Saved! Monster fed successfully</Text>
                 </View>
               )}
@@ -373,8 +407,8 @@ export default function CameraScreen() {
           </View>
         )}
 
-        {/* Idle State - Camera/Gallery Buttons */}
-        {(analysisState.status === "idle") && (
+        {/* Idle State */}
+        {analysisState.status === "idle" && (
           <>
             <View style={[styles.cameraArea, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={[styles.iconCircle, { backgroundColor: colors.background }]}>
@@ -412,6 +446,34 @@ export default function CameraScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Feed Monster Animation Overlay */}
+      {showFeedAnimation && (
+        <View style={styles.feedOverlay}>
+          <Animated.View style={[styles.feedContainer, { opacity: feedOpacity, transform: [{ scale: feedScale }] }]}>
+            {/* Sparkle ring */}
+            <Animated.View style={[styles.sparkleRing, { transform: [{ rotate: spinInterpolate }] }]}>
+              <Text style={styles.sparkle}>✨</Text>
+              <Text style={[styles.sparkle, styles.sparkle2]}>⭐</Text>
+              <Text style={[styles.sparkle, styles.sparkle3]}>✨</Text>
+              <Text style={[styles.sparkle, styles.sparkle4]}>💫</Text>
+            </Animated.View>
+
+            {/* Monster */}
+            <LinearGradient colors={["#DCFCE7", "#BBF7D0"]} style={styles.feedMonsterBg}>
+              <Image source={require("@/assets/monsters/bodybuilder-stage1.png")} style={styles.feedMonsterImg} contentFit="contain" />
+            </LinearGradient>
+
+            {/* Floating EXP text */}
+            <Animated.View style={[styles.expFloater, { transform: [{ translateY: expTranslateY }], opacity: expOpacity }]}>
+              <Text style={styles.expFloatText}>+{feedExp} EXP 🎉</Text>
+            </Animated.View>
+
+            <Text style={styles.feedTitle}>Monster Fed!</Text>
+            <Text style={styles.feedSubtitle}>Your monster is getting stronger!</Text>
+          </Animated.View>
+        </View>
+      )}
     </ScreenContainer>
   );
 }
@@ -423,7 +485,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: "800" },
   subtitle: { fontSize: 14 },
 
-  // Camera area
   cameraArea: {
     borderRadius: 20,
     borderWidth: 2,
@@ -444,7 +505,6 @@ const styles = StyleSheet.create({
   cameraTitle: { fontSize: 18, fontWeight: "700" },
   cameraSubtitle: { fontSize: 14, textAlign: "center" },
 
-  // Buttons
   buttonsContainer: { gap: 12 },
   primaryBtn: {
     flexDirection: "row",
@@ -466,74 +526,34 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: { fontSize: 16, fontWeight: "700" },
 
-  // Analyzing state
-  analyzingCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  previewImage: {
-    width: "100%",
-    height: 200,
-  },
-  analyzingContent: {
-    padding: 24,
-    alignItems: "center",
-    gap: 12,
-  },
+  analyzingCard: { borderRadius: 20, borderWidth: 1, overflow: "hidden" },
+  previewImage: { width: "100%", height: 200 },
+  analyzingContent: { padding: 24, alignItems: "center", gap: 12 },
   analyzingText: { fontSize: 18, fontWeight: "700" },
   analyzingSubtext: { fontSize: 14, textAlign: "center" },
 
-  // Error state
-  errorCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 24,
-    alignItems: "center",
-    gap: 12,
-  },
+  errorCard: { borderRadius: 20, borderWidth: 1, padding: 24, alignItems: "center", gap: 12 },
   errorIcon: { fontSize: 32 },
   errorText: { fontSize: 14, textAlign: "center" },
   retryBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
   retryBtnText: { color: "#fff", fontWeight: "700" },
 
-  // Results
   resultsContainer: { gap: 16 },
   resultImage: { width: "100%", height: 220, borderRadius: 20 },
 
-  summaryCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
+  summaryCard: { borderRadius: 16, borderWidth: 1, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 },
   summaryText: { fontSize: 14, flex: 1, lineHeight: 20 },
-  mealTypeBadge: {
-    backgroundColor: "#8B5CF6",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
+  mealTypeBadge: { backgroundColor: "#8B5CF6", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   mealTypeText: { color: "#fff", fontSize: 12, fontWeight: "700" },
 
-  // Total nutrition
   totalCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
   totalTitle: { fontSize: 16, fontWeight: "700" },
   totalGrid: { flexDirection: "row", gap: 8 },
-  totalItem: {
-    flex: 1,
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
-    gap: 4,
-  },
+  totalItem: { flex: 1, borderRadius: 12, padding: 12, alignItems: "center", gap: 4 },
   totalEmoji: { fontSize: 20 },
   totalValue: { fontSize: 18, fontWeight: "800" },
   totalLabel: { fontSize: 11 },
 
-  // Health score
   healthCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 8 },
   healthTitle: { fontSize: 16, fontWeight: "700" },
   healthBarContainer: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -541,7 +561,6 @@ const styles = StyleSheet.create({
   healthBarFill: { height: "100%", borderRadius: 6 },
   healthBarLabel: { fontSize: 16, fontWeight: "800", width: 40 },
 
-  // Food items
   sectionTitle: { fontSize: 16, fontWeight: "700" },
   foodItemCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
   foodItemHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
@@ -553,33 +572,64 @@ const styles = StyleSheet.create({
   nutrientValue: { fontSize: 13, fontWeight: "700" },
   nutrientLabel: { fontSize: 10 },
 
-  // Result actions
   resultActions: { gap: 12, marginTop: 4 },
-  saveBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 16,
-    gap: 8,
-  },
+  saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 16, borderRadius: 16, gap: 8 },
   saveBtnEmoji: { fontSize: 20 },
   saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  savedBadge: {
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: "center",
-  },
+  savedBadge: { padding: 16, borderRadius: 16, borderWidth: 1, alignItems: "center" },
   savedText: { color: "#22C55E", fontSize: 16, fontWeight: "700" },
-  newScanBtn: {
-    flexDirection: "row",
+  newScanBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 16, borderRadius: 16, borderWidth: 2, gap: 8 },
+  newScanBtnText: { fontSize: 16, fontWeight: "700" },
+
+  // Feed Monster Animation
+  feedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
+  feedContainer: {
+    alignItems: "center",
+    gap: 16,
+  },
+  sparkleRing: {
+    position: "absolute",
+    width: 220,
+    height: 220,
+    top: -30,
+  },
+  sparkle: { position: "absolute", fontSize: 28, top: 0, left: "50%" },
+  sparkle2: { top: "50%", left: 0, fontSize: 24 },
+  sparkle3: { top: "100%", left: "50%", fontSize: 28 },
+  sparkle4: { top: "50%", left: "100%", fontSize: 24 },
+  feedMonsterBg: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     alignItems: "center",
     justifyContent: "center",
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    gap: 8,
   },
-  newScanBtnText: { fontSize: 16, fontWeight: "700" },
+  feedMonsterImg: { width: 120, height: 120 },
+  expFloater: {
+    position: "absolute",
+    top: -20,
+  },
+  expFloatText: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#FFD700",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 4,
+  },
+  feedTitle: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#fff",
+  },
+  feedSubtitle: {
+    fontSize: 15,
+    color: "rgba(255,255,255,0.8)",
+  },
 });

@@ -7,17 +7,17 @@ import { useColors } from "@/hooks/use-colors";
 export default function DashboardScreen() {
   const colors = useColors();
 
-  // Demo data - will be replaced with real API data
-  const todaySteps = 0;
+  // Sample data for demo
+  const todaySteps = 6280;
   const stepsGoal = 10000;
-  const caloriesBurned = 0;
-  const caloriesIntake = 0;
+  const caloriesBurned = 420;
+  const caloriesIntake = 1650;
   const dailyCalorieNeed = 1800;
-  const proteinIntake = 0;
+  const proteinIntake = 68;
   const proteinGoal = 100;
-  const workoutExp = 0;
-  const nutritionExp = 0;
-  const netExp = workoutExp - nutritionExp;
+  const workoutExp = 540;
+  const nutritionExp = 310;
+  const netExp = workoutExp + nutritionExp;
 
   const stepsPercent = Math.min((todaySteps / stepsGoal) * 100, 100);
   const proteinPercent = Math.min((proteinIntake / proteinGoal) * 100, 100);
@@ -27,9 +27,9 @@ export default function DashboardScreen() {
   const proteinEfficiency = todaySteps >= 10000 ? 1.3 : todaySteps >= 5000 ? 1.1 : 1.0;
 
   const quests = [
-    { title: "Protein Champion", desc: "Consume 100g protein", progress: 0, target: 100, reward: 50, color: "#EF4444" },
+    { title: "Protein Champion", desc: "Consume 100g protein", progress: 68, target: 100, reward: 50, color: "#EF4444" },
     { title: "Walking Master", desc: "Walk 5,000 steps", progress: todaySteps, target: 5000, reward: 50, color: "#3B82F6" },
-    { title: "Feeding Expert", desc: "Log 3 meals today", progress: 0, target: 3, reward: 75, color: "#22C55E" },
+    { title: "Feeding Expert", desc: "Log 3 meals today", progress: 2, target: 3, reward: 75, color: "#22C55E" },
   ];
 
   return (
@@ -145,24 +145,24 @@ export default function DashboardScreen() {
               </LinearGradient>
               <View style={styles.monsterGrowthInfo}>
                 <Text style={[styles.monsterGrowthName, { color: colors.foreground }]}>Flexo</Text>
-                <Text style={[styles.monsterGrowthLevel, { color: colors.muted }]}>Level 1</Text>
+                <Text style={[styles.monsterGrowthLevel, { color: colors.muted }]}>Level 5</Text>
                 <View style={styles.growthBarContainer}>
                   <Text style={[styles.growthBarLabel, { color: colors.muted }]}>EXP</Text>
                   <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
-                    <View style={[styles.progressFill, { width: "0%", backgroundColor: colors.primary }]} />
+                    <View style={[styles.progressFill, { width: "65%", backgroundColor: colors.primary }]} />
                   </View>
                 </View>
                 <View style={styles.growthBarContainer}>
                   <Text style={[styles.growthBarLabel, { color: colors.muted }]}>Evolution</Text>
                   <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
-                    <View style={[styles.progressFill, { width: "0%", backgroundColor: "#F59E0B" }]} />
+                    <View style={[styles.progressFill, { width: "35%", backgroundColor: "#F59E0B" }]} />
                   </View>
                 </View>
                 <Text style={[styles.stageText, { color: colors.muted }]}>Stage 1/3</Text>
                 <View style={styles.growthStats}>
-                  <Text style={styles.growthStat}>🥩 10</Text>
-                  <Text style={styles.growthStat}>🛡️ 10</Text>
-                  <Text style={styles.growthStat}>⚡ 10</Text>
+                  <Text style={styles.growthStat}>🥩 22</Text>
+                  <Text style={styles.growthStat}>🛡️ 15</Text>
+                  <Text style={styles.growthStat}>⚡ 12</Text>
                 </View>
               </View>
             </View>

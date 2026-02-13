@@ -84,17 +84,17 @@ export default function HomeScreen() {
   const { user } = useAuth();
 
   const trainerName = user?.name || "Trainer";
-  const [healthScore, setHealthScore] = useState(0);
-  const [todaySteps, setTodaySteps] = useState(0);
-  const [netExp, setNetExp] = useState(0);
-  const [coins, setCoins] = useState(100);
+  const [healthScore, setHealthScore] = useState(72);
+  const [todaySteps, setTodaySteps] = useState(4280);
+  const [netExp, setNetExp] = useState(839);
+  const [coins, setCoins] = useState(350);
   const [activeTab, setActiveTab] = useState<"home" | "daily" | "history">("home");
 
   const [monsters, setMonsters] = useState<Monster[]>([
     {
-      name: "Flexo", type: "Bodybuilder", level: 1, currentHp: 100, maxHp: 100,
-      currentExp: 0, expToNextLevel: 100, strength: 10, defense: 10, agility: 10,
-      evolutionProgress: 0, evolutionMax: 100, status: "Rookie", stage: 1,
+      name: "Flexo", type: "Bodybuilder", level: 5, currentHp: 85, maxHp: 120,
+      currentExp: 65, expToNextLevel: 100, strength: 22, defense: 15, agility: 12,
+      evolutionProgress: 35, evolutionMax: 100, status: "Fighter", stage: 1,
     },
   ]);
 
@@ -106,15 +106,29 @@ export default function HomeScreen() {
 
   // History tab state
   const [historySubTab, setHistorySubTab] = useState<"calories" | "macros" | "workout">("calories");
-  const [caloriesIn] = useState(0);
-  const [caloriesBurned] = useState(0);
-  const [workoutDuration] = useState(0);
-  const [avgProtein] = useState(0);
+  const [caloriesIn] = useState(8420);
+  const [caloriesBurned] = useState(3150);
+  const [workoutDuration] = useState(185);
+  const [avgProtein] = useState(95);
+
+  // Add Record modal
+  const [showAddRecord, setShowAddRecord] = useState(false);
+  const [recordType, setRecordType] = useState<"food" | "workout">("food");
+  const [recordName, setRecordName] = useState("");
+  const [recordCalories, setRecordCalories] = useState("");
+  const [recordDuration, setRecordDuration] = useState("");
+
+  // Sample chart data
+  const chartData = {
+    calories: [1850, 2100, 1650, 1920, 2300, 1780, 1200],
+    macros: [95, 110, 85, 102, 120, 88, 65],
+    workout: [45, 60, 30, 55, 75, 40, 0],
+  };
 
   const quests = [
-    { id: 1, icon: "🥩", title: "Protein Champion", description: "Consume 100g protein today", progress: 0, target: 100, reward: 50, bgColor: "#22C55E" },
+    { id: 1, icon: "🥩", title: "Protein Champion", description: "Consume 100g protein today", progress: 68, target: 100, reward: 50, bgColor: "#22C55E" },
     { id: 2, icon: "🚶", title: "Walking Master", description: "Walk 5,000 steps today", progress: todaySteps, target: 5000, reward: 50, bgColor: "#3B82F6" },
-    { id: 3, icon: "💪", title: "Strength Training", description: "Complete a 30-min workout", progress: 0, target: 30, reward: 100, bgColor: "#F59E0B" },
+    { id: 3, icon: "💪", title: "Strength Training", description: "Complete a 30-min workout", progress: 25, target: 30, reward: 100, bgColor: "#F59E0B" },
   ];
 
   const activeMonster = monsters[0];
@@ -168,12 +182,30 @@ export default function HomeScreen() {
   }, []);
 
   const handleAddRecord = useCallback(() => {
-    Alert.alert("Add Record", "Choose a record type:", [
-      { text: "Food Log", onPress: () => router.push("/(tabs)/camera") },
-      { text: "Workout", onPress: () => router.push("/(tabs)/workout") },
-      { text: "Cancel", style: "cancel" },
-    ]);
-  }, [router]);
+    setRecordType("food");
+    setRecordName("");
+    setRecordCalories("");
+    setRecordDuration("");
+    setShowAddRecord(true);
+  }, []);
+
+  const handleSaveRecord = useCallback(() => {
+    if (!recordName.trim()) {
+      Alert.alert("Required", "Please enter a name for the record.");
+      return;
+    }
+    if (recordType === "food" && !recordCalories.trim()) {
+      Alert.alert("Required", "Please enter the calorie amount.");
+      return;
+    }
+    if (recordType === "workout" && !recordDuration.trim()) {
+      Alert.alert("Required", "Please enter the workout duration.");
+      return;
+    }
+    setShowAddRecord(false);
+    const detail = recordType === "food" ? `${recordCalories} kcal` : `${recordDuration} min`;
+    Alert.alert("Record Saved! ✅", `${recordName} — ${detail}\nYour stats have been updated.`);
+  }, [recordType, recordName, recordCalories, recordDuration]);
 
   const handleRefreshTasks = useCallback(() => {
     Alert.alert("Refreshed!", "AI Daily Tasks have been updated with new suggestions.");
@@ -425,25 +457,49 @@ export default function HomeScreen() {
         ))}
       </View>
 
-      {/* Chart placeholder */}
-      <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Text style={[styles.chartTitle, { color: colors.foreground }]}>🔥 Daily Calorie Trend</Text>
-        <View style={styles.chartArea}>
-          {["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"].map((day, i) => (
-            <View key={day} style={styles.chartCol}>
-              <View style={[styles.chartBar, { height: Math.max(4, Math.random() * 60), backgroundColor: i === 6 ? colors.primary : colors.border }]} />
-              <Text style={[styles.chartDay, { color: colors.muted }]}>{day}</Text>
-            </View>
-          ))}
+      {/* View toggle icons */}
+      <View style={styles.viewToggleRow}>
+        <View style={styles.viewToggleIcons}>
+          <TouchableOpacity style={[styles.viewToggleBtn, { backgroundColor: colors.primary }]}>
+            <Text style={{ color: "#fff", fontSize: 14 }}>📊</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.viewToggleBtn, { backgroundColor: colors.surface }]}>
+            <Text style={{ fontSize: 14 }}>📅</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.viewToggleBtn, { backgroundColor: colors.surface }]}>
+            <Text style={{ fontSize: 14 }}>📋</Text>
+          </TouchableOpacity>
         </View>
+        <TouchableOpacity onPress={handleAddRecord}>
+          <View style={[styles.addRecordInline, { backgroundColor: colors.primary }]}>
+            <Text style={styles.addRecordInlineText}>+ Add Record</Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
-      {/* Add Record Button */}
-      <TouchableOpacity onPress={handleAddRecord}>
-        <LinearGradient colors={["#22C55E", "#16A34A"]} style={styles.addRecordBtn}>
-          <Text style={styles.addRecordText}>+ Add Record</Text>
-        </LinearGradient>
-      </TouchableOpacity>
+      {/* Chart with real data */}
+      <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.chartTitle, { color: colors.foreground }]}>
+          {historySubTab === "calories" ? "🔥 Daily Calorie Trend" : historySubTab === "macros" ? "🥩 Daily Protein Trend" : "🏋️ Workout Duration Trend"}
+        </Text>
+        <View style={styles.chartArea}>
+          {["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"].map((day, i) => {
+            const data = chartData[historySubTab];
+            const maxVal = Math.max(...data);
+            const barHeight = maxVal > 0 ? Math.max(4, (data[i] / maxVal) * 70) : 4;
+            const isToday = i === 6;
+            return (
+              <View key={day} style={styles.chartCol}>
+                <Text style={[styles.chartBarValue, { color: colors.muted }]}>
+                  {historySubTab === "calories" ? Math.round(data[i] / 100) : data[i]}
+                </Text>
+                <View style={[styles.chartBar, { height: barHeight, backgroundColor: isToday ? colors.primary : "#E5E7EB" }]} />
+                <Text style={[styles.chartDay, { color: colors.muted }]}>{day}</Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
     </>
   );
 
@@ -597,6 +653,77 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Add Record Modal */}
+      <Modal visible={showAddRecord} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add Record</Text>
+              <TouchableOpacity onPress={() => setShowAddRecord(false)}>
+                <IconSymbol name="xmark" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Record Type Toggle */}
+            <View style={[styles.toggleRow, { backgroundColor: colors.surface }]}>
+              <TouchableOpacity
+                style={[styles.toggleBtn, { backgroundColor: recordType === "food" ? colors.primary : "transparent" }]}
+                onPress={() => setRecordType("food")}
+              >
+                <Text style={recordType === "food" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>
+                  🍽️ Food
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggleBtn, { backgroundColor: recordType === "workout" ? colors.primary : "transparent" }]}
+                onPress={() => setRecordType("workout")}
+              >
+                <Text style={recordType === "workout" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>
+                  🏋️ Workout
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Record Name */}
+            <TextInput
+              style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
+              placeholder={recordType === "food" ? "Food name (e.g. Grilled Chicken)" : "Exercise name (e.g. Running)"}
+              placeholderTextColor={colors.muted}
+              value={recordName}
+              onChangeText={setRecordName}
+            />
+
+            {/* Calories or Duration */}
+            {recordType === "food" ? (
+              <TextInput
+                style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
+                placeholder="Calories (kcal)"
+                placeholderTextColor={colors.muted}
+                value={recordCalories}
+                onChangeText={setRecordCalories}
+                keyboardType="numeric"
+              />
+            ) : (
+              <TextInput
+                style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
+                placeholder="Duration (minutes)"
+                placeholderTextColor={colors.muted}
+                value={recordDuration}
+                onChangeText={setRecordDuration}
+                keyboardType="numeric"
+              />
+            )}
+
+            <TouchableOpacity style={[styles.hatchConfirmBtn, { backgroundColor: colors.primary }]} onPress={handleSaveRecord}>
+              <Text style={styles.hatchConfirmText}>✅ Save Record</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => setShowAddRecord(false)}>
+              <Text style={[styles.cancelText, { color: colors.muted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -725,6 +852,12 @@ const styles = StyleSheet.create({
   chartDay: { fontSize: 11 },
   addRecordBtn: { borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   addRecordText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  viewToggleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  viewToggleIcons: { flexDirection: "row", gap: 8 },
+  viewToggleBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  addRecordInline: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, gap: 4 },
+  addRecordInlineText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  chartBarValue: { fontSize: 10, marginBottom: 2 },
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
