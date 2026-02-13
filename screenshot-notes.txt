@@ -1,0 +1,10 @@
+Home screen screenshot observations:
+- Still shows "Hi, Trainer!" - need to check if the greeting uses the auth user name
+- Monster card is visible with Flexo, HP/EXP bars, stats
+- The Train/Feed/Battle action buttons should be below the Evolution bar but the card is cut off at the bottom
+- Need to scroll down to see the action buttons
+- The greeting should show the actual username when logged in
+
+The greeting currently shows "Hi, Trainer!" because the user is not logged in (session cookie is invalid).
+When a real user is logged in, it will show their name from the auth context.
+This is correct behavior - the fallback is "Trainer" when not logged in.

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   ScrollView,
   Text,
@@ -8,6 +8,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  Platform,
 } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -37,20 +38,14 @@ type WorkoutLog = {
   timestamp: Date;
 };
 
+type BonusType = "none" | "outdoor" | "gym";
+
 // Sample data for demo
 const SAMPLE_LOGS: WorkoutLog[] = [
   { exercise: "Running", duration: 30, exp: 294, timestamp: new Date(Date.now() - 3600000) },
   { exercise: "Bench Press", duration: 45, exp: 331, timestamp: new Date(Date.now() - 86400000) },
   { exercise: "Swimming", duration: 25, exp: 214, timestamp: new Date(Date.now() - 172800000) },
 ];
-
-const MONSTER_IMAGES: Record<string, any> = {
-  "Bodybuilder-1": require("@/assets/monsters/bodybuilder-stage1.png"),
-};
-
-const MONSTER_GRADIENTS: Record<string, readonly [string, string]> = {
-  Bodybuilder: ["#DCFCE7", "#BBF7D0"],
-};
 
 export default function WorkoutScreen() {
   const colors = useColors();
@@ -60,63 +55,53 @@ export default function WorkoutScreen() {
   const [steps, setSteps] = useState(4280);
   const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>(SAMPLE_LOGS);
 
+  // Selected exercise detail
+  const [selectedExercise, setSelectedExercise] = useState<typeof EXERCISES[0] | null>(null);
+  const [duration, setDuration] = useState(30);
+  const [bonus, setBonus] = useState<BonusType>("none");
+
   // Manual Log Modal
   const [showManualLog, setShowManualLog] = useState(false);
   const [manualExercise, setManualExercise] = useState("");
   const [manualDuration, setManualDuration] = useState("");
   const [manualWeight, setManualWeight] = useState("70");
 
-  // Active Workout Timer
-  const [activeWorkout, setActiveWorkout] = useState<{ exercise: typeof EXERCISES[0]; startTime: Date } | null>(null);
-  const [showTimerModal, setShowTimerModal] = useState(false);
-  const [timerDuration, setTimerDuration] = useState("");
+  const bodyWeight = 70; // kg default
 
   const filteredExercises = selectedType === "All" ? EXERCISES : EXERCISES.filter((e) => e.category === selectedType);
 
+  const bonusMultiplier = bonus === "outdoor" ? 1.5 : bonus === "gym" ? 2.0 : 1.0;
+
+  const expGained = useMemo(() => {
+    if (!selectedExercise) return 0;
+    return Math.round(selectedExercise.met * 3.5 * bodyWeight * duration / 200 * bonusMultiplier);
+  }, [selectedExercise, duration, bonusMultiplier]);
+
+  const caloriesBurned = useMemo(() => {
+    if (!selectedExercise) return 0;
+    return Math.round(selectedExercise.met * 3.5 * bodyWeight * duration / 200);
+  }, [selectedExercise, duration]);
+
   const handleExercisePress = useCallback((exercise: typeof EXERCISES[0]) => {
-    Alert.alert(
-      exercise.name,
-      `MET Value: ${exercise.met}\n\nHow would you like to log this workout?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Quick Log (30 min)",
-          onPress: () => {
-            const exp = Math.round(exercise.met * 3.5 * 70 * 30 / 200);
-            setTotalExp((prev) => prev + exp);
-            setCompletedCount((prev) => prev + 1);
-            setWorkoutLogs((prev) => [{ exercise: exercise.name, duration: 30, exp, timestamp: new Date() }, ...prev]);
-            Alert.alert("Workout Logged! 💪", `${exercise.name} - 30 min\n+${exp} EXP earned!`);
-          },
-        },
-        {
-          text: "Custom Duration",
-          onPress: () => {
-            setActiveWorkout({ exercise, startTime: new Date() });
-            setTimerDuration("");
-            setShowTimerModal(true);
-          },
-        },
-      ]
-    );
+    setSelectedExercise(exercise);
+    setDuration(30);
+    setBonus("none");
   }, []);
 
-  const handleTimerConfirm = useCallback(() => {
-    if (!activeWorkout || !timerDuration) return;
-    const duration = parseInt(timerDuration, 10);
-    if (isNaN(duration) || duration <= 0) {
-      Alert.alert("Invalid Duration", "Please enter a valid number of minutes.");
-      return;
-    }
-    const weight = parseInt(manualWeight, 10) || 70;
-    const exp = Math.round(activeWorkout.exercise.met * 3.5 * weight * duration / 200);
-    setTotalExp((prev) => prev + exp);
+  const handleStartTraining = useCallback(() => {
+    if (!selectedExercise) return;
+    setTotalExp((prev) => prev + expGained);
     setCompletedCount((prev) => prev + 1);
-    setWorkoutLogs((prev) => [{ exercise: activeWorkout.exercise.name, duration, exp, timestamp: new Date() }, ...prev]);
-    setShowTimerModal(false);
-    setActiveWorkout(null);
-    Alert.alert("Workout Logged! 💪", `${activeWorkout.exercise.name} - ${duration} min\n+${exp} EXP earned!`);
-  }, [activeWorkout, timerDuration, manualWeight]);
+    setWorkoutLogs((prev) => [
+      { exercise: selectedExercise.name, duration, exp: expGained, timestamp: new Date() },
+      ...prev,
+    ]);
+    Alert.alert(
+      "Workout Complete! 💪",
+      `${selectedExercise.name} - ${duration} min\n+${expGained} EXP earned!${bonus !== "none" ? `\n${bonus === "outdoor" ? "Outdoor" : "Gym"} bonus applied!` : ""}`
+    );
+    setSelectedExercise(null);
+  }, [selectedExercise, duration, expGained, bonus]);
 
   const handleManualLog = useCallback(() => {
     setManualExercise("");
@@ -129,19 +114,19 @@ export default function WorkoutScreen() {
       Alert.alert("Required", "Please enter the exercise name.");
       return;
     }
-    const duration = parseInt(manualDuration, 10);
-    if (isNaN(duration) || duration <= 0) {
+    const dur = parseInt(manualDuration, 10);
+    if (isNaN(dur) || dur <= 0) {
       Alert.alert("Required", "Please enter a valid duration in minutes.");
       return;
     }
     const weight = parseInt(manualWeight, 10) || 70;
     const estimatedMet = 5;
-    const exp = Math.round(estimatedMet * 3.5 * weight * duration / 200);
+    const exp = Math.round(estimatedMet * 3.5 * weight * dur / 200);
     setTotalExp((prev) => prev + exp);
     setCompletedCount((prev) => prev + 1);
-    setWorkoutLogs((prev) => [{ exercise: manualExercise.trim(), duration, exp, timestamp: new Date() }, ...prev]);
+    setWorkoutLogs((prev) => [{ exercise: manualExercise.trim(), duration: dur, exp, timestamp: new Date() }, ...prev]);
     setShowManualLog(false);
-    Alert.alert("Workout Logged! 💪", `${manualExercise.trim()} - ${duration} min\n+${exp} EXP earned!`);
+    Alert.alert("Workout Logged! 💪", `${manualExercise.trim()} - ${dur} min\n+${exp} EXP earned!`);
   }, [manualExercise, manualDuration, manualWeight]);
 
   const handleSyncSteps = useCallback(() => {
@@ -156,6 +141,22 @@ export default function WorkoutScreen() {
     });
   }, []);
 
+  // Slider helpers
+  const sliderMin = 5;
+  const sliderMax = 120;
+  const [sliderWidth, setSliderWidth] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const sliderPosition = sliderWidth > 0 ? ((duration - sliderMin) / (sliderMax - sliderMin)) * sliderWidth : 0;
+
+  const handleSliderTouch = useCallback((pageX: number, layoutX: number) => {
+    if (sliderWidth <= 0) return;
+    const x = pageX - layoutX;
+    const ratio = Math.max(0, Math.min(1, x / sliderWidth));
+    const newDuration = Math.round(sliderMin + ratio * (sliderMax - sliderMin));
+    setDuration(newDuration);
+  }, [sliderWidth]);
+
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}>
@@ -166,44 +167,25 @@ export default function WorkoutScreen() {
               <Text style={[styles.title, { color: colors.foreground }]}>Workout</Text>
               <Text style={[styles.subtitle, { color: colors.muted }]}>Start Training 💪</Text>
             </View>
-            <View style={[styles.expBadge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.expText}>{totalExp} EXP</Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TouchableOpacity
+                style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={handleManualLog}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.headerBtnIcon}>📝</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={handleSyncSteps}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.headerBtnIcon}>👣</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
-          {/* Action Buttons */}
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={handleManualLog}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.actionIcon}>📝</Text>
-              <Text style={[styles.actionText, { color: colors.foreground }]}>Manual Log</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={handleSyncSteps}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.actionIcon}>👣</Text>
-              <Text style={[styles.actionText, { color: colors.foreground }]}>Sync Steps</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Monster Card - compact */}
-          <View style={[styles.monsterRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <LinearGradient colors={["#DCFCE7", "#BBF7D0"]} style={styles.monsterThumb}>
-              <Image source={MONSTER_IMAGES["Bodybuilder-1"]} style={styles.monsterImg} contentFit="contain" />
-            </LinearGradient>
-            <View style={styles.monsterInfo}>
-              <Text style={[styles.monsterName, { color: colors.foreground }]}>Flexo</Text>
-              <Text style={[styles.monsterLevel, { color: colors.muted }]}>Level 1</Text>
-              <Text style={[styles.monsterBest, { color: colors.muted }]}>Best: Weight Training</Text>
-            </View>
-          </View>
-
-          {/* Workout Type Filters - FIXED: horizontal scroll with fixed height pills */}
+          {/* Workout Type Filters */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -230,21 +212,165 @@ export default function WorkoutScreen() {
             ))}
           </ScrollView>
 
-          {/* Exercise Grid - FIXED: 3 columns with fixed width, no flexGrow */}
+          {/* Exercise Grid - 2 columns matching screenshot */}
           <View style={styles.exerciseGrid}>
-            {filteredExercises.map((exercise) => (
-              <TouchableOpacity
-                key={exercise.id}
-                style={[styles.exerciseCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => handleExercisePress(exercise)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.exerciseIcon}>{exercise.icon}</Text>
-                <Text style={[styles.exerciseName, { color: colors.foreground }]}>{exercise.name}</Text>
-                <Text style={[styles.exerciseMet, { color: colors.primary }]}>MET {exercise.met}</Text>
-              </TouchableOpacity>
-            ))}
+            {filteredExercises.map((exercise) => {
+              const isSelected = selectedExercise?.id === exercise.id;
+              return (
+                <TouchableOpacity
+                  key={exercise.id}
+                  style={[
+                    styles.exerciseCard,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      borderWidth: isSelected ? 2 : 1,
+                    },
+                  ]}
+                  onPress={() => handleExercisePress(exercise)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.exerciseIcon}>{exercise.icon}</Text>
+                  <Text style={[styles.exerciseName, { color: colors.foreground }]}>{exercise.name}</Text>
+                  <Text style={[styles.exerciseCategory, { color: colors.muted }]}>{exercise.category}</Text>
+                  <Text style={[styles.exerciseMet, { color: colors.primary }]}>⚡ MET {exercise.met}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
+
+          {/* Exercise Detail Panel - shown when exercise is selected */}
+          {selectedExercise && (
+            <View style={[styles.detailPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              {/* Exercise Header */}
+              <View style={styles.detailHeader}>
+                <Text style={styles.detailIcon}>{selectedExercise.icon}</Text>
+                <Text style={[styles.detailName, { color: colors.foreground }]}>{selectedExercise.name}</Text>
+              </View>
+
+              {/* Duration */}
+              <View style={styles.durationRow}>
+                <Text style={[styles.durationLabel, { color: colors.muted }]}>⏱ Duration: {duration} min</Text>
+              </View>
+
+              {/* Custom Slider */}
+              <View style={styles.sliderContainer}>
+                <View
+                  style={styles.sliderTrackWrapper}
+                  onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
+                  onStartShouldSetResponder={() => true}
+                  onMoveShouldSetResponder={() => true}
+                  onResponderGrant={(e) => {
+                    setIsDragging(true);
+                    const layoutX = e.nativeEvent.locationX;
+                    const ratio = Math.max(0, Math.min(1, layoutX / (sliderWidth || 1)));
+                    setDuration(Math.round(sliderMin + ratio * (sliderMax - sliderMin)));
+                  }}
+                  onResponderMove={(e) => {
+                    if (!isDragging) return;
+                    const touch = e.nativeEvent;
+                    // Use locationX relative to the track
+                    const ratio = Math.max(0, Math.min(1, touch.locationX / (sliderWidth || 1)));
+                    setDuration(Math.round(sliderMin + ratio * (sliderMax - sliderMin)));
+                  }}
+                  onResponderRelease={() => setIsDragging(false)}
+                >
+                  {/* Track background */}
+                  <View style={[styles.sliderTrack, { backgroundColor: "#D1D5DB" }]} />
+                  {/* Track fill */}
+                  <View
+                    style={[
+                      styles.sliderFill,
+                      {
+                        backgroundColor: colors.primary,
+                        width: sliderPosition,
+                      },
+                    ]}
+                  />
+                  {/* Thumb */}
+                  <View
+                    style={[
+                      styles.sliderThumb,
+                      {
+                        backgroundColor: colors.primary,
+                        left: sliderPosition - 12,
+                      },
+                    ]}
+                  />
+                </View>
+                <View style={styles.sliderLabels}>
+                  <Text style={[styles.sliderLabelText, { color: colors.muted }]}>5 min</Text>
+                  <Text style={[styles.sliderLabelText, { color: colors.muted }]}>120 min</Text>
+                </View>
+              </View>
+
+              {/* Bonus Section */}
+              <Text style={[styles.bonusTitle, { color: colors.foreground }]}>Bonus</Text>
+              <View style={styles.bonusRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.bonusCard,
+                    {
+                      backgroundColor: bonus === "outdoor" ? "#DCFCE7" : colors.background,
+                      borderColor: bonus === "outdoor" ? colors.primary : colors.border,
+                      borderWidth: bonus === "outdoor" ? 2 : 1,
+                    },
+                  ]}
+                  onPress={() => setBonus(bonus === "outdoor" ? "none" : "outdoor")}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.bonusIcon}>📍</Text>
+                  <View>
+                    <Text style={[styles.bonusName, { color: colors.foreground }]}>Outdoor</Text>
+                    <Text style={[styles.bonusMultiplier, { color: colors.primary }]}>x1.5</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.bonusCard,
+                    {
+                      backgroundColor: bonus === "gym" ? "#DCFCE7" : colors.background,
+                      borderColor: bonus === "gym" ? colors.primary : colors.border,
+                      borderWidth: bonus === "gym" ? 2 : 1,
+                    },
+                  ]}
+                  onPress={() => setBonus(bonus === "gym" ? "none" : "gym")}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.bonusIcon}>🏋️</Text>
+                  <View>
+                    <Text style={[styles.bonusName, { color: colors.foreground }]}>Gym</Text>
+                    <Text style={[styles.bonusMultiplier, { color: colors.primary }]}>x2.0</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              {/* EXP & Calories Preview */}
+              <View style={[styles.previewCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <View style={styles.previewRow}>
+                  <Text style={[styles.previewLabel, { color: colors.foreground }]}>EXP Gained</Text>
+                  <Text style={[styles.previewValue, { color: colors.primary }]}>+{expGained}</Text>
+                </View>
+                <View style={styles.previewRow}>
+                  <Text style={[styles.previewLabel, { color: colors.foreground }]}>Calories Burned</Text>
+                  <Text style={[styles.previewCalories, { color: "#F59E0B" }]}>~{caloriesBurned} kcal</Text>
+                </View>
+              </View>
+
+              {/* Start Training Button */}
+              <TouchableOpacity onPress={handleStartTraining} activeOpacity={0.8}>
+                <LinearGradient
+                  colors={["#F97316", "#EF4444"] as const}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.startBtn}
+                >
+                  <Text style={styles.startBtnIcon}>▶</Text>
+                  <Text style={styles.startBtnText}>Start Training</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Recent Workouts */}
           {workoutLogs.length > 0 && (
@@ -265,18 +391,24 @@ export default function WorkoutScreen() {
           {/* Bottom Stats */}
           <View style={[styles.bottomStats, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.bottomStatItem}>
-              <Text style={[styles.bottomStatValue, { color: colors.foreground }]}>{completedCount}</Text>
-              <Text style={[styles.bottomStatLabel, { color: colors.muted }]}>Completed</Text>
+              <Text style={styles.bottomStatIcon}>📈</Text>
+              <Text style={[styles.bottomStatLabel, { color: colors.muted }]}>Workout</Text>
             </View>
-            <View style={[styles.bottomStatDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.bottomStatItem}>
-              <Text style={[styles.bottomStatValue, { color: colors.primary }]}>{totalExp}</Text>
-              <Text style={[styles.bottomStatLabel, { color: colors.muted }]}>EXP Earned</Text>
+          </View>
+          <View style={[styles.statsRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{completedCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.muted }]}>Completed</Text>
             </View>
-            <View style={[styles.bottomStatDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.bottomStatItem}>
-              <Text style={[styles.bottomStatValue, { color: colors.foreground }]}>{steps.toLocaleString()}</Text>
-              <Text style={[styles.bottomStatLabel, { color: colors.muted }]}>Steps</Text>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{totalExp}</Text>
+              <Text style={[styles.statLabel, { color: colors.muted }]}>EXP</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{steps.toLocaleString()}</Text>
+              <Text style={[styles.statLabel, { color: colors.muted }]}>Steps</Text>
             </View>
           </View>
         </View>
@@ -327,39 +459,6 @@ export default function WorkoutScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* Timer Duration Modal */}
-      <Modal visible={showTimerModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-              {activeWorkout?.exercise.name}
-            </Text>
-            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
-              MET: {activeWorkout?.exercise.met} — Enter workout duration
-            </Text>
-
-            <Text style={[styles.inputLabel, { color: colors.muted }]}>Duration (minutes)</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-              placeholder="e.g. 45"
-              placeholderTextColor={colors.muted}
-              value={timerDuration}
-              onChangeText={setTimerDuration}
-              keyboardType="numeric"
-              returnKeyType="done"
-              onSubmitEditing={handleTimerConfirm}
-            />
-
-            <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.primary }]} onPress={handleTimerConfirm}>
-              <Text style={styles.submitText}>Log Workout</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => { setShowTimerModal(false); setActiveWorkout(null); }}>
-              <Text style={[styles.cancelText, { color: colors.muted }]}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </ScreenContainer>
   );
 }
@@ -369,53 +468,106 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   title: { fontSize: 26, fontWeight: "800" },
   subtitle: { fontSize: 14, marginTop: 2 },
-  expBadge: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16 },
-  expText: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  actionRow: { flexDirection: "row", gap: 12 },
-  actionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 14, borderRadius: 16, borderWidth: 1, gap: 8 },
-  actionIcon: { fontSize: 20 },
-  actionText: { fontSize: 14, fontWeight: "600" },
+  headerBtn: { width: 44, height: 44, borderRadius: 12, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  headerBtnIcon: { fontSize: 20 },
 
-  // Monster compact row
-  monsterRow: { flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 16, borderWidth: 1, gap: 12 },
-  monsterThumb: { width: 60, height: 60, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  monsterImg: { width: 48, height: 48 },
-  monsterInfo: { flex: 1 },
-  monsterName: { fontSize: 16, fontWeight: "700" },
-  monsterLevel: { fontSize: 13 },
-  monsterBest: { fontSize: 12, marginTop: 2 },
-
-  // Filter pills - FIXED: explicit height, no flex stretching
+  // Filter pills
   filterScroll: { maxHeight: 44 },
   filterRow: { gap: 8, paddingVertical: 2, alignItems: "center" },
   filterPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, height: 36, justifyContent: "center" },
   filterText: { fontSize: 13, fontWeight: "600" },
 
-  // Exercise grid - FIXED: percentage-based width, no flexGrow
+  // Exercise grid - 2 columns matching screenshot
   exerciseGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   exerciseCard: {
-    width: "30.5%",
-    alignItems: "center",
+    width: "47%",
     padding: 16,
     borderRadius: 16,
-    borderWidth: 1,
-    gap: 6,
+    gap: 4,
   },
   exerciseIcon: { fontSize: 32 },
-  exerciseName: { fontSize: 13, fontWeight: "600", textAlign: "center" },
-  exerciseMet: { fontSize: 12, fontWeight: "700" },
+  exerciseName: { fontSize: 15, fontWeight: "700", marginTop: 4 },
+  exerciseCategory: { fontSize: 12 },
+  exerciseMet: { fontSize: 12, fontWeight: "700", marginTop: 2 },
 
+  // Detail panel
+  detailPanel: { borderRadius: 20, padding: 20, borderWidth: 1, gap: 16 },
+  detailHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  detailIcon: { fontSize: 28 },
+  detailName: { fontSize: 22, fontWeight: "800" },
+
+  // Duration
+  durationRow: { flexDirection: "row", alignItems: "center" },
+  durationLabel: { fontSize: 15, fontWeight: "600" },
+
+  // Custom slider
+  sliderContainer: { gap: 6 },
+  sliderTrackWrapper: { height: 40, justifyContent: "center", position: "relative" },
+  sliderTrack: { height: 6, borderRadius: 3, width: "100%" },
+  sliderFill: { height: 6, borderRadius: 3, position: "absolute", top: 17, left: 0 },
+  sliderThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    position: "absolute",
+    top: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  sliderLabels: { flexDirection: "row", justifyContent: "space-between" },
+  sliderLabelText: { fontSize: 12 },
+
+  // Bonus
+  bonusTitle: { fontSize: 16, fontWeight: "700" },
+  bonusRow: { flexDirection: "row", gap: 12 },
+  bonusCard: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+  },
+  bonusIcon: { fontSize: 22 },
+  bonusName: { fontSize: 14, fontWeight: "600" },
+  bonusMultiplier: { fontSize: 13, fontWeight: "700" },
+
+  // Preview card
+  previewCard: { borderRadius: 14, padding: 16, borderWidth: 1, gap: 10 },
+  previewRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  previewLabel: { fontSize: 15, fontWeight: "600" },
+  previewValue: { fontSize: 20, fontWeight: "800" },
+  previewCalories: { fontSize: 16, fontWeight: "700" },
+
+  // Start Training button
+  startBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 18, borderRadius: 16 },
+  startBtnIcon: { color: "#fff", fontSize: 18 },
+  startBtnText: { color: "#fff", fontSize: 18, fontWeight: "800" },
+
+  // Section title
   sectionTitle: { fontSize: 18, fontWeight: "700", marginTop: 4 },
+
+  // Log items
   logItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14, borderRadius: 12, borderWidth: 1 },
   logInfo: { gap: 2 },
   logName: { fontSize: 15, fontWeight: "600" },
   logDuration: { fontSize: 12 },
   logExp: { fontSize: 14, fontWeight: "700" },
-  bottomStats: { flexDirection: "row", borderRadius: 16, padding: 16, borderWidth: 1 },
-  bottomStatItem: { flex: 1, alignItems: "center" },
-  bottomStatValue: { fontSize: 22, fontWeight: "800" },
-  bottomStatLabel: { fontSize: 12, marginTop: 2 },
-  bottomStatDivider: { width: 1, height: 36, alignSelf: "center" },
+
+  // Bottom stats
+  bottomStats: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4, borderTopLeftRadius: 16, borderTopRightRadius: 16, borderWidth: 1, borderBottomWidth: 0 },
+  bottomStatIcon: { fontSize: 18 },
+  bottomStatLabel: { fontSize: 14, fontWeight: "600" },
+  bottomStatItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+
+  statsRow: { flexDirection: "row", borderBottomLeftRadius: 16, borderBottomRightRadius: 16, padding: 16, borderWidth: 1, borderTopWidth: 0 },
+  statItem: { flex: 1, alignItems: "center" },
+  statValue: { fontSize: 22, fontWeight: "800" },
+  statLabel: { fontSize: 12, marginTop: 2 },
+  statDivider: { width: 1, height: 36, alignSelf: "center" },
 
   // Modal styles
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },

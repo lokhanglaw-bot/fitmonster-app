@@ -1,0 +1,26 @@
+Workout Detail Page Design (from user screenshot):
+
+Layout:
+1. Exercise grid at top shows 2-column cards with icon, name, category, MET value
+2. Selected exercise (Running) is highlighted with green border
+3. Below the grid is a detail section (card) showing:
+   - Exercise icon + name (e.g. "Running")
+   - "Duration: 30 min" label with clock icon
+   - Duration slider: range 5 min to 120 min, green thumb, dark track
+   - "Bonus" section with two toggle cards:
+     - "Outdoor x1.5" with location icon
+     - "Gym x2.0" with gym icon
+   - Stats preview card:
+     - "EXP Gained" → "+240" (green)
+     - "Calories Burned" → "~280 kcal" (orange)
+   - "Start Training" button: gradient orange/red, with play icon
+4. Below that: Workout stats section (Completed, EXP, Steps)
+
+Key details:
+- Grid is 2 columns (not 3 as currently implemented)
+- Selected exercise has green border highlight
+- Duration slider range: 5-120 min
+- Bonus multipliers: Outdoor x1.5, Gym x2.0 (toggle between them)
+- EXP calculation: MET * 3.5 * weight * duration / 200 * bonus multiplier
+- Calories: similar formula
+- Start Training button is prominent gradient

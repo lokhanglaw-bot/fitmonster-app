@@ -236,3 +236,10 @@
 - [x] Fix workout category filter pills stretching too tall when selected
 - [x] Fix History tab "Add Record" button - opens proper form modal
 - [x] Add sample/demo data to all screens so features are visible
+
+
+## User Feedback - Round 5
+- [x] Fix Feed Monster animation — must show visible celebration effect when saving food log
+- [x] Change "Hi, Trainer!" greeting to display actual username
+- [x] Add workout exercise detail page with duration slider, Outdoor/Gym bonus, EXP/calorie preview, and "Start Training" button
+- [x] Add monster action buttons on Home (Train, Feed, Battle) to choose which monster to use

@@ -277,6 +277,31 @@ export default function HomeScreen() {
             <View style={[styles.barFill, { width: `${(monster.evolutionProgress / monster.evolutionMax) * 100}%`, backgroundColor: "#F59E0B" }]} />
           </View>
         </View>
+
+        {/* Monster Action Buttons */}
+        <View style={styles.monsterActions}>
+          <TouchableOpacity
+            style={[styles.monsterActionBtn, { backgroundColor: "#3B82F6" }]}
+            onPress={() => router.push("/(tabs)/workout")}
+          >
+            <Text style={styles.monsterActionIcon}>🏋️</Text>
+            <Text style={styles.monsterActionText}>Train</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.monsterActionBtn, { backgroundColor: "#22C55E" }]}
+            onPress={() => router.push("/(tabs)/camera")}
+          >
+            <Text style={styles.monsterActionIcon}>🍖</Text>
+            <Text style={styles.monsterActionText}>Feed</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.monsterActionBtn, { backgroundColor: "#EF4444" }]}
+            onPress={() => router.push("/(tabs)/battle")}
+          >
+            <Text style={styles.monsterActionIcon}>⚔️</Text>
+            <Text style={styles.monsterActionText}>Battle</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -886,4 +911,10 @@ const styles = StyleSheet.create({
   hatchedImage: { width: 130, height: 130 },
   hatchedTitle: { fontSize: 22, fontWeight: "800", marginTop: 8 },
   hatchedSubtitle: { fontSize: 14 },
+
+  // Monster Action Buttons
+  monsterActions: { flexDirection: "row", gap: 10, marginTop: 12 },
+  monsterActionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 12 },
+  monsterActionIcon: { fontSize: 16 },
+  monsterActionText: { color: "#fff", fontSize: 13, fontWeight: "700" },
 });

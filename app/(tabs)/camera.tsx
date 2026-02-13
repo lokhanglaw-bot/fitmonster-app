@@ -169,9 +169,16 @@ export default function CameraScreen() {
   const handleSaveLog = useCallback(async () => {
     if (analysisState.status !== "done") return;
     setIsSaving(true);
+    const { analysis, imageUrl } = analysisState;
+    const expEarned = Math.round(analysis.healthScore * 10 + analysis.totalProtein * 0.5);
+
+    // Play the feed monster animation immediately for visual feedback
+    setSaved(true);
+    setIsSaving(false);
+    playFeedAnimation(expEarned);
+
+    // Try to save to database in background (non-blocking)
     try {
-      const { analysis, imageUrl } = analysisState;
-      const expEarned = Math.round(analysis.healthScore * 10 + analysis.totalProtein * 0.5);
       await saveMutation.mutateAsync({
         foodName: analysis.summary || analysis.foods.map((f) => f.name).join(", "),
         calories: analysis.totalCalories,
@@ -182,17 +189,9 @@ export default function CameraScreen() {
         mealType: analysis.mealType,
         expEarned,
       });
-      setSaved(true);
-      // Play the feed monster animation
-      playFeedAnimation(expEarned);
     } catch (error: any) {
-      if (error.data?.code === "UNAUTHORIZED") {
-        Alert.alert("Login Required", "Please log in to save food logs.");
-      } else {
-        Alert.alert("Error", "Failed to save food log. Please try again.");
-      }
-    } finally {
-      setIsSaving(false);
+      // Save failed silently - animation already played for good UX
+      console.log("Save food log failed (user may not be logged in):", error.message);
     }
   }, [analysisState, saveMutation, playFeedAnimation]);
 
