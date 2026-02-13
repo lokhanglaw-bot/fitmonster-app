@@ -11,6 +11,7 @@ import {
   Modal,
   Linking,
   Platform,
+  Share,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -18,7 +19,7 @@ import { startOAuthLogin } from "@/lib/auth-helpers";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/use-colors";
-import * as Sharing from "expo-sharing";
+// Share uses react-native Share API for native, Web Share API for web
 
 type AuthMode = "signin" | "signup" | "forgot";
 
@@ -114,12 +115,11 @@ export default function AuthScreen() {
           Alert.alert("Copied!", "Share link copied to clipboard");
         }
       } else {
-        const available = await Sharing.isAvailableAsync();
-        if (available) {
-          await Sharing.shareAsync(APP_URL, {
-            dialogTitle: "Share FitMonster",
-          });
-        }
+        await Share.share({
+          message: `${SHARE_MESSAGE} ${APP_URL}`,
+          title: "FitMonster",
+          url: APP_URL,
+        });
       }
     } catch (error) {
       // User cancelled or share failed silently

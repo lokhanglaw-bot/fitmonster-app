@@ -106,6 +106,8 @@ export default function HomeScreen() {
 
   // History tab state
   const [historySubTab, setHistorySubTab] = useState<"calories" | "macros" | "workout">("calories");
+  const [dailyTaskView, setDailyTaskView] = useState<"workout" | "diet">("workout");
+  const [historyViewMode, setHistoryViewMode] = useState<"chart" | "calendar" | "list">("chart");
   const [caloriesIn] = useState(8420);
   const [caloriesBurned] = useState(3150);
   const [workoutDuration] = useState(185);
@@ -401,20 +403,60 @@ export default function HomeScreen() {
           {/* Completion Progress */}
           <Text style={[styles.completionLabel, { color: colors.muted }]}>Completion Progress</Text>
           <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
-            <View style={[styles.barFill, { width: "0%", backgroundColor: "#22C55E" }]} />
+            <View style={[styles.barFill, { width: dailyTaskView === "workout" ? `${Math.min((completedQuests / 3) * 100, 100)}%` : "33%", backgroundColor: "#22C55E" }]} />
           </View>
 
           {/* Workout / Diet toggle */}
           <View style={[styles.toggleRow, { backgroundColor: colors.background }]}>
-            <TouchableOpacity style={[styles.toggleBtn, { backgroundColor: "#22C55E" }]}>
-              <Text style={styles.toggleBtnText}>🏋️ Workout</Text>
+            <TouchableOpacity style={[styles.toggleBtn, { backgroundColor: dailyTaskView === "workout" ? "#22C55E" : "transparent" }]} onPress={() => setDailyTaskView("workout")}>
+              <Text style={dailyTaskView === "workout" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>🏋️ Workout</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.toggleBtn, { backgroundColor: "transparent" }]}>
-              <Text style={[styles.toggleBtnTextInactive, { color: colors.muted }]}>🍽️ Diet</Text>
+            <TouchableOpacity style={[styles.toggleBtn, { backgroundColor: dailyTaskView === "diet" ? "#22C55E" : "transparent" }]} onPress={() => setDailyTaskView("diet")}>
+              <Text style={dailyTaskView === "diet" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>🍽️ Diet</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Workout Suggestion Card */}
+          {dailyTaskView === "diet" ? (
+            /* Diet Suggestion Card */
+            <LinearGradient colors={["#F0FDF4", "#DCFCE7"]} style={styles.suggestionCard}>
+              <View style={styles.suggestionHeader}>
+                <Text style={[styles.suggestionTitle, { color: "#1A1A2E" }]}>{task.dietTitle}</Text>
+                <View style={[styles.expBadge, { backgroundColor: "#BBF7D0" }]}>
+                  <Text style={[styles.expBadgeText, { color: "#16A34A" }]}>+{task.dietExp} EXP</Text>
+                </View>
+              </View>
+              <Text style={[styles.suggestionDesc, { color: "#6B7280" }]}>{task.dietDesc}</Text>
+
+              <View style={styles.workoutMetrics}>
+                <View style={styles.metric}><Text style={styles.metricIcon}>🥩</Text><Text style={styles.metricValue}>120g protein</Text></View>
+                <View style={styles.metric}><Text style={styles.metricIcon}>🍞</Text><Text style={styles.metricValue}>200g carbs</Text></View>
+                <View style={styles.metric}><Text style={styles.metricIcon}>🧈</Text><Text style={styles.metricValue}>65g fat</Text></View>
+              </View>
+
+              <View style={styles.tipRow}>
+                <Text style={styles.tipBullet}>💡</Text>
+                <Text style={[styles.tipText, { color: "#6B7280" }]}>Eat protein within 30 min after workout for best recovery</Text>
+              </View>
+              <View style={styles.tipRow}>
+                <Text style={styles.tipBullet}>💡</Text>
+                <Text style={[styles.tipText, { color: "#6B7280" }]}>Stay hydrated — aim for 2-3 liters of water daily</Text>
+              </View>
+
+              <TouchableOpacity onPress={() => router.push("/(tabs)/camera")}>
+                <LinearGradient colors={["#22C55E", "#16A34A"]} style={styles.workoutBtn}>
+                  <Text style={styles.workoutBtnText}>🍖 Log Meal  ›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <View style={styles.skillRow}>
+                <Text style={styles.skillLabel}>⚡ Complete to unlock skill</Text>
+                <View style={[styles.skillBadge, { backgroundColor: "#22C55E" }]}>
+                  <Text style={styles.skillBadgeText}>Nutrition Boost</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          ) : (
+          /* Workout Suggestion Card */
           <LinearGradient colors={["#FFF7ED", "#FFEDD5"]} style={styles.suggestionCard}>
             <View style={styles.suggestionHeader}>
               <Text style={[styles.suggestionTitle, { color: "#1A1A2E" }]}>{task.workoutTitle}</Text>
@@ -450,6 +492,7 @@ export default function HomeScreen() {
               </View>
             </View>
           </LinearGradient>
+          )}
 
           <Text style={[styles.quoteText, { color: colors.muted }]}>{task.quote}</Text>
         </View>
@@ -503,14 +546,14 @@ export default function HomeScreen() {
       {/* View toggle icons */}
       <View style={styles.viewToggleRow}>
         <View style={styles.viewToggleIcons}>
-          <TouchableOpacity style={[styles.viewToggleBtn, { backgroundColor: colors.primary }]}>
-            <Text style={{ color: "#fff", fontSize: 14 }}>📊</Text>
+          <TouchableOpacity style={[styles.viewToggleBtn, { backgroundColor: historyViewMode === "chart" ? colors.primary : colors.surface }]} onPress={() => setHistoryViewMode("chart")}>
+            <Text style={{ color: historyViewMode === "chart" ? "#fff" : colors.muted, fontSize: 14 }}>📊</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.viewToggleBtn, { backgroundColor: colors.surface }]}>
-            <Text style={{ fontSize: 14 }}>📅</Text>
+          <TouchableOpacity style={[styles.viewToggleBtn, { backgroundColor: historyViewMode === "calendar" ? colors.primary : colors.surface }]} onPress={() => setHistoryViewMode("calendar")}>
+            <Text style={{ color: historyViewMode === "calendar" ? "#fff" : colors.muted, fontSize: 14 }}>📅</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.viewToggleBtn, { backgroundColor: colors.surface }]}>
-            <Text style={{ fontSize: 14 }}>📋</Text>
+          <TouchableOpacity style={[styles.viewToggleBtn, { backgroundColor: historyViewMode === "list" ? colors.primary : colors.surface }]} onPress={() => setHistoryViewMode("list")}>
+            <Text style={{ color: historyViewMode === "list" ? "#fff" : colors.muted, fontSize: 14 }}>📋</Text>
           </TouchableOpacity>
         </View>
         <TouchableOpacity onPress={handleAddRecord}>
@@ -520,29 +563,75 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Chart with real data */}
-      <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Text style={[styles.chartTitle, { color: colors.foreground }]}>
-          {historySubTab === "calories" ? "🔥 Daily Calorie Trend" : historySubTab === "macros" ? "🥩 Daily Protein Trend" : "🏋️ Workout Duration Trend"}
-        </Text>
-        <View style={styles.chartArea}>
+      {/* Chart / Calendar / List view */}
+      {historyViewMode === "chart" && (
+        <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.chartTitle, { color: colors.foreground }]}>
+            {historySubTab === "calories" ? "🔥 Daily Calorie Trend" : historySubTab === "macros" ? "🥩 Daily Protein Trend" : "🏋️ Workout Duration Trend"}
+          </Text>
+          <View style={styles.chartArea}>
+            {["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"].map((day, i) => {
+              const data = chartData[historySubTab];
+              const maxVal = Math.max(...data);
+              const barHeight = maxVal > 0 ? Math.max(4, (data[i] / maxVal) * 70) : 4;
+              const isToday = i === 6;
+              return (
+                <View key={day} style={styles.chartCol}>
+                  <Text style={[styles.chartBarValue, { color: colors.muted }]}>
+                    {historySubTab === "calories" ? Math.round(data[i] / 100) : data[i]}
+                  </Text>
+                  <View style={[styles.chartBar, { height: barHeight, backgroundColor: isToday ? colors.primary : "#E5E7EB" }]} />
+                  <Text style={[styles.chartDay, { color: colors.muted }]}>{day}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {historyViewMode === "calendar" && (
+        <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.chartTitle, { color: colors.foreground }]}>📅 Weekly Calendar</Text>
+          <View style={styles.calendarGrid}>
+            {["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"].map((day, i) => {
+              const data = chartData[historySubTab];
+              const hasData = data[i] > 0;
+              const isToday = i === 6;
+              return (
+                <View key={day} style={[styles.calendarDay, { backgroundColor: isToday ? colors.primary : hasData ? "#DCFCE7" : colors.background, borderColor: colors.border }]}>
+                  <Text style={[styles.calendarDayLabel, { color: isToday ? "#fff" : colors.muted }]}>{day}</Text>
+                  <Text style={[styles.calendarDayValue, { color: isToday ? "#fff" : colors.foreground }]}>
+                    {historySubTab === "calories" ? `${Math.round(data[i])}` : `${data[i]}`}
+                  </Text>
+                  {hasData && <Text style={{ fontSize: 10, color: isToday ? "#fff" : "#22C55E" }}>✓</Text>}
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {historyViewMode === "list" && (
+        <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.chartTitle, { color: colors.foreground }]}>📋 Daily Records</Text>
           {["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"].map((day, i) => {
             const data = chartData[historySubTab];
-            const maxVal = Math.max(...data);
-            const barHeight = maxVal > 0 ? Math.max(4, (data[i] / maxVal) * 70) : 4;
+            const unit = historySubTab === "calories" ? "kcal" : historySubTab === "macros" ? "g protein" : "min";
             const isToday = i === 6;
             return (
-              <View key={day} style={styles.chartCol}>
-                <Text style={[styles.chartBarValue, { color: colors.muted }]}>
-                  {historySubTab === "calories" ? Math.round(data[i] / 100) : data[i]}
+              <View key={day} style={[styles.listRow, { borderBottomColor: colors.border }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  {isToday && <View style={[styles.todayDot, { backgroundColor: colors.primary }]} />}
+                  <Text style={[styles.listDay, { color: isToday ? colors.primary : colors.foreground }]}>{day}{isToday ? " (Today)" : ""}</Text>
+                </View>
+                <Text style={[styles.listValue, { color: data[i] > 0 ? colors.foreground : colors.muted }]}>
+                  {data[i] > 0 ? `${data[i]} ${unit}` : "—"}
                 </Text>
-                <View style={[styles.chartBar, { height: barHeight, backgroundColor: isToday ? colors.primary : "#E5E7EB" }]} />
-                <Text style={[styles.chartDay, { color: colors.muted }]}>{day}</Text>
               </View>
             );
           })}
         </View>
-      </View>
+      )}
     </>
   );
 
@@ -932,6 +1021,18 @@ const styles = StyleSheet.create({
   hatchedImage: { width: 130, height: 130 },
   hatchedTitle: { fontSize: 22, fontWeight: "800", marginTop: 8 },
   hatchedSubtitle: { fontSize: 14 },
+
+  // Calendar view
+  calendarGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
+  calendarDay: { width: 70, padding: 10, borderRadius: 12, borderWidth: 1, alignItems: "center", gap: 4 },
+  calendarDayLabel: { fontSize: 11, fontWeight: "600" },
+  calendarDayValue: { fontSize: 14, fontWeight: "700" },
+
+  // List view
+  listRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1 },
+  listDay: { fontSize: 14, fontWeight: "600" },
+  listValue: { fontSize: 14, fontWeight: "700" },
+  todayDot: { width: 8, height: 8, borderRadius: 4 },
 
   // Monster Action Buttons
   monsterActions: { flexDirection: "row", gap: 10, marginTop: 12 },
