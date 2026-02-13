@@ -157,11 +157,17 @@ export default function NearbyMapScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              if (router.canDismiss()) {
+                router.dismiss();
+              } else {
+                router.back();
+              }
+            }}
             style={[styles.backBtn, { backgroundColor: colors.surface }]}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 18 }}>←</Text>
+            <IconSymbol name="arrow.left" size={20} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t.nearbyTrainers}</Text>
           <View style={{ width: 40 }} />
@@ -285,7 +291,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   backBtn: {
     width: 40,

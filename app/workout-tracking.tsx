@@ -11,6 +11,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useActivity } from "@/lib/activity-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -165,7 +166,11 @@ export default function WorkoutTrackingScreen() {
   }, [elapsedSeconds, handleComplete]);
 
   const handleGoBack = useCallback(() => {
-    router.back();
+    if (router.canDismiss()) {
+      router.dismiss();
+    } else {
+      router.back();
+    }
   }, [router]);
 
   const finalMinutes = Math.max(1, Math.ceil(elapsedSeconds / 60));
@@ -182,7 +187,7 @@ export default function WorkoutTrackingScreen() {
             style={[styles.backBtn, { backgroundColor: colors.surface }]}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 18 }}>←</Text>
+            <IconSymbol name="arrow.left" size={20} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.topTitle, { color: colors.foreground }]}>
             {isCompleted ? t.workoutComplete : (t.workoutInProgress || "Workout in Progress")}
@@ -355,7 +360,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   backBtn: {
     width: 40,

@@ -23,28 +23,28 @@ const MOCK_OPPONENTS = [
   {
     id: 1, name: "FitChamp", distance: "2.5km", online: true, level: 18,
     monsterType: "Powerlifter", monsterImage: require("@/assets/monsters/powerlifter-stage2.png"),
-    streak: "24 Hour Fitness", matchPercent: 85, todayExp: 450,
+    streakKey: "streak24HourFitness" as const, matchPercent: 85, todayExp: 450,
     strength: 25, defense: 20, agility: 18, hp: 280,
     gradient: ["#FEF3C7", "#FDE68A"] as readonly [string, string],
   },
   {
     id: 2, name: "GymRat", distance: "5km", online: true, level: 14,
     monsterType: "Bodybuilder", monsterImage: require("@/assets/monsters/bodybuilder-stage2.png"),
-    streak: "Morning Warrior", matchPercent: 72, todayExp: 320,
+    streakKey: "streakMorningWarrior" as const, matchPercent: 72, todayExp: 320,
     strength: 22, defense: 15, agility: 20, hp: 220,
     gradient: ["#DCFCE7", "#BBF7D0"] as readonly [string, string],
   },
   {
     id: 3, name: "YogaMaster", distance: "1km", online: false, level: 12,
     monsterType: "Physique", monsterImage: require("@/assets/monsters/physique-stage2.png"),
-    streak: "Zen Warrior", matchPercent: 65, todayExp: 200,
+    streakKey: "streakZenWarrior" as const, matchPercent: 65, todayExp: 200,
     strength: 15, defense: 18, agility: 25, hp: 200,
     gradient: ["#DBEAFE", "#BFDBFE"] as readonly [string, string],
   },
   {
     id: 4, name: "IronWill", distance: "8km", online: true, level: 22,
     monsterType: "Powerlifter", monsterImage: require("@/assets/monsters/powerlifter-stage3.png"),
-    streak: "Beast Mode", matchPercent: 90, todayExp: 600,
+    streakKey: "streakBeastMode" as const, matchPercent: 90, todayExp: 600,
     strength: 30, defense: 25, agility: 15, hp: 350,
     gradient: ["#FEF3C7", "#FDE68A"] as readonly [string, string],
   },
@@ -87,7 +87,7 @@ type BattleState = {
 export default function BattleScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, tr } = useI18n();
   const [activeTab, setActiveTab] = useState<"match" | "requests" | "friends">("match");
   const [swipesLeft, setSwipesLeft] = useState(50);
   const [currentOpponent, setCurrentOpponent] = useState(0);
@@ -153,13 +153,13 @@ export default function BattleScreen() {
     const alreadyFriend = friends.some((f) => f.id === opp.id);
 
     if (alreadyFriend) {
-      Alert.alert("Already Friends", `${opp.name} is already your friend!`);
+      Alert.alert(t.alreadyFriendsTitle, tr("alreadyFriendsMsg", { name: opp.name }));
       setCurrentOpponent((prev) => prev + 1);
       return;
     }
 
     if (alreadyRequested) {
-      Alert.alert("Request Sent", `You already have a pending request with ${opp.name}.`);
+      Alert.alert(t.requestAlreadySentTitle, tr("requestAlreadySentMsg", { name: opp.name }));
       setCurrentOpponent((prev) => prev + 1);
       return;
     }
@@ -169,8 +169,8 @@ export default function BattleScreen() {
     if (direction === "star") {
       // Super like = instant mutual match (both agree)
       Alert.alert(
-        "It's a Match! ⭐",
-        `You super liked ${opp.name}!\nThey accepted your request instantly!`,
+        t.itsAMatchTitle,
+        tr("itsAMatchMsg", { name: opp.name }),
       );
       setFriends((prev) => [
         ...prev,
@@ -183,8 +183,8 @@ export default function BattleScreen() {
     } else {
       // Regular like = send friend request (needs acceptance)
       Alert.alert(
-        "Friend Request Sent! 💌",
-        `You sent a friend request to ${opp.name}.\nThey need to accept before you can battle!`,
+        t.friendRequestSentEmoji,
+        tr("friendRequestSentMsg", { name: opp.name }),
       );
       setFriendRequests((prev) => [
         ...prev,
@@ -243,7 +243,7 @@ export default function BattleScreen() {
         },
       ];
     });
-    Alert.alert("Friend Added! 🎉", `${request.from.name} is now your friend!\nYou can battle them anytime.`);
+    Alert.alert(t.friendAddedTitle, tr("friendAddedMsg", { name: request.from.name }));
   }, []);
 
   // Reject incoming friend request
@@ -259,7 +259,7 @@ export default function BattleScreen() {
     setBattle({
       phase: "intro", playerHp: playerMaxHp, playerMaxHp,
       enemyHp: opp.hp, enemyMaxHp: opp.hp, turn: "player",
-      log: [`Battle started against ${opp.name}'s ${opp.monsterType}!`],
+      log: [tr("battleStartedLog", { name: opp.name, type: opp.monsterType })],
       opponent: opp, actionLock: false,
     });
     setShowBattle(true);
@@ -297,29 +297,29 @@ export default function BattleScreen() {
         if (action === "attack") {
           const dmg = Math.floor(Math.random() * 20) + 15;
           newEnemyHp = Math.max(0, newEnemyHp - dmg);
-          newLog.push(`⚔️ Your monster attacks for ${dmg} damage!`);
+          newLog.push(tr("yourMonsterAttacksLog", { dmg: String(dmg) }));
         } else if (action === "defend") {
-          newLog.push(`🛡️ Your monster defends! Damage reduced next turn.`);
+          newLog.push(t.yourMonsterDefendsLog);
         } else {
           const dmg = Math.floor(Math.random() * 35) + 25;
           newEnemyHp = Math.max(0, newEnemyHp - dmg);
-          newLog.push(`🔥 Special Attack! ${dmg} critical damage!`);
+          newLog.push(tr("specialAttackLog", { dmg: String(dmg) }));
         }
 
         if (newEnemyHp <= 0) {
-          newLog.push(`🏆 You defeated ${prev.opponent.name}!`);
+          newLog.push(tr("youDefeatedLog", { name: prev.opponent.name }));
           return { ...prev, enemyHp: 0, log: newLog, phase: "result", result: "win", turn: "player", actionLock: false };
         }
 
         const isDefending = action === "defend";
         const enemyDmg = Math.max(5, Math.floor(Math.random() * 18) + 10 - (isDefending ? 10 : 0));
         newPlayerHp = Math.max(0, newPlayerHp - enemyDmg);
-        newLog.push(`💥 ${prev.opponent.name}'s monster attacks for ${enemyDmg} damage!`);
+        newLog.push(tr("enemyAttacksLog", { name: prev.opponent.name, dmg: String(enemyDmg) }));
 
         setTimeout(() => shakeAnimation(playerShake), 200);
 
         if (newPlayerHp <= 0) {
-          newLog.push(`💀 Your monster was defeated...`);
+          newLog.push(t.yourMonsterDefeatedLog);
           return { ...prev, playerHp: 0, enemyHp: newEnemyHp, log: newLog, phase: "result", result: "lose", turn: "player", actionLock: false };
         }
 
@@ -388,7 +388,7 @@ export default function BattleScreen() {
               <LinearGradient colors={["#7C3AED", "#6D28D9"]} style={styles.banner}>
                 <Text style={styles.bannerText}>{t.swipeToFind}</Text>
                 <View style={styles.nearbyBadge}>
-                  <Text style={styles.nearbyText}>{MOCK_OPPONENTS.length} nearby</Text>
+                  <Text style={styles.nearbyText}>{MOCK_OPPONENTS.length} {t.nearby}</Text>
                 </View>
               </LinearGradient>
 
@@ -414,10 +414,10 @@ export default function BattleScreen() {
               <View style={[styles.opponentCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={styles.cardBadges}>
                   <View style={[styles.streakBadge, { backgroundColor: "#F59E0B" }]}>
-                    <Text style={styles.streakText}>🔥 {opponent.streak}</Text>
+                    <Text style={styles.streakText}>🔥 {(t as any)[opponent.streakKey] || opponent.streakKey}</Text>
                   </View>
                   <View style={[styles.matchBadge, { backgroundColor: "#22C55E" }]}>
-                    <Text style={styles.matchText}>{opponent.matchPercent}% Match</Text>
+                    <Text style={styles.matchText}>{tr("matchPercent", { percent: String(opponent.matchPercent) })}</Text>
                   </View>
                 </View>
 
@@ -432,18 +432,18 @@ export default function BattleScreen() {
                     <Text style={[styles.opponentName, { color: colors.foreground }]}>{opponent.name}</Text>
                     {opponent.online && <View style={styles.onlineDot} />}
                   </View>
-                  <Text style={[styles.opponentDistance, { color: colors.muted }]}>{opponent.distance} away</Text>
+                  <Text style={[styles.opponentDistance, { color: colors.muted }]}>{opponent.distance} {t.away}</Text>
                 </View>
 
                 <View style={styles.levelRow}>
                   <View style={[styles.levelBadge, { backgroundColor: colors.primary }]}>
                     <Text style={styles.levelText}>Lv.{opponent.level}</Text>
                   </View>
-                  <Text style={[styles.todayExp, { color: colors.muted }]}>Today: {opponent.todayExp} EXP</Text>
+                  <Text style={[styles.todayExp, { color: colors.muted }]}>{t.todayExpLabel} {opponent.todayExp} EXP</Text>
                 </View>
 
                 <View style={[styles.monsterTypeRow, { borderTopColor: colors.border }]}>
-                  <Text style={[styles.monsterType, { color: colors.foreground }]}>{opponent.monsterType} Lv.{opponent.level}</Text>
+                  <Text style={[styles.monsterType, { color: colors.foreground }]}>{(t as any)[opponent.monsterType.toLowerCase()] || opponent.monsterType} Lv.{opponent.level}</Text>
                   <View style={styles.statsRow}>
                     <Text style={styles.statEmoji}>🥩 {opponent.strength}</Text>
                     <Text style={styles.statEmoji}>🛡️ {opponent.defense}</Text>
@@ -501,10 +501,10 @@ export default function BattleScreen() {
                         {req.from.online && <View style={styles.onlineDot} />}
                       </View>
                       <Text style={[styles.requestLevel, { color: colors.muted }]}>
-                        {req.from.monsterType} Lv.{req.from.level} · {req.from.distance}
+                        {(t as any)[req.from.monsterType.toLowerCase()] || req.from.monsterType} Lv.{req.from.level} · {req.from.distance}
                       </Text>
                       <Text style={[styles.requestTime, { color: colors.muted }]}>
-                        {getTimeAgo(req.timestamp)}
+                        {getTimeAgo(req.timestamp, t as any)}
                       </Text>
                     </View>
                     <View style={styles.requestActions}>
@@ -544,7 +544,7 @@ export default function BattleScreen() {
                     <View style={styles.requestInfo}>
                       <Text style={[styles.requestName, { color: colors.foreground }]}>{req.from.name}</Text>
                       <Text style={[styles.requestLevel, { color: colors.muted }]}>
-                        {req.from.monsterType} Lv.{req.from.level}
+                        {(t as any)[req.from.monsterType.toLowerCase()] || req.from.monsterType} Lv.{req.from.level}
                       </Text>
                     </View>
                     <View style={[styles.pendingBadge, { backgroundColor: "#FEF3C7" }]}>
@@ -582,7 +582,7 @@ export default function BattleScreen() {
                           <Text style={[styles.friendName, { color: colors.foreground }]}>{friend.name}</Text>
                           {friend.online && <View style={styles.onlineDot} />}
                         </View>
-                        <Text style={[styles.friendLevel, { color: colors.muted }]}>{friend.monsterType} Lv.{friend.level}</Text>
+                        <Text style={[styles.friendLevel, { color: colors.muted }]}>{(t as any)[friend.monsterType.toLowerCase()] || friend.monsterType} Lv.{friend.level}</Text>
                       </View>
                       <View style={styles.friendActions}>
                         <TouchableOpacity
@@ -636,7 +636,7 @@ export default function BattleScreen() {
                     </LinearGradient>
                     <View style={styles.battleInfo}>
                       <Text style={[styles.battleName, { color: colors.foreground }]}>{battle.opponent.name}</Text>
-                      <Text style={[styles.battleType, { color: colors.muted }]}>{battle.opponent.monsterType} Lv.{battle.opponent.level}</Text>
+                      <Text style={[styles.battleType, { color: colors.muted }]}>{(t as any)[battle.opponent.monsterType.toLowerCase()] || battle.opponent.monsterType} Lv.{battle.opponent.level}</Text>
                       <View style={[styles.hpBar, { backgroundColor: colors.border }]}>
                         <View style={[styles.hpFill, { width: `${(battle.enemyHp / battle.enemyMaxHp) * 100}%`, backgroundColor: battle.enemyHp > battle.enemyMaxHp * 0.3 ? "#22C55E" : "#EF4444" }]} />
                       </View>
@@ -654,7 +654,7 @@ export default function BattleScreen() {
                     </LinearGradient>
                     <View style={styles.battleInfo}>
                       <Text style={[styles.battleName, { color: colors.foreground }]}>Flexo</Text>
-                      <Text style={[styles.battleType, { color: colors.muted }]}>Bodybuilder Lv.1</Text>
+                      <Text style={[styles.battleType, { color: colors.muted }]}>{t.bodybuilder} Lv.1</Text>
                       <View style={[styles.hpBar, { backgroundColor: colors.border }]}>
                         <View style={[styles.hpFill, { width: `${(battle.playerHp / battle.playerMaxHp) * 100}%`, backgroundColor: battle.playerHp > battle.playerMaxHp * 0.3 ? "#22C55E" : "#EF4444" }]} />
                       </View>
@@ -716,14 +716,15 @@ export default function BattleScreen() {
   );
 }
 
-function getTimeAgo(date: Date): string {
+function getTimeAgo(date: Date, t?: any): string {
   const diff = Date.now() - date.getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t?.justNow || "Just now";
+  if (minutes < 60) return t?.minutesAgo?.replace("{n}", String(minutes)) || `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 24) return t?.hoursAgo?.replace("{n}", String(hours)) || `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return t?.daysAgo?.replace("{n}", String(days)) || `${days}d ago`;
 }
 
 const styles = StyleSheet.create({

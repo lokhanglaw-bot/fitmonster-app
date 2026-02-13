@@ -323,3 +323,8 @@
 ## Bug Fix - Round 16c
 - [x] Translate workout screen exercise names (Running, Cycling, Swimming, etc.) to Chinese
 - [x] Translate all other hardcoded English strings on the workout screen
+
+## Bug Fix - Round 17
+- [x] Fix back arrow position too high on all sub-pages (move lower into safe area)
+- [x] Fix back arrow not working (navigation back not firing) on all sub-pages
+- [x] Translate remaining English text on battle page (battle log messages, monster types, time labels)

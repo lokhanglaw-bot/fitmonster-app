@@ -119,7 +119,7 @@ export default function ChatScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         {/* Header */}
         <View style={[styles.chatHeader, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => { if (router.canDismiss()) { router.dismiss(); } else { router.back(); } }} style={styles.backBtn}>
             <IconSymbol name="arrow.left" size={24} color={colors.foreground} />
           </TouchableOpacity>
           <View style={styles.chatHeaderInfo}>
@@ -175,7 +175,7 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  chatHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 12, borderBottomWidth: 1, gap: 8 },
+  chatHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, gap: 8 },
   backBtn: { padding: 8 },
   chatHeaderInfo: { flex: 1 },
   chatHeaderName: { fontSize: 18, fontWeight: "700" },
