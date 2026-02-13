@@ -1,125 +1,178 @@
-import { Text, View, TouchableOpacity, ScrollView } from "react-native";
+import { ScrollView, Text, View, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { Image } from "expo-image";
 import { ScreenContainer } from "@/components/screen-container";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useState } from "react";
 
-/**
- * Workout Tracker Screen
- * 
- * Features:
- * - Exercise selection
- * - Workout timer
- * - Progress tracking
- * - Workout history
- */
+const WORKOUT_TYPES = ["All", "Running", "Weight Training", "Yoga", "Basketball"];
+
+const EXERCISES = [
+  { id: 1, name: "Running", icon: "🏃", met: 8, category: "Running" },
+  { id: 2, name: "Cycling", icon: "🚴", met: 7.5, category: "Running" },
+  { id: 3, name: "Swimming", icon: "🏊", met: 7, category: "Running" },
+  { id: 4, name: "Walking", icon: "🚶", met: 3.5, category: "Running" },
+  { id: 5, name: "Hiking", icon: "🥾", met: 6, category: "Running" },
+  { id: 6, name: "Jump Rope", icon: "🤸", met: 10, category: "Running" },
+  { id: 7, name: "Bench Press", icon: "🏋️", met: 6, category: "Weight Training" },
+  { id: 8, name: "Squats", icon: "🦵", met: 5.5, category: "Weight Training" },
+  { id: 9, name: "Deadlift", icon: "💪", met: 6, category: "Weight Training" },
+  { id: 10, name: "Yoga Flow", icon: "🧘", met: 3, category: "Yoga" },
+  { id: 11, name: "Basketball", icon: "🏀", met: 6.5, category: "Basketball" },
+];
+
 export default function WorkoutScreen() {
   const colors = useColors();
-  const [activeWorkout, setActiveWorkout] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState("All");
+  const [totalExp, setTotalExp] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
+  const [steps, setSteps] = useState(0);
 
-  const workoutCategories = [
-    { id: 'strength', name: 'Strength', icon: 'dumbbell.fill', color: '#EF4444' },
-    { id: 'cardio', name: 'Cardio', icon: 'bolt.fill', color: '#F59E0B' },
-    { id: 'flexibility', name: 'Flexibility', icon: 'person.fill', color: '#22C55E' },
-    { id: 'sports', name: 'Sports', icon: 'bolt.fill', color: '#3B82F6' },
-  ];
+  const filteredExercises =
+    selectedType === "All"
+      ? EXERCISES
+      : EXERCISES.filter((e) => e.category === selectedType);
 
-  const recentWorkouts = [
-    { name: 'Bench Press', sets: 4, reps: 10, weight: 80, time: '2 hours ago' },
-    { name: 'Running', duration: 30, distance: 5, time: 'Yesterday' },
-    { name: 'Squats', sets: 3, reps: 12, weight: 100, time: '2 days ago' },
-  ];
+  const handleExercisePress = (exercise: (typeof EXERCISES)[0]) => {
+    Alert.alert(
+      exercise.name,
+      `MET Value: ${exercise.met}\n\nStart a ${exercise.name} session?\nEXP will be calculated based on duration and intensity.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Start",
+          onPress: () => {
+            setTotalExp((prev) => prev + exercise.met * 10);
+            setCompletedCount((prev) => prev + 1);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleManualLog = () => {
+    Alert.alert("Manual Log", "Manual workout logging form will appear here.");
+  };
+
+  const handleSyncSteps = () => {
+    Alert.alert("Sync Steps", "Step syncing will connect to your device's health data.");
+  };
 
   return (
     <ScreenContainer>
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View className="flex-1 px-6 pt-6 gap-6">
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}>
+        <View style={styles.container}>
           {/* Header */}
-          <View>
-            <Text className="text-3xl font-bold text-foreground">Workout</Text>
-            <Text className="text-sm text-muted mt-1">Train your monster and gain XP</Text>
+          <View style={styles.header}>
+            <View>
+              <Text style={[styles.title, { color: colors.foreground }]}>Workout</Text>
+              <Text style={[styles.subtitle, { color: colors.muted }]}>Start Training 💪</Text>
+            </View>
+            <View style={[styles.expBadge, { backgroundColor: colors.primary }]}>
+              <Text style={styles.expText}>{totalExp} EXP</Text>
+            </View>
           </View>
 
-          {/* Active Workout Timer */}
-          {activeWorkout && (
-            <View className="bg-primary rounded-3xl p-6 items-center">
-              <Text className="text-white text-lg font-semibold mb-2">Workout in Progress</Text>
-              <Text className="text-white text-5xl font-bold">15:32</Text>
-              <View className="flex-row gap-3 mt-6">
-                <TouchableOpacity 
-                  className="bg-white/20 rounded-xl px-6 py-3"
-                  activeOpacity={0.7}
-                  onPress={() => setActiveWorkout(null)}
-                >
-                  <Text className="text-white font-semibold">Pause</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  className="bg-white rounded-xl px-6 py-3"
-                  activeOpacity={0.7}
-                  onPress={() => setActiveWorkout(null)}
-                >
-                  <Text className="text-primary font-semibold">Finish</Text>
-                </TouchableOpacity>
+          {/* Action Buttons */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={handleManualLog}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.actionIcon}>📝</Text>
+              <Text style={[styles.actionText, { color: colors.foreground }]}>Manual Log</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={handleSyncSteps}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.actionIcon}>👣</Text>
+              <Text style={[styles.actionText, { color: colors.foreground }]}>Sync Steps</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Monster Card */}
+          <View style={[styles.monsterCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.monsterRow}>
+              <Image
+                source={require("@/assets/monsters/bodybuilder-stage1.png")}
+                style={styles.monsterImg}
+                contentFit="contain"
+              />
+              <View style={styles.monsterInfo}>
+                <Text style={[styles.monsterName, { color: colors.foreground }]}>Flexo</Text>
+                <Text style={[styles.monsterLevel, { color: colors.muted }]}>Level 1</Text>
+                <View style={[styles.xpBarTrack, { backgroundColor: colors.background }]}>
+                  <View style={[styles.xpBarFill, { width: "0%", backgroundColor: colors.primary }]} />
+                </View>
+                <Text style={[styles.bestType, { color: colors.muted }]}>Best: Weight Training</Text>
               </View>
             </View>
-          )}
-
-          {/* Workout Categories */}
-          <View className="bg-surface rounded-2xl p-4" style={{ borderWidth: 1, borderColor: colors.border }}>
-            <Text className="text-lg font-bold text-foreground mb-4">Choose Workout Type</Text>
-            <View className="flex-row flex-wrap gap-3">
-              {workoutCategories.map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  className="flex-1 min-w-[45%] bg-background rounded-xl p-4 items-center"
-                  activeOpacity={0.7}
-                  onPress={() => setActiveWorkout(category.id)}
-                >
-                  <View 
-                    className="rounded-full p-3 mb-2"
-                    style={{ backgroundColor: category.color + '20' }}
-                  >
-                    <IconSymbol name={category.icon as any} size={28} color={category.color} />
-                  </View>
-                  <Text className="text-foreground font-semibold">{category.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
           </View>
 
-          {/* Quick Start Exercises */}
-          <View className="bg-surface rounded-2xl p-4" style={{ borderWidth: 1, borderColor: colors.border }}>
-            <Text className="text-lg font-bold text-foreground mb-3">Popular Exercises</Text>
-            <View className="gap-2">
-              {['Push-ups', 'Squats', 'Plank', 'Jumping Jacks'].map((exercise) => (
-                <TouchableOpacity
-                  key={exercise}
-                  className="bg-background rounded-xl px-4 py-3 flex-row items-center justify-between"
-                  activeOpacity={0.7}
+          {/* Workout Type Filters */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            {WORKOUT_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.filterPill,
+                  {
+                    backgroundColor: selectedType === type ? colors.primary : colors.surface,
+                    borderColor: selectedType === type ? colors.primary : colors.border,
+                  },
+                ]}
+                onPress={() => setSelectedType(type)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: selectedType === type ? "#fff" : colors.muted },
+                  ]}
                 >
-                  <Text className="text-foreground font-medium">{exercise}</Text>
-                  <IconSymbol name="chevron.right" size={20} color={colors.muted} />
-                </TouchableOpacity>
-              ))}
-            </View>
+                  {type}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Exercise Grid */}
+          <View style={styles.exerciseGrid}>
+            {filteredExercises.map((exercise) => (
+              <TouchableOpacity
+                key={exercise.id}
+                style={[styles.exerciseCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => handleExercisePress(exercise)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.exerciseIcon}>{exercise.icon}</Text>
+                <Text style={[styles.exerciseName, { color: colors.foreground }]}>{exercise.name}</Text>
+                <Text style={[styles.exerciseMet, { color: colors.primary }]}>MET {exercise.met}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
-          {/* Recent Workouts */}
-          <View className="bg-surface rounded-2xl p-4 mb-6" style={{ borderWidth: 1, borderColor: colors.border }}>
-            <Text className="text-lg font-bold text-foreground mb-3">Recent Workouts</Text>
-            <View className="gap-3">
-              {recentWorkouts.map((workout, index) => (
-                <View key={index} className="bg-background rounded-xl p-3">
-                  <Text className="text-foreground font-semibold">{workout.name}</Text>
-                  <Text className="text-xs text-muted mt-1">
-                    {workout.sets && `${workout.sets} sets × ${workout.reps} reps`}
-                    {workout.weight && ` • ${workout.weight}kg`}
-                    {workout.duration && `${workout.duration} min`}
-                    {workout.distance && ` • ${workout.distance}km`}
-                    {` • ${workout.time}`}
-                  </Text>
-                </View>
-              ))}
+          {/* Bottom Stats */}
+          <View style={[styles.bottomStats, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.bottomStatItem}>
+              <Text style={[styles.bottomStatValue, { color: colors.foreground }]}>{completedCount}</Text>
+              <Text style={[styles.bottomStatLabel, { color: colors.muted }]}>Completed</Text>
+            </View>
+            <View style={[styles.bottomStatDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.bottomStatItem}>
+              <Text style={[styles.bottomStatValue, { color: colors.primary }]}>{totalExp}</Text>
+              <Text style={[styles.bottomStatLabel, { color: colors.muted }]}>EXP Earned</Text>
+            </View>
+            <View style={[styles.bottomStatDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.bottomStatItem}>
+              <Text style={[styles.bottomStatValue, { color: colors.foreground }]}>{steps}</Text>
+              <Text style={[styles.bottomStatLabel, { color: colors.muted }]}>Steps</Text>
             </View>
           </View>
         </View>
@@ -127,3 +180,159 @@ export default function WorkoutScreen() {
     </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    gap: 16,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: "800",
+  },
+  subtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  expBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  expText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 8,
+  },
+  actionIcon: {
+    fontSize: 20,
+  },
+  actionText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  monsterCard: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+  },
+  monsterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  monsterImg: {
+    width: 80,
+    height: 80,
+  },
+  monsterInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  monsterName: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  monsterLevel: {
+    fontSize: 13,
+  },
+  xpBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+    marginTop: 4,
+  },
+  xpBarFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  bestType: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  filterRow: {
+    gap: 8,
+    paddingVertical: 4,
+  },
+  filterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  exerciseGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  exerciseCard: {
+    width: "30%",
+    flexGrow: 1,
+    minWidth: 100,
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 6,
+  },
+  exerciseIcon: {
+    fontSize: 32,
+  },
+  exerciseName: {
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  exerciseMet: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  bottomStats: {
+    flexDirection: "row",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+  },
+  bottomStatItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  bottomStatValue: {
+    fontSize: 22,
+    fontWeight: "800",
+  },
+  bottomStatLabel: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  bottomStatDivider: {
+    width: 1,
+    height: 36,
+    alignSelf: "center",
+  },
+});

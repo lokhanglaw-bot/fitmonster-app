@@ -2,10 +2,10 @@
 
 ## Core Infrastructure
 - [x] Set up Expo Router file-based routing with tabs
-- [ ] Migrate authentication system from Loveable to Expo auth
+- [x] Migrate authentication system from Loveable to Expo auth
 - [ ] Configure Supabase integration for backend
 - [ ] Set up i18n for multi-language support
-- [ ] Configure theme system with light/dark mode
+- [x] Configure theme system with light/dark mode
 
 ## Screens
 - [x] Home screen with monster display and daily stats
@@ -13,14 +13,14 @@
 - [x] Workout tracker with exercise logging
 - [x] Battle arena with matchmaking
 - [x] Dashboard with analytics and trends
-- [ ] Authentication screen (login/signup)
+- [x] Authentication screen (login/signup)
 - [ ] Pokedex screen (monster collection)
 - [ ] Guild/Social screen with friends and chat
 - [ ] Map screen with quests
 - [ ] Profile/Settings screen
 
 ## Components
-- [ ] Bottom navigation bar with 5 tabs
+- [x] Bottom navigation bar with 5 tabs
 - [ ] Monster card with animations
 - [ ] Add log dialog for quick entries
 - [ ] Camera capture component
@@ -90,3 +90,103 @@
 - [ ] Test on iOS and Android
 - [ ] Verify dark mode styling
 - [ ] Check accessibility features
+
+
+## New Features to Implement (from live app)
+
+### Authentication & User Management
+- [x] Complete authentication page with sign in/sign up toggle
+- [x] Social login (Google, Apple) integration
+- [ ] Email/password authentication (backend integration needed)
+- [x] Trainer name field for signup
+- [ ] Forgot password functionality
+- [ ] User profile with trainer name display
+
+### Home Page Enhancements
+- [x] Personalized greeting with trainer name
+- [x] Gradient stats card (Health Score, Steps, Net EXP)
+- [ ] Tab navigation (Home, Daily Tasks, History)
+- [x] Enhanced monster card with multiple badges
+- [x] Monster stats display (strength, defense, agility icons)
+- [x] Evolution progress bar
+- [ ] "View All" monsters functionality
+- [x] Hatch Egg feature for multiple monsters
+- [x] Daily Quests section with colored cards
+- [x] Quest progress tracking with coin rewards
+- [ ] Quick action buttons with proper styling
+
+### Camera/Food Page Enhancements
+- [ ] AI food analysis integration
+- [x] "Open Camera" functionality
+- [x] "Choose from Gallery" option
+- [ ] Food nutrition display after analysis
+- [ ] Feed monster animation after food logging
+
+### Workout Page Enhancements
+- [x] Manual log workout feature
+- [x] Sync steps from device health
+- [x] Workout type filter pills (Running, Weight Training, Yoga, Basketball)
+- [x] Exercise grid with MET values
+- [x] Best workout tracking
+- [x] Workout completion counter
+- [x] EXP calculation from workouts
+
+### Battle Page Enhancements
+- [x] Swipe-based matchmaking (Tinder-style)
+- [x] Match/Friends tab navigation
+- [x] Opponent cards with fitness streak badges
+- [x] Match percentage calculation
+- [x] Today's swipes limit (50/50)
+- [x] Three swipe actions (Reject, Super Like, Like)
+- [x] Super Like with coin cost
+- [x] Random Wild Battle option
+- [x] Nearby opponents counter
+- [x] Distance and online status display
+
+### Dashboard Page Enhancements
+- [x] Today's steps with goal progress (10,000 steps)
+- [x] Burned calories calculation
+- [x] Net EXP breakdown (Nutrition + Workout)
+- [x] Calorie surplus/deficit indicator
+- [x] Step bonus effects (EXP bonus, Protein efficiency)
+- [x] Daily calorie need display (1800 kcal)
+- [x] Protein intake tracking (0g/100g)
+- [x] Monster growth status card
+- [x] Evolution stage indicator
+- [x] Daily quest progress list
+
+### Data & State Management
+- [ ] User profile data persistence
+- [ ] Monster team management (multiple monsters)
+- [ ] Quest system with progress tracking
+- [ ] Coin/currency system
+- [ ] Fitness streak tracking
+- [ ] Match history and friends list
+- [ ] Daily stats aggregation
+- [ ] EXP calculation system
+- [ ] Evolution system based on progress
+
+### UI/UX Improvements
+- [ ] Gradient backgrounds on cards
+- [ ] Colored progress bars
+- [ ] Badge system (level, type, status)
+- [ ] Swipe gesture support
+- [ ] Tab navigation components
+- [ ] Settings menu in header
+- [ ] Multi-language support (Chinese/English)
+- [ ] Responsive card layouts
+- [ ] Icon system for stats
+- [ ] Coin reward indicators
+
+
+## Database & API (Completed)
+- [x] Database schema with 10 tables (profiles, monsters, workouts, dailyStats, foodLogs, quests, userQuests, battles, matchSwipes, friendships)
+- [x] Database migrations applied successfully
+- [x] Database helper functions for all CRUD operations
+- [x] tRPC API endpoints for profile management
+- [x] tRPC API endpoints for monster management
+- [x] tRPC API endpoints for workout tracking
+- [x] tRPC API endpoints for food logging
+- [x] tRPC API endpoints for quest system
+- [x] tRPC API endpoints for daily stats
+- [x] Seeded 6 initial daily quests

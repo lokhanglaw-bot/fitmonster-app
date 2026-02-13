@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO quests (questType, title, description, targetValue, rewardCoins, rewardExp, icon, isDaily) VALUES\n('steps', 'Morning Walk', 'Take 5,000 steps today', 5000, 50, 100, '🚶', 1),\n('workout', 'Strength Training', 'Complete a 30-minute workout', 30, 100, 200, '💪', 1),\n('nutrition', 'Protein Power', 'Consume 100g of protein', 100, 75, 150, '🥩', 1),\n('hydration', 'Stay Hydrated', 'Drink 8 glasses of water', 8, 25, 50, '💧', 1),\n('calories', 'Calorie Balance', 'Stay within your calorie goal', 1800, 100, 200, '🔥', 1),\n('battle', 'Arena Champion', 'Win 1 battle today', 1, 150, 300, '⚔️', 1);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute INSERT INTO quests (questType, title, description, targetValue, rewardCoins, rewardExp, icon, isDaily) VALUES\n('steps', 'Morning Walk', 'Take 5,000 steps today', 5000, 50, 100, '🚶', 1),\n('workout', 'Strength Training', 'Complete a 30-minute workout', 30, 100, 200, '💪', 1),\n('nutrition', 'Protein Power', 'Consume 100g of protein', 100, 75, 150, '🥩', 1),\n('hydration', 'Stay Hydrated', 'Drink 8 glasses of water', 8, 25, 50, '💧', 1),\n('calories', 'Calorie Balance', 'Stay within your calorie goal', 1800, 100, 200, '🔥', 1),\n('battle', 'Arena Champion', 'Win 1 battle today', 1, 150, 300, '⚔️', 1);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1775
+}
