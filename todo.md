@@ -295,3 +295,6 @@
 - [x] Fix Apple login — shows "Authentication successful! Redirecting..." but stays on login page
 - [x] Remove "Coming Soon" from email login — let users sign in/sign up with username+password locally
 - [x] After email sign in/sign up, navigate user into the app immediately
+
+## Bug Fix - Round 13
+- [x] Fix logout button on Home page — replaced Alert.alert with Modal-based confirmation dialog

@@ -117,6 +117,9 @@ export default function HomeScreen() {
   const workoutDuration = activity.todayWorkoutMinutes;
   const avgProtein = activity.todayProtein;
 
+  // Logout confirmation modal
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   // Add Record modal
   const [showAddRecord, setShowAddRecord] = useState(false);
   const [recordType, setRecordType] = useState<"food" | "workout">("food");
@@ -188,21 +191,13 @@ export default function HomeScreen() {
   }, []);
 
   const handleLogout = useCallback(() => {
-    Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Log Out",
-          style: "destructive",
-          onPress: async () => {
-            await logout();
-            router.replace("/auth");
-          },
-        },
-      ]
-    );
+    setShowLogoutModal(true);
+  }, []);
+
+  const confirmLogout = useCallback(async () => {
+    setShowLogoutModal(false);
+    await logout();
+    router.replace("/auth");
   }, [logout, router]);
 
   const handleAddRecord = useCallback(() => {
@@ -864,6 +859,29 @@ export default function HomeScreen() {
               <Text style={styles.hatchConfirmText}>✅ Save Record</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => setShowAddRecord(false)}>
+              <Text style={[styles.cancelText, { color: colors.muted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Logout Confirmation Modal */}
+      <Modal visible={showLogoutModal} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border, alignItems: "center", paddingVertical: 28, paddingHorizontal: 24 }]}>
+            <Text style={{ fontSize: 48, marginBottom: 12 }}>👋</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign: "center", marginBottom: 8 }]}>Log Out?</Text>
+            <Text style={{ color: colors.muted, fontSize: 15, textAlign: "center", marginBottom: 24, lineHeight: 22 }}>Are you sure you want to log out? Your monsters will miss you!</Text>
+            <TouchableOpacity
+              onPress={confirmLogout}
+              style={{ backgroundColor: "#EF4444", paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14, width: "100%", alignItems: "center", marginBottom: 10 }}
+            >
+              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Log Out</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowLogoutModal(false)}
+              style={[styles.cancelBtn, { borderColor: colors.border, width: "100%" }]}
+            >
               <Text style={[styles.cancelText, { color: colors.muted }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
