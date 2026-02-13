@@ -398,6 +398,88 @@ const en = {
   logMeal: "Log Meal",
   completeToUnlockSkill: "Complete to unlock skill",
 
+  // AI Daily Task Content
+  todaysSuggestion: "Today's {type} Monster Suggestion",
+  homePowerCrusher: "Home Power Crusher",
+  homePowerCrusherDesc: "High-intensity bodyweight strength circuit focusing on compound movements to stimulate muscle hypertrophy and maximize morning energy without gym equipment.",
+  proteinPowerMeal: "Protein Power Meal",
+  proteinPowerMealDesc: "High protein meal plan to support muscle recovery and growth.",
+  proteinMetric: "{amount}g protein",
+  carbsMetric: "{amount}g carbs",
+  fatMetric: "{amount}g fat",
+  dietTip1: "Eat protein within 30 min after workout for best recovery",
+  dietTip2: "Stay hydrated — aim for 2-3 liters of water daily",
+  workoutTip1: "Focus on slow eccentric movements to tear more muscle fibers",
+  workoutTip2: "Keep rest between sets under 60 seconds",
+  ironQuote: '"Iron doesn\'t lie; every rep is a brick in the temple of your physique. Build it strong!"',
+  nutritionBoost: "Nutrition Boost",
+  proteinBlast: "Protein Blast",
+
+  // Quest Descriptions (full)
+  questProteinDescFull: "Consume 100g protein today",
+  questWalkingDescFull: "Walk 5,000 steps today",
+  questStrengthDescFull: "Complete a 30-min workout",
+
+  // Monster Modal
+  myMonsterTeamCount: "My Monster Team ({count})",
+  hatchNewEgg: "Hatch New Egg",
+  chooseMonsterType: "Choose Monster Type",
+  selectTypeToHatch: "Select the type of monster to hatch",
+  nameYourMonster: "Name Your Monster",
+  giveYourMonsterName: "Give your {type} a name",
+  enterMonsterName: "Enter monster name...",
+  hatch: "Hatch!",
+  hatching: "Hatching...",
+  eggCracking: "Your egg is cracking open!",
+  monsterBorn: "{name} was born!",
+  newMonsterJoins: "A new {type} joins your team",
+  awesome: "Awesome!",
+  nameRequired: "Name Required",
+  pleaseNameMonster: "Please give your monster a name!",
+
+  // Add Record Modal
+  foodNameExample: "Food name (e.g. Grilled Chicken)",
+  exerciseNameExample: "Exercise name (e.g. Running)",
+  caloriesKcalPlaceholder: "Calories (kcal)",
+  durationMinPlaceholder: "Duration (minutes)",
+  required: "Required",
+  pleaseEnterName: "Please enter a name for the record.",
+  pleaseEnterCalories: "Please enter the calorie amount.",
+  pleaseEnterDuration: "Please enter the workout duration.",
+  recordSaved: "Record Saved!",
+  statsUpdated: "Your stats have been updated.",
+  refreshed: "Refreshed!",
+  tasksUpdated: "AI Daily Tasks have been updated with new suggestions.",
+
+  // History Sub-tabs
+  caloriesTab: "Calories",
+  macrosTab: "Macros",
+  workoutTab: "Workout",
+
+  // Day names
+  daySat: "Sat",
+  daySun: "Sun",
+  dayMon: "Mon",
+  dayTue: "Tue",
+  dayWed: "Wed",
+  dayThu: "Thu",
+  dayFri: "Fri",
+
+  // Units
+  gProtein: "g protein",
+  minUnit: "min",
+  kcalUnit: "kcal",
+
+  // Monster types
+  bodybuilder: "Bodybuilder",
+  physique: "Physique",
+  powerlifter: "Powerlifter",
+  bodybuilderDesc: "High strength, balanced defense",
+  physiqueDesc: "High agility, fast attacks",
+  powerlifterDesc: "Max strength, heavy hitter",
+  fighter: "Fighter",
+  rookie: "Rookie",
+
   // Chat
   chatTitle: "Chat",
   typeMessage: "Type a message...",
@@ -800,6 +882,88 @@ const zh: Translations = {
   refresh: "刷新",
   logMeal: "記錄餐食",
   completeToUnlockSkill: "完成以解鎖技能",
+
+  // AI Daily Task Content
+  todaysSuggestion: "今日的 {type} 怪獸建議",
+  homePowerCrusher: "居家力量訓練",
+  homePowerCrusherDesc: "高強度徒手力量循環，專注於複合動作以刺激肌肉增生，並在不需健身器材的情況下最大化早晨能量。",
+  proteinPowerMeal: "高蛋白能量餐",
+  proteinPowerMealDesc: "高蛋白質飲食計畫，支持肌肉恢復和增長。",
+  proteinMetric: "{amount}g 蛋白質",
+  carbsMetric: "{amount}g 碳水化合物",
+  fatMetric: "{amount}g 脂肪",
+  dietTip1: "運動後30分鐘內攝取蛋白質以獲得最佳恢復效果",
+  dietTip2: "保持水分補充 — 每日目標2-3升水",
+  workoutTip1: "專注於緩慢離心運動以撒裂更多肌肉纖維",
+  workoutTip2: "組間休息保持在60秒以內",
+  ironQuote: '"鐵不會說謊；每一次重複都是你體格殿堂中的一塊磚。把它建得堅強！"',
+  nutritionBoost: "營養提升",
+  proteinBlast: "蛋白質爆發",
+
+  // Quest Descriptions (full)
+  questProteinDescFull: "今天攝取100g蛋白質",
+  questWalkingDescFull: "今天走倀5,000步",
+  questStrengthDescFull: "完成30分鐘運動",
+
+  // Monster Modal
+  myMonsterTeamCount: "我的怪獸隊伍 ({count})",
+  hatchNewEgg: "孵化新蛋",
+  chooseMonsterType: "選擇怪獸類型",
+  selectTypeToHatch: "選擇要孵化的怪獸類型",
+  nameYourMonster: "給你的怪獸命名",
+  giveYourMonsterName: "給你的 {type} 取個名字",
+  enterMonsterName: "輸入怪獸名字...",
+  hatch: "孵化！",
+  hatching: "孵化中...",
+  eggCracking: "你的蛋正在裂開！",
+  monsterBorn: "{name} 誕生了！",
+  newMonsterJoins: "一隻新的 {type} 加入了你的隊伍",
+  awesome: "太棒了！",
+  nameRequired: "需要名字",
+  pleaseNameMonster: "請給你的怪獸取個名字！",
+
+  // Add Record Modal
+  foodNameExample: "食物名稱（例如：烤雞胸）",
+  exerciseNameExample: "運動名稱（例如：跑步）",
+  caloriesKcalPlaceholder: "卡路里 (kcal)",
+  durationMinPlaceholder: "時長（分鐘）",
+  required: "必填",
+  pleaseEnterName: "請輸入記錄名稱。",
+  pleaseEnterCalories: "請輸入卡路里數量。",
+  pleaseEnterDuration: "請輸入運動時長。",
+  recordSaved: "記錄已儲存！",
+  statsUpdated: "你的數據已更新。",
+  refreshed: "已刷新！",
+  tasksUpdated: "AI 每日任務已更新為新建議。",
+
+  // History Sub-tabs
+  caloriesTab: "卡路里",
+  macrosTab: "巨量營養素",
+  workoutTab: "運動",
+
+  // Day names
+  daySat: "週六",
+  daySun: "週日",
+  dayMon: "週一",
+  dayTue: "週二",
+  dayWed: "週三",
+  dayThu: "週四",
+  dayFri: "週五",
+
+  // Units
+  gProtein: "g 蛋白質",
+  minUnit: "分鐘",
+  kcalUnit: "卡路里",
+
+  // Monster types
+  bodybuilder: "健美選手",
+  physique: "體型達人",
+  powerlifter: "舉重選手",
+  bodybuilderDesc: "高力量，平衡防禦",
+  physiqueDesc: "高敏捷，快速攻擊",
+  powerlifterDesc: "最強力量，重擊手",
+  fighter: "戰士",
+  rookie: "新手",
 
   // Chat
   chatTitle: "聊天",

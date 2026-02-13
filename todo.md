@@ -314,3 +314,8 @@
 - [x] Default language is English, user can switch to Chinese
 - [x] Persist language preference with AsyncStorage
 - [x] Translate all content across all screens (Home, Workout, Camera/Food, Battle, Dashboard, Auth, Chat, Workout Tracking, Nearby Map)
+
+## Bug Fix - Round 16b
+- [x] Fix "Workout" text still showing in English when Chinese is selected
+- [x] Fix "Daily Tasks" text still showing in English when Chinese is selected
+- [x] Audit all screens for any other remaining untranslated hardcoded strings

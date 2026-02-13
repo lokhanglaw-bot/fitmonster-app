@@ -20,11 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useActivity } from "@/lib/activity-context";
 import { useI18n } from "@/lib/i18n-context";
 
-const MONSTER_TYPES = [
-  { type: "Bodybuilder", icon: "💪", color: "#EF4444", desc: "High strength, balanced defense", gradient: ["#FEE2E2", "#FECACA"] as const },
-  { type: "Physique", icon: "🏃", color: "#3B82F6", desc: "High agility, fast attacks", gradient: ["#DBEAFE", "#BFDBFE"] as const },
-  { type: "Powerlifter", icon: "🏋️", color: "#F59E0B", desc: "Max strength, heavy hitter", gradient: ["#FEF3C7", "#FDE68A"] as const },
-];
+// MONSTER_TYPES is built inside the component to use i18n
 
 const MONSTER_IMAGES: Record<string, any> = {
   "Bodybuilder-1": require("@/assets/monsters/bodybuilder-stage1.png"),
@@ -61,24 +57,7 @@ type Monster = {
   stage: number;
 };
 
-const AI_DAILY_TASKS = [
-  {
-    title: "Today's 💪 Bodybuilder Monster Suggestion",
-    totalExp: 700,
-    workoutTitle: "Home Power Crusher",
-    workoutDesc: "High-intensity bodyweight strength circuit focusing on compound movements to stimulate muscle hypertrophy and maximize morning energy without gym equipment.",
-    workoutExp: 300,
-    duration: "30min",
-    sets: "3×12",
-    calories: "220cal",
-    tips: ["Focus on slow eccentric movements to tear more muscle fibers", "Keep rest between sets under 60 seconds"],
-    skill: "Protein Blast",
-    quote: '"Iron doesn\'t lie; every rep is a brick in the temple of your physique. Build it strong!"',
-    dietTitle: "Protein Power Meal",
-    dietDesc: "High protein meal plan to support muscle recovery and growth.",
-    dietExp: 400,
-  },
-];
+// AI_DAILY_TASKS is now built inside the component to use i18n
 
 export default function HomeScreen() {
   const colors = useColors();
@@ -87,6 +66,31 @@ export default function HomeScreen() {
 
   const { state: activity, addRecordFood, addRecordWorkout } = useActivity();
   const { language, setLanguage, t, tr } = useI18n();
+
+  const MONSTER_TYPES = [
+    { type: "Bodybuilder", icon: "💪", color: "#EF4444", desc: t.bodybuilderDesc, label: t.bodybuilder, gradient: ["#FEE2E2", "#FECACA"] as const },
+    { type: "Physique", icon: "🏃", color: "#3B82F6", desc: t.physiqueDesc, label: t.physique, gradient: ["#DBEAFE", "#BFDBFE"] as const },
+    { type: "Powerlifter", icon: "🏋️", color: "#F59E0B", desc: t.powerlifterDesc, label: t.powerlifter, gradient: ["#FEF3C7", "#FDE68A"] as const },
+  ];
+
+  const AI_DAILY_TASKS = [
+    {
+      title: `💪 ${tr("todaysSuggestion", { type: t.bodybuilder })}`,
+      totalExp: 700,
+      workoutTitle: t.homePowerCrusher,
+      workoutDesc: t.homePowerCrusherDesc,
+      workoutExp: 300,
+      duration: "30min",
+      sets: "3×12",
+      calories: "220cal",
+      tips: [t.workoutTip1, t.workoutTip2],
+      skill: t.proteinBlast,
+      quote: t.ironQuote,
+      dietTitle: t.proteinPowerMeal,
+      dietDesc: t.proteinPowerMealDesc,
+      dietExp: 400,
+    },
+  ];
 
   const trainerName = user?.name || "Trainer";
   const todaySteps = activity.todaySteps;
@@ -137,9 +141,9 @@ export default function HomeScreen() {
   };
 
   const quests = [
-    { id: 1, icon: "🥩", title: "Protein Champion", description: "Consume 100g protein today", progress: activity.todayProtein, target: 100, reward: 50, bgColor: "#22C55E" },
-    { id: 2, icon: "🚶", title: "Walking Master", description: "Walk 5,000 steps today", progress: activity.todaySteps, target: 5000, reward: 50, bgColor: "#3B82F6" },
-    { id: 3, icon: "💪", title: "Strength Training", description: "Complete a 30-min workout", progress: activity.todayWorkoutMinutes, target: 30, reward: 100, bgColor: "#F59E0B" },
+    { id: 1, icon: "🥩", title: t.questProteinChampion, description: t.questProteinDescFull, progress: activity.todayProtein, target: 100, reward: 50, bgColor: "#22C55E" },
+    { id: 2, icon: "🚶", title: t.questWalkingMaster, description: t.questWalkingDescFull, progress: activity.todaySteps, target: 5000, reward: 50, bgColor: "#3B82F6" },
+    { id: 3, icon: "💪", title: t.questStrengthTraining, description: t.questStrengthDescFull, progress: activity.todayWorkoutMinutes, target: 30, reward: 100, bgColor: "#F59E0B" },
   ];
 
   const activeMonster = monsters[0];
@@ -162,7 +166,7 @@ export default function HomeScreen() {
 
   const handleConfirmHatch = useCallback(() => {
     if (!newMonsterName.trim()) {
-      Alert.alert("Name Required", "Please give your monster a name!");
+      Alert.alert(t.nameRequired, t.pleaseNameMonster);
       return;
     }
     setHatchStep("hatching");
@@ -212,15 +216,15 @@ export default function HomeScreen() {
 
   const handleSaveRecord = useCallback(() => {
     if (!recordName.trim()) {
-      Alert.alert("Required", "Please enter a name for the record.");
+      Alert.alert(t.required, t.pleaseEnterName);
       return;
     }
     if (recordType === "food" && !recordCalories.trim()) {
-      Alert.alert("Required", "Please enter the calorie amount.");
+      Alert.alert(t.required, t.pleaseEnterCalories);
       return;
     }
     if (recordType === "workout" && !recordDuration.trim()) {
-      Alert.alert("Required", "Please enter the workout duration.");
+      Alert.alert(t.required, t.pleaseEnterDuration);
       return;
     }
     setShowAddRecord(false);
@@ -231,11 +235,11 @@ export default function HomeScreen() {
       addRecordWorkout(recordName.trim(), parseInt(recordDuration, 10) || 0);
     }
     const detail = recordType === "food" ? `${recordCalories} kcal` : `${recordDuration} min`;
-    Alert.alert("Record Saved! ✅", `${recordName} — ${detail}\nYour stats have been updated.`);
+    Alert.alert(`${t.recordSaved} ✅`, `${recordName} — ${detail}\n${t.statsUpdated}`);
   }, [recordType, recordName, recordCalories, recordDuration, addRecordFood, addRecordWorkout]);
 
   const handleRefreshTasks = useCallback(() => {
-    Alert.alert("Refreshed!", "AI Daily Tasks have been updated with new suggestions.");
+    Alert.alert(t.refreshed, t.tasksUpdated);
   }, []);
 
   const handleStartWorkout = useCallback(() => {
@@ -255,10 +259,10 @@ export default function HomeScreen() {
             <Text style={styles.badgeText}>Lv.{monster.level}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: "#3B82F6" }]}>
-            <Text style={styles.badgeText}>{monster.type}</Text>
+            <Text style={styles.badgeText}>{monster.type === "Bodybuilder" ? t.bodybuilder : monster.type === "Physique" ? t.physique : t.powerlifter}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: "#F59E0B" }]}>
-            <Text style={styles.badgeText}>{monster.status}</Text>
+            <Text style={styles.badgeText}>{monster.status === "Fighter" ? t.fighter : monster.status === "Rookie" ? t.rookie : monster.status}</Text>
           </View>
         </View>
 
@@ -435,18 +439,18 @@ export default function HomeScreen() {
               <Text style={[styles.suggestionDesc, { color: "#6B7280" }]}>{task.dietDesc}</Text>
 
               <View style={styles.workoutMetrics}>
-                <View style={styles.metric}><Text style={styles.metricIcon}>🥩</Text><Text style={styles.metricValue}>120g protein</Text></View>
-                <View style={styles.metric}><Text style={styles.metricIcon}>🍞</Text><Text style={styles.metricValue}>200g carbs</Text></View>
-                <View style={styles.metric}><Text style={styles.metricIcon}>🧈</Text><Text style={styles.metricValue}>65g fat</Text></View>
+                <View style={styles.metric}><Text style={styles.metricIcon}>🥩</Text><Text style={styles.metricValue}>{tr("proteinMetric", { amount: "120" })}</Text></View>
+                <View style={styles.metric}><Text style={styles.metricIcon}>🍞</Text><Text style={styles.metricValue}>{tr("carbsMetric", { amount: "200" })}</Text></View>
+                <View style={styles.metric}><Text style={styles.metricIcon}>🧈</Text><Text style={styles.metricValue}>{tr("fatMetric", { amount: "65" })}</Text></View>
               </View>
 
               <View style={styles.tipRow}>
                 <Text style={styles.tipBullet}>💡</Text>
-                <Text style={[styles.tipText, { color: "#6B7280" }]}>Eat protein within 30 min after workout for best recovery</Text>
+                <Text style={[styles.tipText, { color: "#6B7280" }]}>{t.dietTip1}</Text>
               </View>
               <View style={styles.tipRow}>
                 <Text style={styles.tipBullet}>💡</Text>
-                <Text style={[styles.tipText, { color: "#6B7280" }]}>Stay hydrated — aim for 2-3 liters of water daily</Text>
+                <Text style={[styles.tipText, { color: "#6B7280" }]}>{t.dietTip2}</Text>
               </View>
 
               <TouchableOpacity onPress={() => router.push("/(tabs)/camera")}>
@@ -458,7 +462,7 @@ export default function HomeScreen() {
               <View style={styles.skillRow}>
                 <Text style={styles.skillLabel}>⚡ {t.completeToUnlockSkill}</Text>
                 <View style={[styles.skillBadge, { backgroundColor: "#22C55E" }]}>
-                  <Text style={styles.skillBadgeText}>Nutrition Boost</Text>
+                  <Text style={styles.skillBadgeText}>{t.nutritionBoost}</Text>
                 </View>
               </View>
             </LinearGradient>
@@ -544,7 +548,7 @@ export default function HomeScreen() {
             onPress={() => setHistorySubTab(tab)}
           >
             <Text style={[styles.subTabText, { color: historySubTab === tab ? "#fff" : colors.muted }]}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === "calories" ? t.caloriesTab : tab === "macros" ? t.macrosTab : t.workoutTab}
             </Text>
           </TouchableOpacity>
         ))}
@@ -577,7 +581,7 @@ export default function HomeScreen() {
             {historySubTab === "calories" ? `🔥 ${t.dailyCalorieTrend}` : historySubTab === "macros" ? `🥩 ${t.dailyProteinTrend}` : `🏋️ ${t.workoutDurationTrend}`}
           </Text>
           <View style={styles.chartArea}>
-            {["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"].map((day, i) => {
+            {[t.daySat, t.daySun, t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri].map((day, i) => {
               const data = chartData[historySubTab];
               const maxVal = Math.max(...data);
               const barHeight = maxVal > 0 ? Math.max(4, (data[i] / maxVal) * 70) : 4;
@@ -600,7 +604,7 @@ export default function HomeScreen() {
         <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.chartTitle, { color: colors.foreground }]}>📅 {t.weeklyCalendar}</Text>
           <View style={styles.calendarGrid}>
-            {["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"].map((day, i) => {
+            {[t.daySat, t.daySun, t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri].map((day, i) => {
               const data = chartData[historySubTab];
               const hasData = data[i] > 0;
               const isToday = i === 6;
@@ -621,9 +625,9 @@ export default function HomeScreen() {
       {historyViewMode === "list" && (
         <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.chartTitle, { color: colors.foreground }]}>📋 {t.dailyRecords}</Text>
-          {["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"].map((day, i) => {
+          {[t.daySat, t.daySun, t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri].map((day, i) => {
             const data = chartData[historySubTab];
-            const unit = historySubTab === "calories" ? "kcal" : historySubTab === "macros" ? "g protein" : "min";
+            const unit = historySubTab === "calories" ? t.kcalUnit : historySubTab === "macros" ? t.gProtein : t.minUnit;
             const isToday = i === 6;
             return (
               <View key={day} style={[styles.listRow, { borderBottomColor: colors.border }]}>
@@ -706,7 +710,7 @@ export default function HomeScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.foreground }]}>My Monster Team ({monsters.length})</Text>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>{tr("myMonsterTeamCount", { count: String(monsters.length) })}</Text>
               <TouchableOpacity onPress={() => setShowMonsterList(false)}>
                 <IconSymbol name="xmark" size={24} color={colors.foreground} />
               </TouchableOpacity>
@@ -715,7 +719,7 @@ export default function HomeScreen() {
               {monsters.map((m, i) => renderMonsterCard(m, i))}
             </ScrollView>
             <TouchableOpacity style={[styles.hatchConfirmBtn, { backgroundColor: colors.primary }]} onPress={() => { setShowMonsterList(false); handleHatchEgg(); }}>
-              <Text style={styles.hatchConfirmText}>🥚 Hatch New Egg</Text>
+              <Text style={styles.hatchConfirmText}>🥚 {t.hatchNewEgg}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -727,28 +731,28 @@ export default function HomeScreen() {
           <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
             {hatchStep === "select" && (
               <>
-                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Choose Monster Type</Text>
-                <Text style={[styles.modalSubtitle, { color: colors.muted }]}>Select the type of monster to hatch</Text>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.chooseMonsterType}</Text>
+                <Text style={[styles.modalSubtitle, { color: colors.muted }]}>{t.selectTypeToHatch}</Text>
                 {MONSTER_TYPES.map((mt) => (
                   <TouchableOpacity key={mt.type} style={[styles.typeOption, { backgroundColor: colors.surface, borderColor: mt.color }]} onPress={() => handleSelectType(mt.type)}>
                     <Text style={styles.typeIcon}>{mt.icon}</Text>
                     <View style={styles.typeInfo}>
-                      <Text style={[styles.typeName, { color: colors.foreground }]}>{mt.type}</Text>
+                      <Text style={[styles.typeName, { color: colors.foreground }]}>{mt.label || mt.type}</Text>
                       <Text style={[styles.typeDesc, { color: colors.muted }]}>{mt.desc}</Text>
                     </View>
                     <IconSymbol name="chevron.right" size={20} color={colors.muted} />
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => setShowHatchModal(false)}>
-                  <Text style={[styles.cancelText, { color: colors.muted }]}>Cancel</Text>
+                  <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
                 </TouchableOpacity>
               </>
             )}
 
             {hatchStep === "name" && (
               <>
-                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Name Your Monster</Text>
-                <Text style={[styles.modalSubtitle, { color: colors.muted }]}>Give your {selectedType} a name</Text>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.nameYourMonster}</Text>
+                <Text style={[styles.modalSubtitle, { color: colors.muted }]}>{tr("giveYourMonsterName", { type: selectedType === "Bodybuilder" ? t.bodybuilder : selectedType === "Physique" ? t.physique : t.powerlifter })}</Text>
                 <View style={styles.eggPreview}>
                   <LinearGradient colors={MONSTER_TYPES.find((t) => t.type === selectedType)?.gradient || ["#DCFCE7", "#BBF7D0"]} style={styles.eggGradient}>
                     <Image source={require("@/assets/monsters/egg.png")} style={styles.eggImage} contentFit="contain" />
@@ -756,7 +760,7 @@ export default function HomeScreen() {
                 </View>
                 <TextInput
                   style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-                  placeholder="Enter monster name..."
+                  placeholder={t.enterMonsterName}
                   placeholderTextColor={colors.muted}
                   value={newMonsterName}
                   onChangeText={setNewMonsterName}
@@ -764,10 +768,10 @@ export default function HomeScreen() {
                   onSubmitEditing={handleConfirmHatch}
                 />
                 <TouchableOpacity style={[styles.hatchConfirmBtn, { backgroundColor: colors.primary }]} onPress={handleConfirmHatch}>
-                  <Text style={styles.hatchConfirmText}>Hatch!</Text>
+                  <Text style={styles.hatchConfirmText}>{t.hatch}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => setHatchStep("select")}>
-                  <Text style={[styles.cancelText, { color: colors.muted }]}>Back</Text>
+                  <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -775,8 +779,8 @@ export default function HomeScreen() {
             {hatchStep === "hatching" && (
               <View style={styles.hatchingContainer}>
                 <Text style={styles.hatchingEmoji}>🥚✨</Text>
-                <Text style={[styles.hatchingText, { color: colors.foreground }]}>Hatching...</Text>
-                <Text style={[styles.hatchingSubtext, { color: colors.muted }]}>Your egg is cracking open!</Text>
+                <Text style={[styles.hatchingText, { color: colors.foreground }]}>{t.hatching}</Text>
+                <Text style={[styles.hatchingSubtext, { color: colors.muted }]}>{t.eggCracking}</Text>
               </View>
             )}
 
@@ -785,10 +789,10 @@ export default function HomeScreen() {
                 <LinearGradient colors={MONSTER_GRADIENTS[selectedType] || ["#DCFCE7", "#BBF7D0"]} style={styles.hatchedGradient}>
                   <Image source={MONSTER_IMAGES[`${selectedType}-1`]} style={styles.hatchedImage} contentFit="contain" />
                 </LinearGradient>
-                <Text style={[styles.hatchedTitle, { color: colors.foreground }]}>{newMonsterName} was born!</Text>
-                <Text style={[styles.hatchedSubtitle, { color: colors.muted }]}>A new {selectedType} joins your team</Text>
+                <Text style={[styles.hatchedTitle, { color: colors.foreground }]}>{tr("monsterBorn", { name: newMonsterName })}</Text>
+                <Text style={[styles.hatchedSubtitle, { color: colors.muted }]}>{tr("newMonsterJoins", { type: selectedType === "Bodybuilder" ? t.bodybuilder : selectedType === "Physique" ? t.physique : t.powerlifter })}</Text>
                 <TouchableOpacity style={[styles.hatchConfirmBtn, { backgroundColor: colors.primary }]} onPress={handleCloseHatch}>
-                  <Text style={styles.hatchConfirmText}>Awesome!</Text>
+                  <Text style={styles.hatchConfirmText}>{t.awesome}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -801,7 +805,7 @@ export default function HomeScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add Record</Text>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.addRecordTitle}</Text>
               <TouchableOpacity onPress={() => setShowAddRecord(false)}>
                 <IconSymbol name="xmark" size={24} color={colors.foreground} />
               </TouchableOpacity>
@@ -814,7 +818,7 @@ export default function HomeScreen() {
                 onPress={() => setRecordType("food")}
               >
                 <Text style={recordType === "food" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>
-                  🍽️ Food
+                  🍽️ {t.food}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -822,7 +826,7 @@ export default function HomeScreen() {
                 onPress={() => setRecordType("workout")}
               >
                 <Text style={recordType === "workout" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>
-                  🏋️ Workout
+                  🏋️ {t.workout}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -830,7 +834,7 @@ export default function HomeScreen() {
             {/* Record Name */}
             <TextInput
               style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-              placeholder={recordType === "food" ? "Food name (e.g. Grilled Chicken)" : "Exercise name (e.g. Running)"}
+              placeholder={recordType === "food" ? t.foodNameExample : t.exerciseNameExample}
               placeholderTextColor={colors.muted}
               value={recordName}
               onChangeText={setRecordName}
@@ -840,7 +844,7 @@ export default function HomeScreen() {
             {recordType === "food" ? (
               <TextInput
                 style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-                placeholder="Calories (kcal)"
+                placeholder={t.caloriesKcalPlaceholder}
                 placeholderTextColor={colors.muted}
                 value={recordCalories}
                 onChangeText={setRecordCalories}
@@ -849,7 +853,7 @@ export default function HomeScreen() {
             ) : (
               <TextInput
                 style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-                placeholder="Duration (minutes)"
+                placeholder={t.durationMinPlaceholder}
                 placeholderTextColor={colors.muted}
                 value={recordDuration}
                 onChangeText={setRecordDuration}
@@ -858,10 +862,10 @@ export default function HomeScreen() {
             )}
 
             <TouchableOpacity style={[styles.hatchConfirmBtn, { backgroundColor: colors.primary }]} onPress={handleSaveRecord}>
-              <Text style={styles.hatchConfirmText}>✅ Save Record</Text>
+              <Text style={styles.hatchConfirmText}>✅ {t.saveRecord}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => setShowAddRecord(false)}>
-              <Text style={[styles.cancelText, { color: colors.muted }]}>Cancel</Text>
+              <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -872,19 +876,19 @@ export default function HomeScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border, alignItems: "center", paddingVertical: 28, paddingHorizontal: 24 }]}>
             <Text style={{ fontSize: 48, marginBottom: 12 }}>👋</Text>
-            <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign: "center", marginBottom: 8 }]}>Log Out?</Text>
-            <Text style={{ color: colors.muted, fontSize: 15, textAlign: "center", marginBottom: 24, lineHeight: 22 }}>Are you sure you want to log out? Your monsters will miss you!</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign: "center", marginBottom: 8 }]}>{t.logoutTitle}</Text>
+            <Text style={{ color: colors.muted, fontSize: 15, textAlign: "center", marginBottom: 24, lineHeight: 22 }}>{t.logoutMessage}</Text>
             <TouchableOpacity
               onPress={confirmLogout}
               style={{ backgroundColor: "#EF4444", paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14, width: "100%", alignItems: "center", marginBottom: 10 }}
             >
-              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Log Out</Text>
+              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>{t.logoutConfirm}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setShowLogoutModal(false)}
               style={[styles.cancelBtn, { borderColor: colors.border, width: "100%" }]}
             >
-              <Text style={[styles.cancelText, { color: colors.muted }]}>Cancel</Text>
+              <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
             </TouchableOpacity>
           </View>
         </View>
