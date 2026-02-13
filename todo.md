@@ -269,3 +269,6 @@
 - [x] Update app logo with user-provided fitmonsterlogo.png
 - [x] Copy logo to all required locations (icon, splash, favicon, android foreground)
 - [x] Update app.config.ts logoUrl with S3 URL
+
+## Bug Fix - Round 9b
+- [x] Fix corrupted/empty icon.png causing Syntax Error in Expo preview
