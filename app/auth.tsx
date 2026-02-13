@@ -1,17 +1,34 @@
 import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Modal,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { startOAuthLogin } from "@/lib/auth-helpers";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/use-colors";
 
+type AuthMode = "signin" | "signup" | "forgot";
+
 export default function AuthScreen() {
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [mode, setMode] = useState<AuthMode>("signin");
   const [trainerName, setTrainerName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
   const router = useRouter();
   const colors = useColors();
 
@@ -20,15 +37,29 @@ export default function AuthScreen() {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
-    if (isSignUp && !trainerName) {
-      Alert.alert("Error", "Please enter your trainer name");
-      return;
+    if (mode === "signup") {
+      if (!trainerName.trim()) {
+        Alert.alert("Error", "Please enter your trainer name");
+        return;
+      }
+      if (password !== confirmPassword) {
+        Alert.alert("Error", "Passwords do not match");
+        return;
+      }
+      if (password.length < 6) {
+        Alert.alert("Error", "Password must be at least 6 characters");
+        return;
+      }
     }
     setLoading(true);
     try {
-      Alert.alert("Coming Soon", "Email authentication will be available soon. Please use Google or Apple sign-in for now.");
+      // Email auth placeholder — backend integration needed
+      Alert.alert(
+        "Coming Soon",
+        "Email authentication will be available soon. Please use Google or Apple sign-in for now."
+      );
     } catch (error) {
-      Alert.alert("Error", "Authentication failed");
+      Alert.alert("Error", "Authentication failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -39,51 +70,84 @@ export default function AuthScreen() {
     try {
       await startOAuthLogin();
     } catch (error) {
-      Alert.alert("Error", `${provider} login failed`);
+      Alert.alert("Error", `${provider} login failed. Please try again.`);
       setLoading(false);
     }
   };
 
+  const handleForgotPassword = () => {
+    if (!forgotEmail.trim()) {
+      Alert.alert("Error", "Please enter your email address");
+      return;
+    }
+    // Simulate sending reset email
+    setForgotSent(true);
+  };
+
+  const closeForgotModal = () => {
+    setShowForgotModal(false);
+    setForgotEmail("");
+    setForgotSent(false);
+  };
+
+  const isSignUp = mode === "signup";
+
   return (
-    <ScreenContainer edges={["top", "bottom", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScreenContainer edges={["top", "bottom", "left", "right"]} containerClassName="bg-background">
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.content}>
-          {/* Logo */}
+          {/* Logo & Branding */}
           <View style={styles.logoContainer}>
-            <View style={[styles.logoCircle, { backgroundColor: colors.primary }]}>
+            <View style={[styles.logoBox, { backgroundColor: colors.primary }]}>
               <Image
                 source={require("@/assets/images/icon.png")}
                 style={styles.logoImage}
                 contentFit="contain"
               />
             </View>
-            <Text style={[styles.appName, { color: colors.foreground }]}>FitMonster</Text>
-            <Text style={[styles.tagline, { color: colors.muted }]}>Raise your fitness monster</Text>
+            <Text style={[styles.appName, { color: colors.primary }]}>FitMonster</Text>
+            <Text style={[styles.tagline, { color: colors.muted }]}>
+              Raise your fitness monster 💪
+            </Text>
           </View>
 
           {/* Auth Card */}
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-              {isSignUp ? "Sign Up" : "Sign In"}
-            </Text>
+            {/* Card Title */}
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitleIcon}>✨</Text>
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>
+                {isSignUp ? "Sign Up" : "Sign In"}
+              </Text>
+            </View>
 
-            {/* Social Login */}
+            {/* Social Login Buttons */}
             <TouchableOpacity
               onPress={() => handleSocialLogin("google")}
               disabled={loading}
-              style={[styles.socialBtn, { backgroundColor: "#fff", opacity: loading ? 0.5 : 1 }]}
-              activeOpacity={0.8}
+              style={[styles.socialBtn, { borderColor: colors.border, opacity: loading ? 0.5 : 1 }]}
+              activeOpacity={0.7}
             >
-              <Text style={styles.googleText}>Continue with Google</Text>
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={[styles.socialBtnText, { color: colors.foreground }]}>
+                Continue with Google
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => handleSocialLogin("apple")}
               disabled={loading}
-              style={[styles.socialBtn, { backgroundColor: "#000", opacity: loading ? 0.5 : 1 }]}
-              activeOpacity={0.8}
+              style={[styles.socialBtn, { borderColor: colors.border, opacity: loading ? 0.5 : 1 }]}
+              activeOpacity={0.7}
             >
-              <Text style={styles.appleText}>Continue with Apple</Text>
+              <Text style={styles.appleIcon}></Text>
+              <Text style={[styles.socialBtnText, { color: colors.foreground }]}>
+                Continue with Apple
+              </Text>
             </TouchableOpacity>
 
             {/* Divider */}
@@ -96,21 +160,28 @@ export default function AuthScreen() {
             {/* Trainer Name (Sign Up only) */}
             {isSignUp && (
               <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.foreground }]}>Trainer Name</Text>
+                <View style={styles.labelRow}>
+                  <Text style={styles.labelIcon}>👤</Text>
+                  <Text style={[styles.label, { color: colors.foreground }]}>Trainer Name</Text>
+                </View>
                 <TextInput
                   value={trainerName}
                   onChangeText={setTrainerName}
-                  placeholder="Enter your name"
+                  placeholder="Enter your trainer name"
                   placeholderTextColor={colors.muted}
                   style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
                   editable={!loading}
+                  autoCapitalize="words"
                 />
               </View>
             )}
 
             {/* Email */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.foreground }]}>Email</Text>
+              <View style={styles.labelRow}>
+                <Text style={styles.labelIcon}>✉️</Text>
+                <Text style={[styles.label, { color: colors.foreground }]}>Email</Text>
+              </View>
               <TextInput
                 value={email}
                 onChangeText={setEmail}
@@ -118,6 +189,7 @@ export default function AuthScreen() {
                 placeholderTextColor={colors.muted}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoComplete="email"
                 style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
                 editable={!loading}
               />
@@ -126,9 +198,12 @@ export default function AuthScreen() {
             {/* Password */}
             <View style={styles.inputGroup}>
               <View style={styles.passwordHeader}>
-                <Text style={[styles.label, { color: colors.foreground }]}>Password</Text>
+                <View style={styles.labelRow}>
+                  <Text style={styles.labelIcon}>🔒</Text>
+                  <Text style={[styles.label, { color: colors.foreground }]}>Password</Text>
+                </View>
                 {!isSignUp && (
-                  <TouchableOpacity>
+                  <TouchableOpacity onPress={() => setShowForgotModal(true)}>
                     <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot password?</Text>
                   </TouchableOpacity>
                 )}
@@ -144,38 +219,154 @@ export default function AuthScreen() {
               />
             </View>
 
-            {/* Submit */}
+            {/* Confirm Password (Sign Up only) */}
+            {isSignUp && (
+              <View style={styles.inputGroup}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.labelIcon}>🔒</Text>
+                  <Text style={[styles.label, { color: colors.foreground }]}>Confirm Password</Text>
+                </View>
+                <TextInput
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Confirm your password"
+                  placeholderTextColor={colors.muted}
+                  secureTextEntry
+                  style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                  editable={!loading}
+                />
+              </View>
+            )}
+
+            {/* Submit Button - Gradient */}
             <TouchableOpacity
               onPress={handleEmailAuth}
               disabled={loading}
-              style={[styles.submitBtn, { backgroundColor: colors.primary, opacity: loading ? 0.5 : 1 }]}
               activeOpacity={0.8}
+              style={{ opacity: loading ? 0.6 : 1, marginTop: 8 }}
             >
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text style={styles.submitText}>{isSignUp ? "Sign Up" : "Sign In"}</Text>
-              )}
+              <LinearGradient
+                colors={["#22C55E", "#16A34A"] as const}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.submitBtn}
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.submitText}>{isSignUp ? "Sign Up" : "Sign In"}</Text>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
 
-            {/* Toggle */}
+            {/* Toggle Sign In / Sign Up */}
             <View style={styles.toggleRow}>
               <Text style={[styles.toggleText, { color: colors.muted }]}>
                 {isSignUp ? "Already have an account? " : "Don't have an account? "}
               </Text>
-              <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} disabled={loading}>
+              <TouchableOpacity
+                onPress={() => {
+                  setMode(isSignUp ? "signin" : "signup");
+                  setPassword("");
+                  setConfirmPassword("");
+                }}
+                disabled={loading}
+              >
                 <Text style={[styles.toggleLink, { color: colors.primary }]}>
                   {isSignUp ? "Sign in" : "Sign up now"}
                 </Text>
               </TouchableOpacity>
             </View>
-
-            <Text style={[styles.terms, { color: colors.muted }]}>
-              By continuing, you agree to our Terms of Service and Privacy Policy
-            </Text>
           </View>
+
+          {/* Terms */}
+          <Text style={[styles.terms, { color: colors.muted }]}>
+            By continuing, you agree to our{" "}
+            <Text style={{ fontWeight: "600" }}>Terms of Service</Text> and{" "}
+            <Text style={{ fontWeight: "600" }}>Privacy Policy</Text>
+          </Text>
         </View>
       </ScrollView>
+
+      {/* Forgot Password Modal */}
+      <Modal visible={showForgotModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {!forgotSent ? (
+              <>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalIcon}>🔑</Text>
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>Reset Password</Text>
+                </View>
+                <Text style={[styles.modalDesc, { color: colors.muted }]}>
+                  Enter your email address and we'll send you a link to reset your password.
+                </Text>
+
+                <View style={styles.inputGroup}>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.labelIcon}>✉️</Text>
+                    <Text style={[styles.label, { color: colors.foreground }]}>Email Address</Text>
+                  </View>
+                  <TextInput
+                    value={forgotEmail}
+                    onChangeText={setForgotEmail}
+                    placeholder="your@email.com"
+                    placeholderTextColor={colors.muted}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                  />
+                </View>
+
+                <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.8}>
+                  <LinearGradient
+                    colors={["#22C55E", "#16A34A"] as const}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.submitBtn}
+                  >
+                    <Text style={styles.submitText}>Send Reset Link</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.cancelBtn, { borderColor: colors.border }]}
+                  onPress={closeForgotModal}
+                >
+                  <Text style={[styles.cancelText, { color: colors.muted }]}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <View style={styles.successContainer}>
+                  <View style={[styles.successCircle, { backgroundColor: "#DCFCE7" }]}>
+                    <Text style={styles.successIcon}>✅</Text>
+                  </View>
+                  <Text style={[styles.modalTitle, { color: colors.foreground, marginTop: 16 }]}>
+                    Check Your Email
+                  </Text>
+                  <Text style={[styles.modalDesc, { color: colors.muted, textAlign: "center" }]}>
+                    We've sent a password reset link to{"\n"}
+                    <Text style={{ fontWeight: "700", color: colors.foreground }}>{forgotEmail}</Text>
+                    {"\n\n"}Please check your inbox and follow the instructions to reset your password.
+                  </Text>
+                </View>
+
+                <TouchableOpacity onPress={closeForgotModal} activeOpacity={0.8}>
+                  <LinearGradient
+                    colors={["#22C55E", "#16A34A"] as const}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.submitBtn}
+                  >
+                    <Text style={styles.submitText}>Back to Sign In</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -188,83 +379,127 @@ const styles = StyleSheet.create({
   content: {
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingVertical: 40,
   },
+
+  // Logo
   logoContainer: {
     alignItems: "center",
     marginBottom: 32,
   },
-  logoCircle: {
+  logoBox: {
     width: 80,
     height: 80,
-    borderRadius: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
+    shadowColor: "#22C55E",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   logoImage: {
-    width: 60,
-    height: 60,
+    width: 56,
+    height: 56,
   },
   appName: {
     fontSize: 32,
     fontWeight: "800",
+    letterSpacing: -0.5,
   },
   tagline: {
     fontSize: 15,
-    marginTop: 4,
+    marginTop: 6,
   },
+
+  // Card
   card: {
     width: "100%",
-    maxWidth: 400,
+    maxWidth: 420,
     borderRadius: 24,
-    padding: 24,
+    padding: 28,
     borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  cardTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 24,
+  },
+  cardTitleIcon: {
+    fontSize: 22,
   },
   cardTitle: {
     fontSize: 24,
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: 20,
+    fontWeight: "800",
   },
+
+  // Social buttons
   socialBtn: {
     width: "100%",
     borderRadius: 14,
     padding: 16,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    gap: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    backgroundColor: "#fff",
   },
-  googleText: {
-    color: "#333",
+  googleIcon: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#4285F4",
+  },
+  appleIcon: {
+    fontSize: 20,
+    color: "#000",
+  },
+  socialBtnText: {
     fontSize: 15,
     fontWeight: "600",
   },
-  appleText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
-  },
+
+  // Divider
   divider: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 16,
+    marginVertical: 20,
   },
   dividerLine: {
     flex: 1,
     height: 1,
   },
   dividerText: {
-    marginHorizontal: 12,
+    marginHorizontal: 14,
     fontSize: 13,
   },
+
+  // Input
   inputGroup: {
     marginBottom: 16,
   },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  labelIcon: {
+    fontSize: 14,
+  },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
-    marginBottom: 6,
   },
   input: {
     width: "100%",
@@ -277,41 +512,107 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 6,
+    marginBottom: 8,
   },
   forgotText: {
     fontSize: 13,
     fontWeight: "600",
   },
+
+  // Submit
   submitBtn: {
     width: "100%",
     borderRadius: 14,
     padding: 16,
     alignItems: "center",
-    marginTop: 8,
+    justifyContent: "center",
   },
   submitText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
   },
+
+  // Toggle
   toggleRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 20,
+    marginTop: 24,
   },
   toggleText: {
     fontSize: 14,
   },
   toggleLink: {
     fontSize: 14,
+    fontWeight: "700",
+  },
+
+  // Terms
+  terms: {
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 28,
+    lineHeight: 18,
+    maxWidth: 340,
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 24,
+    padding: 28,
+    borderWidth: 1,
+    gap: 16,
+  },
+  modalHeader: {
+    alignItems: "center",
+    gap: 10,
+  },
+  modalIcon: {
+    fontSize: 40,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  modalDesc: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  cancelBtn: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  cancelText: {
+    fontSize: 14,
     fontWeight: "600",
   },
-  terms: {
-    fontSize: 11,
-    textAlign: "center",
-    marginTop: 20,
-    lineHeight: 16,
+
+  // Success state
+  successContainer: {
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  successCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  successIcon: {
+    fontSize: 36,
   },
 });

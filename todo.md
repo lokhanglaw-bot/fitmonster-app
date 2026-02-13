@@ -243,3 +243,14 @@
 - [x] Change "Hi, Trainer!" greeting to display actual username
 - [x] Add workout exercise detail page with duration slider, Outdoor/Gym bonus, EXP/calorie preview, and "Start Training" button
 - [x] Add monster action buttons on Home (Train, Feed, Battle) to choose which monster to use
+
+
+## User Feedback - Round 6
+- [x] Create sign in/login page matching screenshot design
+- [x] Add Google OAuth login button (Continue with Google)
+- [x] Add Apple OAuth login button (Continue with Apple)
+- [x] Add email/password login form
+- [x] Add "Forgot password?" link and flow
+- [x] Add "Sign up now" link and sign up page
+- [x] Show FitMonster logo and branding at top of auth page
+- [x] Add Terms of Service and Privacy Policy footer text
