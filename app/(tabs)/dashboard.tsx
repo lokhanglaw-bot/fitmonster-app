@@ -1,5 +1,6 @@
 import { ScrollView, Text, View, StyleSheet } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 
@@ -135,11 +136,13 @@ export default function DashboardScreen() {
           <View style={[styles.monsterGrowth, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Monster Growth Status</Text>
             <View style={styles.monsterGrowthRow}>
-              <Image
-                source={require("@/assets/monsters/bodybuilder-stage1.png")}
-                style={styles.monsterThumb}
-                contentFit="contain"
-              />
+              <LinearGradient colors={["#DCFCE7", "#BBF7D0"]} style={styles.monsterThumbGradient}>
+                <Image
+                  source={require("@/assets/monsters/bodybuilder-stage1.png")}
+                  style={styles.monsterThumb}
+                  contentFit="contain"
+                />
+              </LinearGradient>
               <View style={styles.monsterGrowthInfo}>
                 <Text style={[styles.monsterGrowthName, { color: colors.foreground }]}>Flexo</Text>
                 <Text style={[styles.monsterGrowthLevel, { color: colors.muted }]}>Level 1</Text>
@@ -367,9 +370,16 @@ const styles = StyleSheet.create({
     gap: 16,
     marginTop: 8,
   },
-  monsterThumb: {
+  monsterThumbGradient: {
+    borderRadius: 16,
     width: 80,
     height: 80,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  monsterThumb: {
+    width: 65,
+    height: 65,
   },
   monsterGrowthInfo: {
     flex: 1,
