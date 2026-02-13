@@ -264,3 +264,8 @@
 - [x] Add logout button on home page top-right corner
 - [x] After logout, redirect user to login page
 - [x] New users must register/login first before accessing the app (auth gating)
+
+## User Feedback - Round 9
+- [x] Update app logo with user-provided fitmonsterlogo.png
+- [x] Copy logo to all required locations (icon, splash, favicon, android foreground)
+- [x] Update app.config.ts logoUrl with S3 URL

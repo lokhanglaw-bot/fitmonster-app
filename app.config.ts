@@ -32,7 +32,7 @@ const env = {
   appSlug: "fitmonster-app",
   // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
   // Leave empty to use the default icon from assets/images/icon.png
-  logoUrl: "https://private-us-east-1.manuscdn.com/sessionFile/ACecMAyfMEiY2ecysr7DGC/sandbox/4293LYDyTvJZxMsnhntvg3-img-1_1770950077000_na1fn_Zml0bW9uc3Rlci1sb2dv.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvQUNlY01BeWZNRWlZMmVjeXNyN0RHQy9zYW5kYm94LzQyOTNMWUR5VHZKWnhNc25obnR2ZzMtaW1nLTFfMTc3MDk1MDA3NzAwMF9uYTFmbl9abWwwYlc5dWMzUmxjaTFzYjJkdi5wbmc~eC1vc3MtcHJvY2Vzcz1pbWFnZS9yZXNpemUsd18xOTIwLGhfMTkyMC9mb3JtYXQsd2VicC9xdWFsaXR5LHFfODAiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTg3NjE2MDB9fX1dfQ__&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=s46Wkqt7~zcOQpoKYAiAq3-QUXMFrNX9jKhOezj185oI~e-D~~L4Pn6HV7VasSJR~pHG7~y4~ugT73q8tdws-2SSB3fZ9VhbV5jUfHaavamtlY-fh96OE1EROGjJtdpBB4ydZBhK6CVcrq2HEMUcJ6Ox4ZCZth4zN8X1deHbeBms~HeM3W-TLts6svjvVtWKQwRJYQObsm5z2JRHdZKDtWU-vfgO~ggDuSbYmhVhsvrrZuFkea7-rchL7xRHMJDRssf3VhoFPhaIGk219IsmpD7nVhGKl4KY458rxsMci7yK2vF68kjK6MCf~MrppNZGBHNHBq9OAiAatm2TeIUllg__",
+  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663333995640/aOksVaXRoQGVxopd.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
