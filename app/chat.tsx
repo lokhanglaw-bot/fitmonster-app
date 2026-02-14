@@ -18,6 +18,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useI18n } from "@/lib/i18n-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Message = {
   id: string;
@@ -42,6 +43,7 @@ export default function ChatScreen() {
   const colors = useColors();
   const router = useRouter();
   const { t } = useI18n();
+  const insets = useSafeAreaInsets();
   const { friendId, friendName } = useLocalSearchParams<{ friendId: string; friendName: string }>();
   const [messages, setMessages] = useState<Message[]>([
     { id: "1", text: `Hey! Ready to battle? 💪`, sender: "them", timestamp: new Date(Date.now() - 60000) },
@@ -115,10 +117,10 @@ export default function ChatScreen() {
   }, [colors]);
 
   return (
-    <ScreenContainer edges={["top", "left", "right", "bottom"]}>
+    <ScreenContainer edges={["left", "right", "bottom"]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         {/* Header */}
-        <View style={[styles.chatHeader, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <View style={[styles.chatHeader, { backgroundColor: colors.background, borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 44) + 8 }]}>
           <TouchableOpacity onPress={() => { if (router.canDismiss()) { router.dismiss(); } else { router.back(); } }} style={styles.backBtn}>
             <IconSymbol name="arrow.left" size={24} color={colors.foreground} />
           </TouchableOpacity>

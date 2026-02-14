@@ -328,3 +328,6 @@
 - [x] Fix back arrow position too high on all sub-pages (move lower into safe area)
 - [x] Fix back arrow not working (navigation back not firing) on all sub-pages
 - [x] Translate remaining English text on battle page (battle log messages, monster types, time labels)
+
+## Bug Fix - Round 17b
+- [x] Fix back arrow still too high on nearby-map, workout-tracking, chat — uses useSafeAreaInsets() for explicit top padding (Math.max(insets.top, 44) + 8)

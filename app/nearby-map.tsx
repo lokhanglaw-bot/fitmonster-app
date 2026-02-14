@@ -18,6 +18,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { useI18n } from "@/lib/i18n-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -63,7 +64,8 @@ const NEARBY_USERS = [
 export default function NearbyMapScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { t } = useI18n();
+  const { t, tr } = useI18n();
+  const insets = useSafeAreaInsets();
   const [locationGranted, setLocationGranted] = useState(false);
   const [sharingLocation, setSharingLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -152,10 +154,10 @@ export default function NearbyMapScreen() {
   );
 
   return (
-    <ScreenContainer edges={["top", "bottom", "left", "right"]}>
+    <ScreenContainer edges={["bottom", "left", "right"]}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 44) + 8 }]}>
           <TouchableOpacity
             onPress={() => {
               if (router.canDismiss()) {

@@ -26,6 +26,7 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import { useKeepAwake } from "expo-keep-awake";
 import { useI18n } from "@/lib/i18n-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -35,7 +36,8 @@ export default function WorkoutTrackingScreen() {
   const router = useRouter();
   const colors = useColors();
   const { logWorkout } = useActivity();
-  const { t } = useI18n();
+  const { t, tr } = useI18n();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     exerciseName?: string;
     exerciseIcon?: string;
@@ -178,10 +180,10 @@ export default function WorkoutTrackingScreen() {
   const finalCalories = Math.round(exerciseMet * 3.5 * bodyWeight * finalMinutes / 200);
 
   return (
-    <ScreenContainer edges={["top", "bottom", "left", "right"]}>
+    <ScreenContainer edges={["bottom", "left", "right"]}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Top bar */}
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 44) + 8 }]}>
           <TouchableOpacity
             onPress={handleGoBack}
             style={[styles.backBtn, { backgroundColor: colors.surface }]}
