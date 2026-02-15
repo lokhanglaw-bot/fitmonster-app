@@ -191,6 +191,16 @@ export const friendships = mysqlTable("friendships", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const userLocations = mysqlTable("userLocations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  latitude: float("latitude").notNull(),
+  longitude: float("longitude").notNull(),
+  isSharing: boolean("isSharing").default(false).notNull(),
+  lastUpdated: timestamp("lastUpdated").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 // Type Exports
 export type Profile = typeof profiles.$inferSelect;
 export type InsertProfile = typeof profiles.$inferInsert;
@@ -221,3 +231,6 @@ export type InsertMatchSwipe = typeof matchSwipes.$inferInsert;
 
 export type Friendship = typeof friendships.$inferSelect;
 export type InsertFriendship = typeof friendships.$inferInsert;
+
+export type UserLocation = typeof userLocations.$inferSelect;
+export type InsertUserLocation = typeof userLocations.$inferInsert;

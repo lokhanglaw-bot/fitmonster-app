@@ -12,6 +12,7 @@ import {
   battles,
   matchSwipes,
   friendships,
+  userLocations,
   InsertUser,
   InsertProfile,
   InsertMonster,
@@ -23,6 +24,7 @@ import {
   InsertBattle,
   InsertMatchSwipe,
   InsertFriendship,
+  InsertUserLocation,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -298,4 +300,125 @@ export async function updateFriendship(friendshipId: number, status: "pending" |
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(friendships).set({ status }).where(eq(friendships.id, friendshipId));
+}
+
+// ============================================
+// Location Management
+// ============================================
+
+export async function upsertUserLocation(userId: number, latitude: number, longitude: number, isSharing: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select().from(userLocations).where(eq(userLocations.userId, userId)).limit(1);
+  if (existing.length > 0) {
+    await db.update(userLocations).set({ latitude, longitude, isSharing, lastUpdated: new Date() }).where(eq(userLocations.userId, userId));
+    return existing[0].id;
+  } else {
+    const result = await db.insert(userLocations).values({ userId, latitude, longitude, isSharing }) as any;
+    return Number(result.insertId);
+  }
+}
+
+export async function getNearbyUsers(userId: number, latitude: number, longitude: number, radiusKm: number = 10) {
+  const db = await getDb();
+  if (!db) return [];
+  // Get all users sharing their location (except current user)
+  const allLocations = await db.select({
+    locationId: userLocations.id,
+    userId: userLocations.userId,
+    latitude: userLocations.latitude,
+    longitude: userLocations.longitude,
+    lastUpdated: userLocations.lastUpdated,
+    isSharing: userLocations.isSharing,
+  }).from(userLocations).where(and(
+    sql`${userLocations.userId} != ${userId}`,
+    eq(userLocations.isSharing, true)
+  ));
+
+  // Calculate distance using Haversine formula and filter by radius
+  const nearbyUsers = allLocations.filter(loc => {
+    const R = 6371; // Earth radius in km
+    const dLat = (loc.latitude - latitude) * Math.PI / 180;
+    const dLon = (loc.longitude - longitude) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(latitude * Math.PI / 180) * Math.cos(loc.latitude * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+    return distance <= radiusKm;
+  }).map(loc => {
+    const R = 6371;
+    const dLat = (loc.latitude - latitude) * Math.PI / 180;
+    const dLon = (loc.longitude - longitude) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(latitude * Math.PI / 180) * Math.cos(loc.latitude * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return { ...loc, distanceKm: Math.round(R * c * 10) / 10 };
+  });
+
+  return nearbyUsers;
+}
+
+// Get user info with profile and active monster for nearby display
+export async function getUserInfoForNearby(userIds: number[]) {
+  const db = await getDb();
+  if (!db) return [];
+  if (userIds.length === 0) return [];
+  
+  const results = [];
+  for (const uid of userIds) {
+    const userResult = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+    const profileResult = await db.select().from(profiles).where(eq(profiles.userId, uid)).limit(1);
+    const monsterResult = await db.select().from(monsters).where(and(eq(monsters.userId, uid), eq(monsters.isActive, true))).limit(1);
+    
+    if (userResult[0]) {
+      results.push({
+        user: userResult[0],
+        profile: profileResult[0] || null,
+        activeMonster: monsterResult[0] || null,
+      });
+    }
+  }
+  return results;
+}
+
+// Get pending friend requests for a user
+export async function getPendingFriendRequests(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(friendships).where(and(
+    eq(friendships.friendId, userId),
+    eq(friendships.status, "pending")
+  ));
+}
+
+// Check if a friendship already exists between two users
+export async function checkFriendship(userId: number, friendId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(friendships).where(
+    sql`(${friendships.userId} = ${userId} AND ${friendships.friendId} = ${friendId}) OR (${friendships.userId} = ${friendId} AND ${friendships.friendId} = ${userId})`
+  ).limit(1);
+  return result[0] || null;
+}
+
+// Get friends with their profile and monster info
+export async function getFriendsWithInfo(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const acceptedFriendships = await db.select().from(friendships).where(and(
+    sql`${friendships.userId} = ${userId} OR ${friendships.friendId} = ${userId}`,
+    eq(friendships.status, "accepted")
+  ));
+  
+  const friendIds = acceptedFriendships.map(f => 
+    f.userId === userId ? f.friendId : f.userId
+  );
+  
+  if (friendIds.length === 0) return [];
+  
+  const friendsInfo = await getUserInfoForNearby(friendIds);
+  return friendsInfo;
 }

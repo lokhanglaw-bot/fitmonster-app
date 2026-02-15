@@ -349,3 +349,21 @@
 - [x] Fix step sync button (footprint icon) — added haptic feedback and increased touch target
 - [x] Verify nearby friend feature — currently uses simulated data, explained testing approach
 - [x] Answer monster evolution system design questions — evolution UI exists but no trigger logic yet
+
+## Feature - Round 20a: Monster Evolution System
+- [x] Add evolution trigger logic: food + workout EXP accumulates to evolution progress
+- [x] Stage 1→2 threshold: 500 EXP, Stage 2→3 threshold: 1500 EXP
+- [x] Auto-upgrade monster appearance (image) when evolution threshold reached
+- [x] Evolution animation/celebration when monster evolves
+- [x] Update monster stats on evolution (HP, strength, defense, agility increase)
+- [x] Persist evolution state per user
+
+## Feature - Round 20b: Real Multiplayer Friend System
+- [x] Create database schema for user profiles, friend requests, and locations
+- [x] Backend API: update user location
+- [x] Backend API: get nearby users within radius
+- [x] Backend API: send/accept/reject friend requests
+- [x] Backend API: get friend list
+- [x] Update nearby-map screen to use real backend data
+- [x] Update battle screen to use real friend list for PvP
+- [x] Real-time location sharing with backend

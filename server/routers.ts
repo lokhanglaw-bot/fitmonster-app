@@ -231,6 +231,94 @@ Be accurate with nutritional estimates. If you cannot identify the food, still p
       }),
   }),
 
+  // Location & Friend System
+  location: router({
+    update: protectedProcedure
+      .input(z.object({
+        latitude: z.number(),
+        longitude: z.number(),
+        isSharing: z.boolean(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const id = await db.upsertUserLocation(ctx.user.id, input.latitude, input.longitude, input.isSharing);
+        return { id };
+      }),
+    nearby: protectedProcedure
+      .input(z.object({
+        latitude: z.number(),
+        longitude: z.number(),
+        radiusKm: z.number().default(10),
+      }))
+      .query(async ({ ctx, input }) => {
+        const nearbyLocations = await db.getNearbyUsers(ctx.user.id, input.latitude, input.longitude, input.radiusKm);
+        const userIds = nearbyLocations.map(l => l.userId);
+        const usersInfo = await db.getUserInfoForNearby(userIds);
+        
+        return nearbyLocations.map(loc => {
+          const info = usersInfo.find(u => u.user.id === loc.userId);
+          return {
+            ...loc,
+            name: info?.profile?.trainerName || info?.user.name || 'Trainer',
+            monsterType: info?.activeMonster?.monsterType || 'bodybuilder',
+            monsterName: info?.activeMonster?.name || null,
+            monsterLevel: info?.activeMonster?.level || 1,
+            monsterStage: info?.activeMonster?.evolutionStage || 1,
+            monsterImageUrl: info?.activeMonster?.imageUrl || null,
+            totalExp: info?.profile?.totalExp || 0,
+          };
+        });
+      }),
+  }),
+
+  friends: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getFriendsWithInfo(ctx.user.id);
+    }),
+    pendingRequests: protectedProcedure.query(async ({ ctx }) => {
+      const pending = await db.getPendingFriendRequests(ctx.user.id);
+      const senderIds = pending.map(p => p.userId);
+      const sendersInfo = await db.getUserInfoForNearby(senderIds);
+      return pending.map(p => {
+        const info = sendersInfo.find(u => u.user.id === p.userId);
+        return {
+          friendshipId: p.id,
+          userId: p.userId,
+          name: info?.profile?.trainerName || info?.user.name || 'Trainer',
+          monsterType: info?.activeMonster?.monsterType || 'bodybuilder',
+          monsterLevel: info?.activeMonster?.level || 1,
+          monsterImageUrl: info?.activeMonster?.imageUrl || null,
+          createdAt: p.createdAt,
+        };
+      });
+    }),
+    sendRequest: protectedProcedure
+      .input(z.object({ targetUserId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        // Check if friendship already exists
+        const existing = await db.checkFriendship(ctx.user.id, input.targetUserId);
+        if (existing) {
+          return { success: false, message: 'Friend request already exists', status: existing.status };
+        }
+        const id = await db.createFriendship({
+          userId: ctx.user.id,
+          friendId: input.targetUserId,
+        });
+        return { success: true, id };
+      }),
+    acceptRequest: protectedProcedure
+      .input(z.object({ friendshipId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateFriendship(input.friendshipId, 'accepted');
+        return { success: true };
+      }),
+    rejectRequest: protectedProcedure
+      .input(z.object({ friendshipId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateFriendship(input.friendshipId, 'blocked');
+        return { success: true };
+      }),
+  }),
+
   dailyStats: router({
     get: protectedProcedure
       .input(z.object({ date: z.string() }))

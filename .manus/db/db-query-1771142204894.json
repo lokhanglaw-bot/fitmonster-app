@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `userLocations` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`latitude` float NOT NULL,\n\t`longitude` float NOT NULL,\n\t`isSharing` boolean NOT NULL DEFAULT false,\n\t`lastUpdated` timestamp NOT NULL DEFAULT (now()),\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `userLocations_id` PRIMARY KEY(`id`),\n\tCONSTRAINT `userLocations_userId_unique` UNIQUE(`userId`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute CREATE TABLE `userLocations` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`latitude` float NOT NULL,\n\t`longitude` float NOT NULL,\n\t`isSharing` boolean NOT NULL DEFAULT false,\n\t`lastUpdated` timestamp NOT NULL DEFAULT (now()),\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `userLocations_id` PRIMARY KEY(`id`),\n\tCONSTRAINT `userLocations_userId_unique` UNIQUE(`userId`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2420
+}

@@ -15,6 +15,13 @@
       "when": 1770951060412,
       "tag": "0001_shocking_echo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1771142192688,
+      "tag": "0002_aberrant_firestar",
+      "breakpoints": true
     }
   ]
 }

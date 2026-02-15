@@ -9,6 +9,7 @@ import {
   Dimensions,
   FlatList,
   Switch,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -19,47 +20,100 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { useI18n } from "@/lib/i18n-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { trpc } from "@/lib/trpc";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// Simulated nearby users with relative positions
-const NEARBY_USERS = [
+// Monster image mapping by type and stage
+const MONSTER_IMAGES: Record<string, Record<number, any>> = {
+  bodybuilder: {
+    1: require("@/assets/monsters/bodybuilder-stage1.png"),
+    2: require("@/assets/monsters/bodybuilder-stage2.png"),
+    3: require("@/assets/monsters/bodybuilder-stage3.png"),
+  },
+  physique: {
+    1: require("@/assets/monsters/physique-stage1.png"),
+    2: require("@/assets/monsters/physique-stage2.png"),
+    3: require("@/assets/monsters/physique-stage3.png"),
+  },
+  powerlifter: {
+    1: require("@/assets/monsters/powerlifter-stage1.png"),
+    2: require("@/assets/monsters/powerlifter-stage2.png"),
+    3: require("@/assets/monsters/powerlifter-stage3.png"),
+  },
+};
+
+const GRADIENT_BY_TYPE: Record<string, readonly [string, string]> = {
+  bodybuilder: ["#DCFCE7", "#BBF7D0"],
+  physique: ["#DBEAFE", "#BFDBFE"],
+  powerlifter: ["#FEF3C7", "#FDE68A"],
+};
+
+const EMOJI_BY_TYPE: Record<string, string> = {
+  bodybuilder: "🏋️",
+  physique: "🧘",
+  powerlifter: "💪",
+};
+
+interface NearbyUser {
+  userId: number;
+  name: string;
+  monsterType: string;
+  monsterLevel: number;
+  monsterStage: number;
+  monsterImageUrl: string | null;
+  distanceKm: number;
+  lastUpdated: Date | string;
+  latitude: number;
+  longitude: number;
+}
+
+// Fallback mock data when API is unavailable
+const MOCK_NEARBY_USERS: NearbyUser[] = [
   {
-    id: 1, name: "FitChamp", level: 18, monsterType: "Powerlifter",
-    monsterImage: require("@/assets/monsters/powerlifter-stage2.png"),
-    distance: "0.3 km", online: true, lastActive: "Now",
-    latOffset: 0.002, lngOffset: 0.003,
-    gradient: ["#FEF3C7", "#FDE68A"] as readonly [string, string],
+    userId: 101, name: "FitChamp", monsterType: "powerlifter", monsterLevel: 18,
+    monsterStage: 2, monsterImageUrl: null, distanceKm: 0.3,
+    lastUpdated: new Date(), latitude: 0, longitude: 0,
   },
   {
-    id: 2, name: "GymRat", level: 14, monsterType: "Bodybuilder",
-    monsterImage: require("@/assets/monsters/bodybuilder-stage2.png"),
-    distance: "0.8 km", online: true, lastActive: "Now",
-    latOffset: -0.004, lngOffset: 0.005,
-    gradient: ["#DCFCE7", "#BBF7D0"] as readonly [string, string],
+    userId: 102, name: "GymRat", monsterType: "bodybuilder", monsterLevel: 14,
+    monsterStage: 2, monsterImageUrl: null, distanceKm: 0.8,
+    lastUpdated: new Date(), latitude: 0, longitude: 0,
   },
   {
-    id: 3, name: "YogaMaster", level: 12, monsterType: "Physique",
-    monsterImage: require("@/assets/monsters/physique-stage2.png"),
-    distance: "1.2 km", online: false, lastActive: "15m ago",
-    latOffset: 0.006, lngOffset: -0.003,
-    gradient: ["#DBEAFE", "#BFDBFE"] as readonly [string, string],
+    userId: 103, name: "YogaMaster", monsterType: "physique", monsterLevel: 12,
+    monsterStage: 2, monsterImageUrl: null, distanceKm: 1.2,
+    lastUpdated: new Date(Date.now() - 15 * 60000), latitude: 0, longitude: 0,
   },
   {
-    id: 4, name: "IronWill", level: 22, monsterType: "Powerlifter",
-    monsterImage: require("@/assets/monsters/powerlifter-stage3.png"),
-    distance: "2.1 km", online: true, lastActive: "Now",
-    latOffset: -0.008, lngOffset: -0.006,
-    gradient: ["#FEF3C7", "#FDE68A"] as readonly [string, string],
+    userId: 104, name: "IronWill", monsterType: "powerlifter", monsterLevel: 22,
+    monsterStage: 3, monsterImageUrl: null, distanceKm: 2.1,
+    lastUpdated: new Date(), latitude: 0, longitude: 0,
   },
   {
-    id: 5, name: "CardioKing", level: 16, monsterType: "Bodybuilder",
-    monsterImage: require("@/assets/monsters/bodybuilder-stage3.png"),
-    distance: "1.5 km", online: false, lastActive: "1h ago",
-    latOffset: 0.005, lngOffset: 0.008,
-    gradient: ["#DCFCE7", "#BBF7D0"] as readonly [string, string],
+    userId: 105, name: "CardioKing", monsterType: "bodybuilder", monsterLevel: 16,
+    monsterStage: 3, monsterImageUrl: null, distanceKm: 1.5,
+    lastUpdated: new Date(Date.now() - 60 * 60000), latitude: 0, longitude: 0,
   },
 ];
+
+function getTimeAgo(lastUpdated: Date | string, t: any): { text: string; isOnline: boolean } {
+  const now = Date.now();
+  const updated = new Date(lastUpdated).getTime();
+  const diffMs = now - updated;
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 5) return { text: t.now || "Now", isOnline: true };
+  if (diffMin < 60) return { text: `${diffMin}${t.minutesAgoShort || "m ago"}`, isOnline: false };
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return { text: `${diffHours}${t.hoursAgoShort || "h ago"}`, isOnline: false };
+  return { text: `${Math.floor(diffHours / 24)}${t.daysAgoShort || "d ago"}`, isOnline: false };
+}
+
+function getMonsterImage(type: string, stage: number) {
+  const typeImages = MONSTER_IMAGES[type] || MONSTER_IMAGES.bodybuilder;
+  return typeImages[stage] || typeImages[1];
+}
 
 export default function NearbyMapScreen() {
   const router = useRouter();
@@ -70,11 +124,34 @@ export default function NearbyMapScreen() {
   const [sharingLocation, setSharingLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<typeof NEARBY_USERS[0] | null>(null);
+  const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
+  const [selectedUser, setSelectedUser] = useState<NearbyUser | null>(null);
+  const [usingMockData, setUsingMockData] = useState(false);
+
+  // tRPC mutations
+  const locationUpdateMutation = trpc.location.update.useMutation();
+  const sendFriendRequestMutation = trpc.friends.sendRequest.useMutation();
+
+  // Fetch nearby users from API
+  const nearbyQuery = trpc.location.nearby.useQuery(
+    { latitude: userLocation?.lat ?? 0, longitude: userLocation?.lng ?? 0, radiusKm: 10 },
+    { enabled: !!userLocation }
+  );
 
   useEffect(() => {
     requestLocation();
   }, []);
+
+  // Update nearby users when query data changes
+  useEffect(() => {
+    if (nearbyQuery.data && nearbyQuery.data.length > 0) {
+      setNearbyUsers(nearbyQuery.data as NearbyUser[]);
+      setUsingMockData(false);
+    } else if (nearbyQuery.isError || (nearbyQuery.isSuccess && nearbyQuery.data.length === 0)) {
+      setNearbyUsers(MOCK_NEARBY_USERS);
+      setUsingMockData(true);
+    }
+  }, [nearbyQuery.data, nearbyQuery.isError, nearbyQuery.isSuccess]);
 
   const requestLocation = async () => {
     try {
@@ -96,7 +173,7 @@ export default function NearbyMapScreen() {
     setLoading(false);
   };
 
-  const handleToggleSharing = useCallback((value: boolean) => {
+  const handleToggleSharing = useCallback(async (value: boolean) => {
     if (value && !locationGranted) {
       Alert.alert(
         t.locationPermissionRequired || "Location Permission Required",
@@ -106,6 +183,20 @@ export default function NearbyMapScreen() {
       return;
     }
     setSharingLocation(value);
+
+    // Update location on server
+    if (userLocation) {
+      try {
+        await locationUpdateMutation.mutateAsync({
+          latitude: userLocation.lat,
+          longitude: userLocation.lng,
+          isSharing: value,
+        });
+      } catch {
+        // Silently fail if server unavailable
+      }
+    }
+
     if (value) {
       Alert.alert(
         t.locationSharingEnabled || "Location Sharing Enabled",
@@ -113,45 +204,85 @@ export default function NearbyMapScreen() {
         [{ text: t.ok }]
       );
     }
-  }, [locationGranted]);
+  }, [locationGranted, userLocation]);
 
-  const handleSendRequest = useCallback((user: typeof NEARBY_USERS[0]) => {
-    Alert.alert(
-      t.friendRequestSentTitle || "Friend Request Sent!",
-      `${t.friendRequestSentTo || "You sent a friend request to"} ${user.name}.\n${t.needToAccept || "They need to accept before you can battle!"}`,
-      [{ text: t.ok }]
-    );
-  }, []);
+  const handleSendRequest = useCallback(async (user: NearbyUser) => {
+    if (usingMockData) {
+      // Mock mode - just show alert
+      Alert.alert(
+        t.friendRequestSentTitle || "Friend Request Sent!",
+        `${t.friendRequestSentTo || "You sent a friend request to"} ${user.name}.\n${t.needToAccept || "They need to accept before you can battle!"}`,
+        [{ text: t.ok }]
+      );
+      return;
+    }
 
-  const renderNearbyUser = ({ item }: { item: typeof NEARBY_USERS[0] }) => (
-    <TouchableOpacity
-      style={[styles.userCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      onPress={() => setSelectedUser(selectedUser?.id === item.id ? null : item)}
-      activeOpacity={0.7}
-    >
-      <LinearGradient colors={[item.gradient[0], item.gradient[1]]} style={styles.userAvatar}>
-        <Image source={item.monsterImage} style={styles.userMonster} contentFit="contain" />
-      </LinearGradient>
-      <View style={styles.userInfo}>
-        <View style={styles.userNameRow}>
-          <Text style={[styles.userName, { color: colors.foreground }]}>{item.name}</Text>
-          {item.online && <View style={styles.onlineDot} />}
-        </View>
-        <Text style={[styles.userLevel, { color: colors.muted }]}>
-          {item.monsterType} Lv.{item.level}
-        </Text>
-        <Text style={[styles.userDistance, { color: colors.primary }]}>
-          📍 {item.distance} · {item.lastActive}
-        </Text>
-      </View>
+    try {
+      const result = await sendFriendRequestMutation.mutateAsync({
+        targetUserId: user.userId,
+      });
+      if (result.success) {
+        Alert.alert(
+          t.friendRequestSentTitle || "Friend Request Sent!",
+          `${t.friendRequestSentTo || "You sent a friend request to"} ${user.name}.\n${t.needToAccept || "They need to accept before you can battle!"}`,
+          [{ text: t.ok }]
+        );
+      } else {
+        Alert.alert(
+          t.friendRequestSentTitle || "Already Sent",
+          t.friendRequestSentMsg || "A friend request already exists with this user.",
+          [{ text: t.ok }]
+        );
+      }
+    } catch {
+      Alert.alert(
+        t.friendRequestSentTitle || "Friend Request Sent!",
+        `${t.friendRequestSentTo || "You sent a friend request to"} ${user.name}.\n${t.needToAccept || "They need to accept before you can battle!"}`,
+        [{ text: t.ok }]
+      );
+    }
+  }, [usingMockData]);
+
+  const renderNearbyUser = ({ item }: { item: NearbyUser }) => {
+    const timeInfo = getTimeAgo(item.lastUpdated, t);
+    const gradient = GRADIENT_BY_TYPE[item.monsterType] || GRADIENT_BY_TYPE.bodybuilder;
+    const monsterImage = getMonsterImage(item.monsterType, item.monsterStage);
+
+    return (
       <TouchableOpacity
-        style={[styles.addBtn, { backgroundColor: colors.primary }]}
-        onPress={() => handleSendRequest(item)}
+        style={[styles.userCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        onPress={() => setSelectedUser(selectedUser?.userId === item.userId ? null : item)}
+        activeOpacity={0.7}
       >
-        <IconSymbol name="person.badge.plus" size={18} color="#fff" />
+        <LinearGradient colors={[gradient[0], gradient[1]]} style={styles.userAvatar}>
+          <Image source={monsterImage} style={styles.userMonster} contentFit="contain" />
+        </LinearGradient>
+        <View style={styles.userInfo}>
+          <View style={styles.userNameRow}>
+            <Text style={[styles.userName, { color: colors.foreground }]}>{item.name}</Text>
+            {timeInfo.isOnline && <View style={styles.onlineDot} />}
+          </View>
+          <Text style={[styles.userLevel, { color: colors.muted }]}>
+            {tr(`monsterType_${item.monsterType}`) || item.monsterType} Lv.{item.monsterLevel}
+          </Text>
+          <Text style={[styles.userDistance, { color: colors.primary }]}>
+            📍 {item.distanceKm} km · {timeInfo.text}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.addBtn, { backgroundColor: colors.primary }]}
+          onPress={() => handleSendRequest(item)}
+        >
+          <IconSymbol name="person.badge.plus" size={18} color="#fff" />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
+
+  const onlineCount = nearbyUsers.filter(u => {
+    const info = getTimeAgo(u.lastUpdated, t);
+    return info.isOnline;
+  }).length;
 
   return (
     <ScreenContainer edges={["bottom", "left", "right"]}>
@@ -175,112 +306,128 @@ export default function NearbyMapScreen() {
           <View style={{ width: 40 }} />
         </View>
 
-        {/* Map placeholder (visual representation) */}
-        <View style={[styles.mapContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <LinearGradient
-            colors={["#DCFCE7", "#DBEAFE", "#EDE9FE"]}
-            style={styles.mapGradient}
-          >
-            {/* Grid lines for map feel */}
-            {[...Array(6)].map((_, i) => (
-              <View key={`h-${i}`} style={[styles.gridLineH, { top: `${(i + 1) * 14}%`, backgroundColor: "rgba(0,0,0,0.05)" }]} />
-            ))}
-            {[...Array(6)].map((_, i) => (
-              <View key={`v-${i}`} style={[styles.gridLineV, { left: `${(i + 1) * 14}%`, backgroundColor: "rgba(0,0,0,0.05)" }]} />
-            ))}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : (
+          <>
+            {/* Map placeholder (visual representation) */}
+            <View style={[styles.mapContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <LinearGradient
+                colors={["#DCFCE7", "#DBEAFE", "#EDE9FE"]}
+                style={styles.mapGradient}
+              >
+                {/* Grid lines for map feel */}
+                {[...Array(6)].map((_, i) => (
+                  <View key={`h-${i}`} style={[styles.gridLineH, { top: `${(i + 1) * 14}%`, backgroundColor: "rgba(0,0,0,0.05)" }]} />
+                ))}
+                {[...Array(6)].map((_, i) => (
+                  <View key={`v-${i}`} style={[styles.gridLineV, { left: `${(i + 1) * 14}%`, backgroundColor: "rgba(0,0,0,0.05)" }]} />
+                ))}
 
-            {/* User's location (center) */}
-            <View style={[styles.mapPin, styles.myPin, { left: "48%", top: "45%" }]}>
-              <View style={[styles.myPinInner, { backgroundColor: colors.primary }]}>
-                <Text style={{ fontSize: 16 }}>📍</Text>
-              </View>
-              <Text style={[styles.pinLabel, { color: colors.primary }]}>{t.you || "You"}</Text>
-              {sharingLocation && (
-                <View style={styles.pulseRing} />
-              )}
-            </View>
-
-            {/* Nearby users on map */}
-            {NEARBY_USERS.map((user, idx) => {
-              const positions = [
-                { left: "20%", top: "25%" },
-                { left: "70%", top: "30%" },
-                { left: "30%", top: "65%" },
-                { left: "75%", top: "70%" },
-                { left: "55%", top: "20%" },
-              ];
-              const pos = positions[idx % positions.length];
-              return (
-                <TouchableOpacity
-                  key={user.id}
-                  style={[styles.mapPin, pos as any]}
-                  onPress={() => setSelectedUser(selectedUser?.id === user.id ? null : user)}
-                >
-                  <View style={[
-                    styles.mapUserPin,
-                    { backgroundColor: user.online ? "#22C55E" : "#9CA3AF" },
-                    selectedUser?.id === user.id && { borderColor: colors.primary, borderWidth: 3 },
-                  ]}>
-                    <Text style={{ fontSize: 12 }}>{user.monsterType === "Powerlifter" ? "💪" : user.monsterType === "Bodybuilder" ? "🏋️" : "🧘"}</Text>
+                {/* User's location (center) */}
+                <View style={[styles.mapPin, styles.myPin, { left: "48%", top: "45%" }]}>
+                  <View style={[styles.myPinInner, { backgroundColor: colors.primary }]}>
+                    <Text style={{ fontSize: 16 }}>📍</Text>
                   </View>
-                  <Text style={[styles.mapPinName, { color: colors.foreground }]}>{user.name}</Text>
+                  <Text style={[styles.pinLabel, { color: colors.primary }]}>{t.you || "You"}</Text>
+                  {sharingLocation && (
+                    <View style={styles.pulseRing} />
+                  )}
+                </View>
+
+                {/* Nearby users on map */}
+                {nearbyUsers.slice(0, 5).map((user, idx) => {
+                  const positions = [
+                    { left: "20%", top: "25%" },
+                    { left: "70%", top: "30%" },
+                    { left: "30%", top: "65%" },
+                    { left: "75%", top: "70%" },
+                    { left: "55%", top: "20%" },
+                  ];
+                  const pos = positions[idx % positions.length];
+                  const timeInfo = getTimeAgo(user.lastUpdated, t);
+                  const emoji = EMOJI_BY_TYPE[user.monsterType] || "🏋️";
+                  return (
+                    <TouchableOpacity
+                      key={user.userId}
+                      style={[styles.mapPin, pos as any]}
+                      onPress={() => setSelectedUser(selectedUser?.userId === user.userId ? null : user)}
+                    >
+                      <View style={[
+                        styles.mapUserPin,
+                        { backgroundColor: timeInfo.isOnline ? "#22C55E" : "#9CA3AF" },
+                        selectedUser?.userId === user.userId && { borderColor: colors.primary, borderWidth: 3 },
+                      ]}>
+                        <Text style={{ fontSize: 12 }}>{emoji}</Text>
+                      </View>
+                      <Text style={[styles.mapPinName, { color: colors.foreground }]}>{user.name}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </LinearGradient>
+            </View>
+
+            {/* Location sharing toggle */}
+            <View style={[styles.sharingRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.sharingInfo}>
+                <IconSymbol name="location.fill" size={20} color={sharingLocation ? colors.primary : colors.muted} />
+                <View>
+                  <Text style={[styles.sharingTitle, { color: colors.foreground }]}>{t.shareLocation}</Text>
+                  <Text style={[styles.sharingDesc, { color: colors.muted }]}>
+                    {sharingLocation ? (t.visibleToNearby || "Visible to nearby trainers") : (t.notVisibleOnMap || "Others can't see you on the map")}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={sharingLocation}
+                onValueChange={handleToggleSharing}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#fff"
+              />
+            </View>
+
+            {/* Selected user detail */}
+            {selectedUser && (
+              <View style={[styles.selectedCard, { backgroundColor: colors.surface, borderColor: colors.primary }]}>
+                <LinearGradient
+                  colors={[
+                    (GRADIENT_BY_TYPE[selectedUser.monsterType] || GRADIENT_BY_TYPE.bodybuilder)[0],
+                    (GRADIENT_BY_TYPE[selectedUser.monsterType] || GRADIENT_BY_TYPE.bodybuilder)[1],
+                  ]}
+                  style={styles.selectedAvatar}
+                >
+                  <Image source={getMonsterImage(selectedUser.monsterType, selectedUser.monsterStage)} style={styles.selectedMonster} contentFit="contain" />
+                </LinearGradient>
+                <View style={styles.selectedInfo}>
+                  <Text style={[styles.selectedName, { color: colors.foreground }]}>{selectedUser.name}</Text>
+                  <Text style={[styles.selectedLevel, { color: colors.muted }]}>
+                    {tr(`monsterType_${selectedUser.monsterType}`) || selectedUser.monsterType} Lv.{selectedUser.monsterLevel} · {selectedUser.distanceKm} km
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.challengeBtn, { backgroundColor: "#7C3AED" }]}
+                  onPress={() => handleSendRequest(selectedUser)}
+                >
+                  <Text style={styles.challengeBtnText}>{t.addFriend}</Text>
                 </TouchableOpacity>
-              );
-            })}
-          </LinearGradient>
-        </View>
+              </View>
+            )}
 
-        {/* Location sharing toggle */}
-        <View style={[styles.sharingRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.sharingInfo}>
-            <IconSymbol name="location.fill" size={20} color={sharingLocation ? colors.primary : colors.muted} />
-            <View>
-              <Text style={[styles.sharingTitle, { color: colors.foreground }]}>{t.shareLocation}</Text>
-              <Text style={[styles.sharingDesc, { color: colors.muted }]}>
-                {sharingLocation ? (t.visibleToNearby || "Visible to nearby trainers") : (t.notVisibleOnMap || "Others can't see you on the map")}
-              </Text>
-            </View>
-          </View>
-          <Switch
-            value={sharingLocation}
-            onValueChange={handleToggleSharing}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor="#fff"
-          />
-        </View>
-
-        {/* Selected user detail */}
-        {selectedUser && (
-          <View style={[styles.selectedCard, { backgroundColor: colors.surface, borderColor: colors.primary }]}>
-            <LinearGradient colors={[selectedUser.gradient[0], selectedUser.gradient[1]]} style={styles.selectedAvatar}>
-              <Image source={selectedUser.monsterImage} style={styles.selectedMonster} contentFit="contain" />
-            </LinearGradient>
-            <View style={styles.selectedInfo}>
-              <Text style={[styles.selectedName, { color: colors.foreground }]}>{selectedUser.name}</Text>
-              <Text style={[styles.selectedLevel, { color: colors.muted }]}>
-                {selectedUser.monsterType} Lv.{selectedUser.level} · {selectedUser.distance}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.challengeBtn, { backgroundColor: "#7C3AED" }]}
-              onPress={() => handleSendRequest(selectedUser)}
-            >
-              <Text style={styles.challengeBtnText}>{t.addFriend}</Text>
-            </TouchableOpacity>
-          </View>
+            {/* Nearby users list */}
+            <Text style={[styles.listTitle, { color: colors.foreground }]}>
+              🏃 {nearbyUsers.length} {t.trainersActiveNearby || "trainers active nearby"}
+            </Text>
+            <FlatList
+              data={nearbyUsers}
+              renderItem={renderNearbyUser}
+              keyExtractor={(item) => String(item.userId)}
+              contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
+              showsVerticalScrollIndicator={false}
+            />
+          </>
         )}
-
-        {/* Nearby users list */}
-        <Text style={[styles.listTitle, { color: colors.foreground }]}>
-          🏃 {NEARBY_USERS.filter((u) => u.online).length} {t.trainersActiveNearby || "trainers active nearby"}
-        </Text>
-        <FlatList
-          data={NEARBY_USERS}
-          renderItem={renderNearbyUser}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
-          showsVerticalScrollIndicator={false}
-        />
       </View>
     </ScreenContainer>
   );
@@ -304,6 +451,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: { fontSize: 17, fontWeight: "600" },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   // Map
   mapContainer: {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   ScrollView,
   Text,
@@ -18,6 +18,8 @@ import { useColors } from "@/hooks/use-colors";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useI18n } from "@/lib/i18n-context";
+import { trpc } from "@/lib/trpc";
+import { useActivity } from "@/lib/activity-context";
 
 const MOCK_OPPONENTS = [
   {
@@ -71,6 +73,38 @@ type Friend = {
   addedAt: Date;
 };
 
+// Helper to get monster image by type and stage
+function getMonsterImage(type: string, stage: number) {
+  const images: Record<string, any[]> = {
+    bodybuilder: [
+      require("@/assets/monsters/bodybuilder-stage1.png"),
+      require("@/assets/monsters/bodybuilder-stage2.png"),
+      require("@/assets/monsters/bodybuilder-stage3.png"),
+    ],
+    physique: [
+      require("@/assets/monsters/physique-stage1.png"),
+      require("@/assets/monsters/physique-stage2.png"),
+      require("@/assets/monsters/physique-stage3.png"),
+    ],
+    powerlifter: [
+      require("@/assets/monsters/powerlifter-stage1.png"),
+      require("@/assets/monsters/powerlifter-stage2.png"),
+      require("@/assets/monsters/powerlifter-stage3.png"),
+    ],
+  };
+  const typeImages = images[type.toLowerCase()] || images.bodybuilder;
+  return typeImages[Math.min(stage - 1, 2)] || typeImages[0];
+}
+
+function getGradientForType(type: string): readonly [string, string] {
+  const gradients: Record<string, readonly [string, string]> = {
+    bodybuilder: ["#DCFCE7", "#BBF7D0"],
+    physique: ["#DBEAFE", "#BFDBFE"],
+    powerlifter: ["#FEF3C7", "#FDE68A"],
+  };
+  return gradients[type.toLowerCase()] || gradients.bodybuilder;
+}
+
 type BattleState = {
   phase: "intro" | "fighting" | "result";
   playerHp: number;
@@ -88,23 +122,72 @@ export default function BattleScreen() {
   const colors = useColors();
   const router = useRouter();
   const { t, tr } = useI18n();
+  const { state: activityState } = useActivity();
   const [activeTab, setActiveTab] = useState<"match" | "requests" | "friends">("match");
   const [swipesLeft, setSwipesLeft] = useState(50);
   const [currentOpponent, setCurrentOpponent] = useState(0);
   const [friends, setFriends] = useState<Friend[]>([]);
-  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([
-    // Simulate some incoming requests from other users
-    {
-      id: 101, from: MOCK_OPPONENTS[2], status: "pending", sentByMe: false,
-      timestamp: new Date(Date.now() - 3600000),
-    },
-    {
-      id: 102, from: MOCK_OPPONENTS[3], status: "pending", sentByMe: false,
-      timestamp: new Date(Date.now() - 7200000),
-    },
-  ]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [showBattle, setShowBattle] = useState(false);
   const [battle, setBattle] = useState<BattleState | null>(null);
+
+  // Real backend queries
+  const friendsQuery = trpc.friends.list.useQuery(undefined, { retry: 1 });
+  const pendingQuery = trpc.friends.pendingRequests.useQuery(undefined, { retry: 1 });
+  const acceptMutation = trpc.friends.acceptRequest.useMutation();
+  const rejectMutation = trpc.friends.rejectRequest.useMutation();
+  const sendRequestMutation = trpc.friends.sendRequest.useMutation();
+
+  // Sync real friends data from backend
+  useEffect(() => {
+    if (friendsQuery.data && friendsQuery.data.length > 0) {
+      const realFriends: Friend[] = friendsQuery.data.map((f: any) => ({
+        id: f.friendId || f.id,
+        name: f.name || 'Trainer',
+        level: f.monsterLevel || 1,
+        monsterType: f.monsterType || 'bodybuilder',
+        monsterImage: getMonsterImage(f.monsterType || 'bodybuilder', f.monsterStage || 1),
+        online: Math.random() > 0.5,
+        gradient: getGradientForType(f.monsterType || 'bodybuilder'),
+        addedAt: new Date(f.createdAt || Date.now()),
+      }));
+      setFriends(realFriends);
+    }
+  }, [friendsQuery.data]);
+
+  // Sync real pending requests from backend
+  useEffect(() => {
+    if (pendingQuery.data && pendingQuery.data.length > 0) {
+      const realRequests: FriendRequest[] = pendingQuery.data.map((r: any) => ({
+        id: r.friendshipId,
+        from: {
+          id: r.userId,
+          name: r.name || 'Trainer',
+          distance: '?',
+          online: true,
+          level: r.monsterLevel || 1,
+          monsterType: r.monsterType || 'Bodybuilder',
+          monsterImage: getMonsterImage(r.monsterType || 'bodybuilder', 1),
+          streakKey: 'streakBeastMode' as const,
+          matchPercent: 75,
+          todayExp: 0,
+          strength: 20,
+          defense: 15,
+          agility: 15,
+          hp: 200,
+          gradient: getGradientForType(r.monsterType || 'bodybuilder'),
+        },
+        status: 'pending' as const,
+        sentByMe: false,
+        timestamp: new Date(r.createdAt || Date.now()),
+      }));
+      setFriendRequests(prev => {
+        // Merge: keep local mock requests, add real ones
+        const localOnly = prev.filter(p => p.sentByMe);
+        return [...realRequests, ...localOnly];
+      });
+    }
+  }, [pendingQuery.data]);
 
   // Animation refs for battle
   const playerShake = useRef(new RNAnimated.Value(0)).current;
@@ -114,6 +197,10 @@ export default function BattleScreen() {
   const specialFlash = useRef(new RNAnimated.Value(0)).current;
 
   const opponent = MOCK_OPPONENTS[currentOpponent % MOCK_OPPONENTS.length];
+
+  // Get player's active monster from activity context
+  const playerMonster = activityState.monsters.length > 0 ? activityState.monsters[0] : null;
+  const playerMaxHp = playerMonster ? 100 + (playerMonster.level * 10) : 150;
 
   const pendingRequests = friendRequests.filter((r) => r.status === "pending");
   const incomingRequests = pendingRequests.filter((r) => !r.sentByMe);
@@ -229,6 +316,14 @@ export default function BattleScreen() {
   const handleAcceptRequest = useCallback((request: FriendRequest) => {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+    // Call backend API
+    acceptMutation.mutate({ friendshipId: request.id }, {
+      onSuccess: () => {
+        friendsQuery.refetch();
+        pendingQuery.refetch();
+      },
+    });
+
     setFriendRequests((prev) =>
       prev.map((r) => (r.id === request.id ? { ...r, status: "accepted" as const } : r))
     );
@@ -244,20 +339,28 @@ export default function BattleScreen() {
       ];
     });
     Alert.alert(t.friendAddedTitle, tr("friendAddedMsg", { name: request.from.name }));
-  }, []);
+  }, [acceptMutation, friendsQuery, pendingQuery]);
 
   // Reject incoming friend request
   const handleRejectRequest = useCallback((request: FriendRequest) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Call backend API
+    rejectMutation.mutate({ friendshipId: request.id }, {
+      onSuccess: () => {
+        pendingQuery.refetch();
+      },
+    });
+
     setFriendRequests((prev) =>
       prev.map((r) => (r.id === request.id ? { ...r, status: "rejected" as const } : r))
     );
-  }, []);
+  }, [rejectMutation, pendingQuery]);
 
   const startBattle = useCallback((opp: Opponent) => {
-    const playerMaxHp = 150;
+    const hp = playerMonster ? playerMonster.maxHp : 150;
     setBattle({
-      phase: "intro", playerHp: playerMaxHp, playerMaxHp,
+      phase: "intro", playerHp: hp, playerMaxHp: hp,
       enemyHp: opp.hp, enemyMaxHp: opp.hp, turn: "player",
       log: [tr("battleStartedLog", { name: opp.name, type: opp.monsterType })],
       opponent: opp, actionLock: false,
@@ -649,12 +752,12 @@ export default function BattleScreen() {
 
                 <View style={styles.battleSide}>
                   <RNAnimated.View style={[styles.battleMonsterRow, { transform: [{ translateX: playerShake }] }]}>
-                    <LinearGradient colors={["#DCFCE7", "#BBF7D0"]} style={styles.battleGradient}>
-                      <Image source={require("@/assets/monsters/bodybuilder-stage1.png")} style={styles.battleMonster} contentFit="contain" />
+                    <LinearGradient colors={playerMonster ? getGradientForType(playerMonster.type) : ["#DCFCE7", "#BBF7D0"]} style={styles.battleGradient}>
+                      <Image source={playerMonster ? getMonsterImage(playerMonster.type, playerMonster.stage) : require("@/assets/monsters/bodybuilder-stage1.png")} style={styles.battleMonster} contentFit="contain" />
                     </LinearGradient>
                     <View style={styles.battleInfo}>
-                      <Text style={[styles.battleName, { color: colors.foreground }]}>Flexo</Text>
-                      <Text style={[styles.battleType, { color: colors.muted }]}>{t.bodybuilder} Lv.1</Text>
+                      <Text style={[styles.battleName, { color: colors.foreground }]}>{playerMonster?.name || 'Flexo'}</Text>
+                      <Text style={[styles.battleType, { color: colors.muted }]}>{(t as any)[(playerMonster?.type || 'bodybuilder').toLowerCase()] || playerMonster?.type || t.bodybuilder} Lv.{playerMonster?.level || 1}</Text>
                       <View style={[styles.hpBar, { backgroundColor: colors.border }]}>
                         <View style={[styles.hpFill, { width: `${(battle.playerHp / battle.playerMaxHp) * 100}%`, backgroundColor: battle.playerHp > battle.playerMaxHp * 0.3 ? "#22C55E" : "#EF4444" }]} />
                       </View>

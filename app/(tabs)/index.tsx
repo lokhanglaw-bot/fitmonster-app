@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import Animated, { useSharedValue, useAnimatedStyle, withSequence, withTiming, withRepeat, Easing } from "react-native-reanimated";
 import {
   ScrollView,
   Text,
@@ -64,7 +65,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  const { state: activity, addRecordFood, addRecordWorkout, addMonster, setMonsters: setMonstersCtx } = useActivity();
+  const { state: activity, addRecordFood, addRecordWorkout, addMonster, setMonsters: setMonstersCtx, evolveMonster, checkEvolution } = useActivity();
   const { language, setLanguage, t, tr } = useI18n();
 
   const MONSTER_TYPES = [
@@ -118,6 +119,63 @@ export default function HomeScreen() {
   const caloriesBurned = activity.todayCaloriesBurned;
   const workoutDuration = activity.todayWorkoutMinutes;
   const avgProtein = activity.todayProtein;
+
+  // Evolution modal
+  const [showEvolutionModal, setShowEvolutionModal] = useState(false);
+  const [evolutionData, setEvolutionData] = useState<{ monsterName: string; monsterType: string; newStage: number; monsterIndex: number } | null>(null);
+  const [evolutionPhase, setEvolutionPhase] = useState<"glowing" | "evolved">("glowing");
+  const evolutionScale = useSharedValue(1);
+  const evolutionGlow = useSharedValue(0);
+
+  // Check for evolution readiness whenever monsters change
+  useEffect(() => {
+    const evoCheck = checkEvolution();
+    if (evoCheck && evoCheck.ready && monsters.length > 0) {
+      const m = monsters[evoCheck.monsterIndex];
+      setEvolutionData({
+        monsterName: m.name,
+        monsterType: m.type,
+        newStage: evoCheck.newStage,
+        monsterIndex: evoCheck.monsterIndex,
+      });
+      setEvolutionPhase("glowing");
+      setShowEvolutionModal(true);
+      // Start glow animation
+      evolutionScale.value = withRepeat(
+        withSequence(
+          withTiming(1.15, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) })
+        ),
+        3,
+        true
+      );
+      evolutionGlow.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 600 }),
+          withTiming(0.3, { duration: 600 })
+        ),
+        3,
+        true
+      );
+    }
+  }, [activity.monsters]);
+
+  const handleEvolve = useCallback(() => {
+    if (!evolutionData) return;
+    evolveMonster(evolutionData.monsterIndex);
+    setEvolutionPhase("evolved");
+    // Big pop animation
+    evolutionScale.value = withSequence(
+      withTiming(0.5, { duration: 200 }),
+      withTiming(1.3, { duration: 400, easing: Easing.out(Easing.back(2)) }),
+      withTiming(1, { duration: 200 })
+    );
+  }, [evolutionData, evolveMonster]);
+
+  const evolutionAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: evolutionScale.value }],
+    opacity: 0.5 + evolutionGlow.value * 0.5,
+  }));
 
   // Logout confirmation modal
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -893,6 +951,70 @@ export default function HomeScreen() {
             >
               <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Evolution Modal */}
+      <Modal visible={showEvolutionModal} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border, alignItems: "center", paddingVertical: 32, paddingHorizontal: 24 }]}>
+            {evolutionPhase === "glowing" ? (
+              <>
+                <Text style={{ fontSize: 24, fontWeight: "800", color: "#F59E0B", marginBottom: 8 }}>✨ {t.evolutionReady} ✨</Text>
+                <Text style={{ fontSize: 16, color: colors.muted, marginBottom: 20, textAlign: "center" }}>
+                  {evolutionData?.monsterName} {t.monsterReadyToEvolve}
+                </Text>
+                <Animated.View style={[{ width: 180, height: 180, borderRadius: 20, overflow: "hidden", marginBottom: 20 }, evolutionAnimStyle]}>
+                  <LinearGradient
+                    colors={MONSTER_GRADIENTS[evolutionData?.monsterType || "Bodybuilder"] || ["#DCFCE7", "#BBF7D0"]}
+                    style={{ width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }}
+                  >
+                    <Image
+                      source={MONSTER_IMAGES[`${evolutionData?.monsterType}-${(evolutionData?.newStage || 2) - 1}`]}
+                      style={{ width: 140, height: 140 }}
+                      contentFit="contain"
+                    />
+                  </LinearGradient>
+                </Animated.View>
+                <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 20, textAlign: "center" }}>
+                  Stage {(evolutionData?.newStage || 2) - 1} → Stage {evolutionData?.newStage}
+                </Text>
+                <TouchableOpacity
+                  onPress={handleEvolve}
+                  style={{ backgroundColor: "#F59E0B", paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14, width: "100%", alignItems: "center" }}
+                >
+                  <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800" }}>🔥 {t.evolveNow}</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={{ fontSize: 24, fontWeight: "800", color: "#22C55E", marginBottom: 8 }}>🎉 {t.evolutionComplete} 🎉</Text>
+                <Text style={{ fontSize: 16, color: colors.foreground, fontWeight: "700", marginBottom: 4 }}>{t.congratulations}</Text>
+                <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 20, textAlign: "center" }}>
+                  {evolutionData?.monsterName} {language === "zh" ? `${t.monsterEvolved}${evolutionData?.newStage}階段！` : `${t.monsterEvolved} ${evolutionData?.newStage}!`}
+                </Text>
+                <Animated.View style={[{ width: 180, height: 180, borderRadius: 20, overflow: "hidden", marginBottom: 16 }, evolutionAnimStyle]}>
+                  <LinearGradient
+                    colors={MONSTER_GRADIENTS[evolutionData?.monsterType || "Bodybuilder"] || ["#DCFCE7", "#BBF7D0"]}
+                    style={{ width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }}
+                  >
+                    <Image
+                      source={MONSTER_IMAGES[`${evolutionData?.monsterType}-${evolutionData?.newStage}`]}
+                      style={{ width: 140, height: 140 }}
+                      contentFit="contain"
+                    />
+                  </LinearGradient>
+                </Animated.View>
+                <Text style={{ fontSize: 13, color: "#22C55E", fontWeight: "600", marginBottom: 20 }}>💪 {t.statsIncreased}</Text>
+                <TouchableOpacity
+                  onPress={() => setShowEvolutionModal(false)}
+                  style={{ backgroundColor: "#22C55E", paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14, width: "100%", alignItems: "center" }}
+                >
+                  <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800" }}>{t.closeEvolution}</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </Modal>

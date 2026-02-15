@@ -92,6 +92,7 @@ type Action =
   | { type: "ADD_RECORD_WORKOUT"; payload: { name: string; duration: number } }
   | { type: "ADD_MONSTER"; payload: MonsterData }
   | { type: "SET_MONSTERS"; payload: MonsterData[] }
+  | { type: "EVOLVE_MONSTER"; payload: { monsterIndex: number } }
   | { type: "HYDRATE"; payload: ActivityState }
   | { type: "DAILY_RESET" }
   | { type: "FULL_RESET" };
@@ -105,7 +106,7 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
         name, calories, protein, carbs, fat, expEarned,
         timestamp: new Date().toISOString(),
       };
-      return {
+      const foodResult = {
         ...state,
         todayProtein: state.todayProtein + protein,
         todayCaloriesIn: state.todayCaloriesIn + calories,
@@ -115,6 +116,8 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
         weeklyCalories: updateWeeklyLast(state.weeklyCalories, calories),
         weeklyProtein: updateWeeklyLast(state.weeklyProtein, protein),
       };
+      // Add EXP to active monster's evolution progress
+      return addEvolutionExp(foodResult, expEarned);
     }
     case "LOG_WORKOUT": {
       const { exercise, duration, expEarned } = action.payload;
@@ -124,7 +127,7 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
         exercise, duration, expEarned,
         timestamp: new Date().toISOString(),
       };
-      return {
+      const workoutResult = {
         ...state,
         todayWorkoutMinutes: state.todayWorkoutMinutes + duration,
         todayCaloriesBurned: state.todayCaloriesBurned + caloriesBurned,
@@ -133,6 +136,8 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
         allWorkoutLogs: [...state.allWorkoutLogs, entry],
         weeklyWorkout: updateWeeklyLast(state.weeklyWorkout, duration),
       };
+      // Add EXP to active monster's evolution progress
+      return addEvolutionExp(workoutResult, expEarned);
     }
     case "SYNC_STEPS": {
       return {
@@ -191,6 +196,32 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
         monsters: action.payload,
       };
     }
+    case "EVOLVE_MONSTER": {
+      const idx = action.payload.monsterIndex;
+      if (idx < 0 || idx >= state.monsters.length) return state;
+      const monster = state.monsters[idx];
+      if (monster.stage >= 3) return state; // Max stage reached
+      const newStage = monster.stage + 1;
+      // Stats boost on evolution
+      const hpBoost = 50;
+      const statBoost = 5;
+      const newEvolutionMax = newStage === 2 ? 1500 : 9999; // Stage 2→3 needs 1500, stage 3 is max
+      const updatedMonster: MonsterData = {
+        ...monster,
+        stage: newStage,
+        evolutionProgress: 0,
+        evolutionMax: newEvolutionMax,
+        maxHp: monster.maxHp + hpBoost,
+        currentHp: monster.currentHp + hpBoost,
+        strength: monster.strength + statBoost,
+        defense: monster.defense + statBoost,
+        agility: monster.agility + statBoost,
+        status: newStage === 2 ? "Trained" : "Champion",
+      };
+      const newMonsters = [...state.monsters];
+      newMonsters[idx] = updatedMonster;
+      return { ...state, monsters: newMonsters };
+    }
     case "HYDRATE":
       return action.payload;
     case "DAILY_RESET": {
@@ -212,6 +243,30 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
   }
 }
 
+/** Add EXP to the first (active) monster's evolution progress and level */
+function addEvolutionExp(state: ActivityState, exp: number): ActivityState {
+  if (state.monsters.length === 0) return state;
+  const monsters = [...state.monsters];
+  const m = { ...monsters[0] };
+  // Add to evolution progress
+  m.evolutionProgress = (m.evolutionProgress || 0) + exp;
+  // Add to level EXP
+  m.currentExp = (m.currentExp || 0) + exp;
+  // Level up logic
+  while (m.currentExp >= m.expToNextLevel) {
+    m.currentExp -= m.expToNextLevel;
+    m.level += 1;
+    m.expToNextLevel = Math.round(m.expToNextLevel * 1.2);
+    m.maxHp += 10;
+    m.currentHp = m.maxHp;
+    m.strength += 2;
+    m.defense += 2;
+    m.agility += 2;
+  }
+  monsters[0] = m;
+  return { ...state, monsters };
+}
+
 function updateWeeklyLast(arr: number[], add: number): number[] {
   const copy = [...arr];
   copy[copy.length - 1] = (copy[copy.length - 1] || 0) + add;
@@ -229,6 +284,8 @@ interface ActivityContextType {
   addRecordWorkout: (name: string, duration: number) => void;
   addMonster: (monster: MonsterData) => void;
   setMonsters: (monsters: MonsterData[]) => void;
+  evolveMonster: (monsterIndex: number) => void;
+  checkEvolution: () => { ready: boolean; monsterIndex: number; monsterName: string; newStage: number } | null;
   resetForNewUser: () => void;
   switchUser: (userId: string) => Promise<void>;
 }
@@ -327,6 +384,21 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
     dispatch({ type: "SET_MONSTERS", payload: monsters });
   }, []);
 
+  const evolveMonster = useCallback((monsterIndex: number) => {
+    dispatch({ type: "EVOLVE_MONSTER", payload: { monsterIndex } });
+  }, []);
+
+  const checkEvolution = useCallback(() => {
+    if (state.monsters.length === 0) return null;
+    const m = state.monsters[0];
+    if (m.stage >= 3) return null; // Max stage
+    const threshold = m.stage === 1 ? 500 : 1500; // Stage 1→2: 500, Stage 2→3: 1500
+    if ((m.evolutionProgress || 0) >= threshold) {
+      return { ready: true, monsterIndex: 0, monsterName: m.name, newStage: m.stage + 1 };
+    }
+    return null;
+  }, [state.monsters]);
+
   const resetForNewUser = useCallback(() => {
     dispatch({ type: "FULL_RESET" });
     isHydrated.current = false;
@@ -347,7 +419,7 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
   return (
     <ActivityContext.Provider value={{
       state, logFood, logWorkout, syncSteps, addRecordFood, addRecordWorkout,
-      addMonster, setMonsters, resetForNewUser, switchUser,
+      addMonster, setMonsters, evolveMonster, checkEvolution, resetForNewUser, switchUser,
     }}>
       {children}
     </ActivityContext.Provider>
