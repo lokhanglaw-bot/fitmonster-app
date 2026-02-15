@@ -259,7 +259,7 @@ export default function WorkoutTrackingScreen() {
           <View style={styles.activeContainer}>
             {/* Exercise info */}
             <View style={styles.exerciseInfo}>
-              <Text style={{ fontSize: 48 }}>{exerciseIcon}</Text>
+              <Text style={{ fontSize: 36 }}>{exerciseIcon}</Text>
               <Text style={[styles.exerciseName, { color: colors.foreground }]}>{exerciseName}</Text>
               {bonusLabel && (
                 <View style={[styles.bonusBadge, { backgroundColor: "#FEF3C7" }]}>
@@ -379,15 +379,16 @@ const styles = StyleSheet.create({
   activeContainer: {
     flex: 1,
     alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 24,
-    gap: 24,
+    gap: 16,
   },
   exerciseInfo: {
     alignItems: "center",
-    gap: 4,
+    gap: 2,
   },
   exerciseName: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
   },
   bonusBadge: {
@@ -401,15 +402,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   timerCircle: {
-    width: SCREEN_WIDTH * 0.55,
-    height: SCREEN_WIDTH * 0.55,
-    borderRadius: SCREEN_WIDTH * 0.275,
-    borderWidth: 6,
+    width: SCREEN_WIDTH * 0.42,
+    height: SCREEN_WIDTH * 0.42,
+    borderRadius: SCREEN_WIDTH * 0.21,
+    borderWidth: 5,
     alignItems: "center",
     justifyContent: "center",
   },
   timerText: {
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
   },

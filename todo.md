@@ -343,3 +343,9 @@
 - [x] Persist quest/daily task progress per user
 - [x] Persist dashboard stats per user
 - [x] Clear data on logout so next login starts fresh or loads correct user data
+
+## Bug Fix - Round 19
+- [x] Fix workout-tracking screen content overlap (timer, exercise name, progress bar overlapping)
+- [x] Fix step sync button (footprint icon) — added haptic feedback and increased touch target
+- [x] Verify nearby friend feature — currently uses simulated data, explained testing approach
+- [x] Answer monster evolution system design questions — evolution UI exists but no trigger logic yet

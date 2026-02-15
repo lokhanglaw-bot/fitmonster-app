@@ -17,6 +17,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useActivity } from "@/lib/activity-context";
 import { useRouter } from "expo-router";
 import { useI18n } from "@/lib/i18n-context";
+import * as Haptics from "expo-haptics";
 
 // WORKOUT_TYPES and EXERCISES are built inside the component to use i18n
 
@@ -154,6 +155,9 @@ export default function WorkoutScreen() {
   }, [manualExercise, manualDuration, manualWeight, logWorkoutToContext]);
 
   const handleSyncSteps = useCallback(() => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     const simulatedSteps = Math.floor(Math.random() * 3000) + 1000;
     // Update shared activity state for step quests
     syncStepsToContext(simulatedSteps);
@@ -491,7 +495,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   title: { fontSize: 26, fontWeight: "800" },
   subtitle: { fontSize: 14, marginTop: 2 },
-  headerBtn: { width: 44, height: 44, borderRadius: 12, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  headerBtn: { width: 48, height: 48, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   headerBtnIcon: { fontSize: 20 },
 
   // Filter pills
