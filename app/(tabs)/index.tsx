@@ -65,7 +65,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  const { state: activity, addRecordFood, addRecordWorkout, addMonster, setMonsters: setMonstersCtx, evolveMonster, checkEvolution } = useActivity();
+  const { state: activity, addRecordFood, addRecordWorkout, addMonster, setMonsters: setMonstersCtx, evolveMonster, checkEvolution, setActiveMonster } = useActivity();
   const { language, setLanguage, t, tr } = useI18n();
 
   const MONSTER_TYPES = [
@@ -200,7 +200,8 @@ export default function HomeScreen() {
     { id: 3, icon: "💪", title: t.questStrengthTraining, description: t.questStrengthDescFull, progress: activity.todayWorkoutMinutes, target: 30, reward: 100, bgColor: "#F59E0B" },
   ];
 
-  const activeMonster = monsters.length > 0 ? monsters[0] : null;
+  const activeMonsterIdx = activity.activeMonsterIndex;
+  const activeMonster = monsters.length > 0 ? (monsters[activeMonsterIdx] || monsters[0]) : null;
   const hpPercent = activeMonster ? (activeMonster.currentHp / activeMonster.maxHp) * 100 : 0;
   const expPercent = activeMonster ? (activeMonster.currentExp / activeMonster.expToNextLevel) * 100 : 0;
   const evoPercent = activeMonster ? (activeMonster.evolutionProgress / activeMonster.evolutionMax) * 100 : 0;
@@ -208,11 +209,24 @@ export default function HomeScreen() {
   const hasNoMonster = !activeMonster;
 
   const handleHatchEgg = useCallback(() => {
+    if (monsters.length >= 3) {
+      Alert.alert(t.teamFull, t.teamFullMessage);
+      return;
+    }
     setHatchStep("select");
     setSelectedType("");
     setNewMonsterName("");
     setShowHatchModal(true);
-  }, []);
+  }, [monsters.length, t]);
+
+  const handleSelectActiveMonster = useCallback((index: number) => {
+    if (index === activeMonsterIdx) return;
+    setActiveMonster(index);
+    const m = monsters[index];
+    if (m) {
+      Alert.alert(tr("switchedTo", { name: m.name }), tr("nowTraining", { name: m.name }));
+    }
+  }, [activeMonsterIdx, monsters, setActiveMonster, tr]);
 
   const handleSelectType = useCallback((type: string) => {
     setSelectedType(type);
@@ -301,14 +315,18 @@ export default function HomeScreen() {
     router.push("/(tabs)/workout");
   }, [router]);
 
-  const renderMonsterCard = (monster: Monster, index: number) => {
-    const isActive = index === 0;
+  const renderMonsterCard = (monster: Monster, index: number, showSelectAction = false) => {
+    const isActive = index === activeMonsterIdx;
     const hp = (monster.currentHp / monster.maxHp) * 100;
     const exp = (monster.currentExp / monster.expToNextLevel) * 100;
     const gradient = MONSTER_GRADIENTS[monster.type] || ["#DCFCE7", "#BBF7D0"];
 
     return (
-      <View key={`${monster.name}-${index}`} style={[styles.monsterCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <TouchableOpacity
+        key={`${monster.name}-${index}`}
+        activeOpacity={showSelectAction ? 0.7 : 1}
+        onPress={showSelectAction ? () => handleSelectActiveMonster(index) : undefined}
+        style={[styles.monsterCard, { backgroundColor: colors.surface, borderColor: isActive ? "#22C55E" : colors.border, borderWidth: isActive ? 2 : 1 }]}>
         <View style={styles.badgesRow}>
           <View style={[styles.badge, { backgroundColor: "#22C55E" }]}>
             <Text style={styles.badgeText}>Lv.{monster.level}</Text>
@@ -388,7 +406,21 @@ export default function HomeScreen() {
             <Text style={styles.monsterActionText}>{t.battle}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+
+        {/* Active indicator */}
+        {isActive && (
+          <View style={styles.activeBadgeRow}>
+            <View style={styles.activeBadge}>
+              <Text style={styles.activeBadgeText}>⭐ {t.activeMonsterLabel}</Text>
+            </View>
+          </View>
+        )}
+        {showSelectAction && !isActive && (
+          <View style={styles.activeBadgeRow}>
+            <Text style={[styles.tapToSelectText, { color: colors.muted }]}>{t.tapToSelect}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
@@ -402,7 +434,50 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {activeMonster ? renderMonsterCard(activeMonster, 0) : (
+      {/* Monster Team Selector - shows small thumbnails for quick switching */}
+      {monsters.length > 1 && (
+        <View style={styles.teamSelectorRow}>
+          {monsters.map((m, i) => {
+            const isSelected = i === activeMonsterIdx;
+            const gradient = MONSTER_GRADIENTS[m.type] || ["#DCFCE7", "#BBF7D0"];
+            return (
+              <TouchableOpacity
+                key={`team-slot-${i}`}
+                onPress={() => handleSelectActiveMonster(i)}
+                style={[styles.teamSlotCard, {
+                  backgroundColor: colors.surface,
+                  borderColor: isSelected ? "#22C55E" : colors.border,
+                  borderWidth: isSelected ? 2 : 1,
+                }]}
+              >
+                <LinearGradient colors={[gradient[0], gradient[1]]} style={styles.teamSlotGradient}>
+                  <Image source={MONSTER_IMAGES[`${m.type}-${m.stage}`]} style={styles.teamSlotImage} contentFit="contain" />
+                </LinearGradient>
+                <Text style={[styles.teamSlotName, { color: colors.foreground }]} numberOfLines={1}>{m.name}</Text>
+                <Text style={[styles.teamSlotLevel, { color: isSelected ? "#22C55E" : colors.muted }]}>
+                  {isSelected ? `⭐ ${t.activeMonsterLabel}` : `Lv.${m.level}`}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+          {/* Empty slots */}
+          {Array.from({ length: 3 - monsters.length }).map((_, i) => (
+            <TouchableOpacity
+              key={`empty-slot-${i}`}
+              onPress={handleHatchEgg}
+              style={[styles.teamSlotCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
+              <View style={[styles.teamSlotEmpty, { borderColor: colors.border }]}>
+                <Text style={{ fontSize: 24 }}>🥚</Text>
+              </View>
+              <Text style={[styles.teamSlotName, { color: colors.muted }]}>{t.hatchEgg}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* Active Monster Card */}
+      {activeMonster ? renderMonsterCard(activeMonster, activeMonsterIdx) : (
         <View style={[styles.emptyMonsterCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={{ fontSize: 48 }}>🥚</Text>
           <Text style={[styles.emptyMonsterText, { color: colors.foreground }]}>{t.hatchEgg}</Text>
@@ -410,11 +485,13 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Hatch Egg Button */}
-      <TouchableOpacity style={[styles.hatchBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleHatchEgg}>
-        <Text style={styles.hatchIcon}>🥚</Text>
-        <Text style={[styles.hatchText, { color: colors.foreground }]}>{t.hatchEgg}</Text>
-      </TouchableOpacity>
+      {/* Hatch Egg Button - only show if team not full */}
+      {monsters.length < 3 && (
+        <TouchableOpacity style={[styles.hatchBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleHatchEgg}>
+          <Text style={styles.hatchIcon}>🥚</Text>
+          <Text style={[styles.hatchText, { color: colors.foreground }]}>{t.hatchEgg} ({tr("monsterTeamSlots", { current: String(monsters.length) })})</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Quick Actions */}
       <LinearGradient colors={["#22C55E", "#16A34A"]} style={styles.actionBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
@@ -777,11 +854,13 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView style={{ maxHeight: 500 }}>
-              {monsters.map((m, i) => renderMonsterCard(m, i))}
+              {monsters.map((m, i) => renderMonsterCard(m, i, true))}
             </ScrollView>
-            <TouchableOpacity style={[styles.hatchConfirmBtn, { backgroundColor: colors.primary }]} onPress={() => { setShowMonsterList(false); handleHatchEgg(); }}>
-              <Text style={styles.hatchConfirmText}>🥚 {t.hatchNewEgg}</Text>
-            </TouchableOpacity>
+            {monsters.length < 3 && (
+              <TouchableOpacity style={[styles.hatchConfirmBtn, { backgroundColor: colors.primary }]} onPress={() => { setShowMonsterList(false); handleHatchEgg(); }}>
+                <Text style={styles.hatchConfirmText}>🥚 {t.hatchNewEgg} ({tr("monsterTeamSlots", { current: String(monsters.length) })})</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>
@@ -1200,6 +1279,22 @@ const styles = StyleSheet.create({
   monsterActionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 12 },
   monsterActionIcon: { fontSize: 16 },
   monsterActionText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+
+  // Active monster indicator
+  activeBadgeRow: { flexDirection: "row", justifyContent: "center", marginTop: 10 },
+  activeBadge: { backgroundColor: "#22C55E", paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12 },
+  activeBadgeText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  tapToSelectText: { fontSize: 13, fontWeight: "500" },
+
+  // Monster team selector
+  teamSelectorRow: { flexDirection: "row", gap: 10, marginBottom: 8 },
+  teamSlotCard: { flex: 1, borderRadius: 16, padding: 10, borderWidth: 1, alignItems: "center", gap: 4 },
+  teamSlotImage: { width: 56, height: 56 },
+  teamSlotGradient: { borderRadius: 12, width: 64, height: 64, alignItems: "center", justifyContent: "center" },
+  teamSlotName: { fontSize: 12, fontWeight: "700", textAlign: "center" as const },
+  teamSlotLevel: { fontSize: 10, fontWeight: "600" },
+  teamSlotEmpty: { width: 64, height: 64, borderRadius: 12, borderWidth: 2, borderStyle: "dashed" as const, alignItems: "center", justifyContent: "center" },
+  teamSlotsLabel: { fontSize: 13, fontWeight: "600" },
 
   // Empty monster state for new users
   emptyMonsterCard: { borderRadius: 20, padding: 32, borderWidth: 1, alignItems: "center", gap: 12 },

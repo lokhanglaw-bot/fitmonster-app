@@ -199,7 +199,8 @@ export default function BattleScreen() {
   const opponent = MOCK_OPPONENTS[currentOpponent % MOCK_OPPONENTS.length];
 
   // Get player's active monster from activity context
-  const playerMonster = activityState.monsters.length > 0 ? activityState.monsters[0] : null;
+  const activeIdx = activityState.activeMonsterIndex;
+  const playerMonster = activityState.monsters.length > 0 ? (activityState.monsters[activeIdx] || activityState.monsters[0]) : null;
   const playerMaxHp = playerMonster ? 100 + (playerMonster.level * 10) : 150;
 
   const pendingRequests = friendRequests.filter((r) => r.status === "pending");

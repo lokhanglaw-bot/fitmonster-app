@@ -379,16 +379,18 @@ const styles = StyleSheet.create({
   activeContainer: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-end",
     paddingHorizontal: 24,
-    gap: 16,
+    paddingBottom: 40,
+    gap: 20,
   },
   exerciseInfo: {
     alignItems: "center",
-    gap: 2,
+    gap: 4,
+    marginBottom: 4,
   },
   exerciseName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
   },
   bonusBadge: {
@@ -402,21 +404,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   timerCircle: {
-    width: SCREEN_WIDTH * 0.42,
-    height: SCREEN_WIDTH * 0.42,
-    borderRadius: SCREEN_WIDTH * 0.21,
-    borderWidth: 5,
+    width: SCREEN_WIDTH * 0.38,
+    height: SCREEN_WIDTH * 0.38,
+    borderRadius: SCREEN_WIDTH * 0.19,
+    borderWidth: 4,
     alignItems: "center",
     justifyContent: "center",
   },
   timerText: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
   },
   targetText: {
-    fontSize: 14,
-    marginTop: 4,
+    fontSize: 13,
+    marginTop: 2,
   },
   progressContainer: {
     width: "100%",

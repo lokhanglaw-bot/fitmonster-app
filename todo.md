@@ -367,3 +367,18 @@
 - [x] Update nearby-map screen to use real backend data
 - [x] Update battle screen to use real friend list for PvP
 - [x] Real-time location sharing with backend
+
+## Bug Fix - Round 21a: Workout Tracking Layout
+- [ ] Fix workout-tracking screen layout — timer/exercise name still overlapping
+- [ ] Fix too much whitespace above the timer content
+- [ ] Ensure content is properly centered vertically
+
+## Feature - Round 21b: Monster Team Management
+- [x] Max 3 monsters per user
+- [x] Select one monster as "active" for training and battle
+- [x] Monster selection UI on home screen (team selector with thumbnails)
+- [x] Active monster used in battle screen
+- [x] Prevent hatching more than 3 monsters
+- [x] Active monster receives EXP from food and workouts
+- [x] Active monster checked for evolution
+- [x] i18n translations for team management (EN + ZH)

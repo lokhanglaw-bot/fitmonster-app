@@ -58,6 +58,7 @@ export interface ActivityState {
   lastResetDate: string;     // YYYY-MM-DD
   // Monster team
   monsters: MonsterData[];
+  activeMonsterIndex: number; // which monster is selected for training/battle
   // All-time workout logs (for history)
   allWorkoutLogs: WorkoutLogEntry[];
 }
@@ -79,6 +80,7 @@ const initialState: ActivityState = {
   weeklyWorkout: [0, 0, 0, 0, 0, 0, 0],
   lastResetDate: getToday(),
   monsters: [],
+  activeMonsterIndex: 0,
   allWorkoutLogs: [],
 };
 
@@ -92,6 +94,7 @@ type Action =
   | { type: "ADD_RECORD_WORKOUT"; payload: { name: string; duration: number } }
   | { type: "ADD_MONSTER"; payload: MonsterData }
   | { type: "SET_MONSTERS"; payload: MonsterData[] }
+  | { type: "SET_ACTIVE_MONSTER"; payload: { index: number } }
   | { type: "EVOLVE_MONSTER"; payload: { monsterIndex: number } }
   | { type: "HYDRATE"; payload: ActivityState }
   | { type: "DAILY_RESET" }
@@ -185,10 +188,17 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
       };
     }
     case "ADD_MONSTER": {
+      if (state.monsters.length >= 3) return state; // Max 3 monsters
       return {
         ...state,
         monsters: [...state.monsters, action.payload],
+        activeMonsterIndex: state.monsters.length, // Auto-select the newly added monster
       };
+    }
+    case "SET_ACTIVE_MONSTER": {
+      const idx = action.payload.index;
+      if (idx < 0 || idx >= state.monsters.length) return state;
+      return { ...state, activeMonsterIndex: idx };
     }
     case "SET_MONSTERS": {
       return {
@@ -243,11 +253,13 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
   }
 }
 
-/** Add EXP to the first (active) monster's evolution progress and level */
+/** Add EXP to the active monster's evolution progress and level */
 function addEvolutionExp(state: ActivityState, exp: number): ActivityState {
   if (state.monsters.length === 0) return state;
+  const activeIdx = state.activeMonsterIndex;
+  if (activeIdx < 0 || activeIdx >= state.monsters.length) return state;
   const monsters = [...state.monsters];
-  const m = { ...monsters[0] };
+  const m = { ...monsters[activeIdx] };
   // Add to evolution progress
   m.evolutionProgress = (m.evolutionProgress || 0) + exp;
   // Add to level EXP
@@ -263,7 +275,7 @@ function addEvolutionExp(state: ActivityState, exp: number): ActivityState {
     m.defense += 2;
     m.agility += 2;
   }
-  monsters[0] = m;
+  monsters[activeIdx] = m;
   return { ...state, monsters };
 }
 
@@ -285,6 +297,7 @@ interface ActivityContextType {
   addMonster: (monster: MonsterData) => void;
   setMonsters: (monsters: MonsterData[]) => void;
   evolveMonster: (monsterIndex: number) => void;
+  setActiveMonster: (index: number) => void;
   checkEvolution: () => { ready: boolean; monsterIndex: number; monsterName: string; newStage: number } | null;
   resetForNewUser: () => void;
   switchUser: (userId: string) => Promise<void>;
@@ -330,6 +343,7 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
           // Ensure monsters and allWorkoutLogs arrays exist (migration)
           if (!saved.monsters) saved.monsters = [];
           if (!saved.allWorkoutLogs) saved.allWorkoutLogs = [];
+          if (saved.activeMonsterIndex === undefined) saved.activeMonsterIndex = 0;
           // Check if we need a daily reset
           if (saved.lastResetDate !== getToday()) {
             dispatch({ type: "HYDRATE", payload: saved });
@@ -388,16 +402,22 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
     dispatch({ type: "EVOLVE_MONSTER", payload: { monsterIndex } });
   }, []);
 
+  const setActiveMonster = useCallback((index: number) => {
+    dispatch({ type: "SET_ACTIVE_MONSTER", payload: { index } });
+  }, []);
+
   const checkEvolution = useCallback(() => {
     if (state.monsters.length === 0) return null;
-    const m = state.monsters[0];
+    const activeIdx = state.activeMonsterIndex;
+    if (activeIdx < 0 || activeIdx >= state.monsters.length) return null;
+    const m = state.monsters[activeIdx];
     if (m.stage >= 3) return null; // Max stage
     const threshold = m.stage === 1 ? 500 : 1500; // Stage 1→2: 500, Stage 2→3: 1500
     if ((m.evolutionProgress || 0) >= threshold) {
-      return { ready: true, monsterIndex: 0, monsterName: m.name, newStage: m.stage + 1 };
+      return { ready: true, monsterIndex: activeIdx, monsterName: m.name, newStage: m.stage + 1 };
     }
     return null;
-  }, [state.monsters]);
+  }, [state.monsters, state.activeMonsterIndex]);
 
   const resetForNewUser = useCallback(() => {
     dispatch({ type: "FULL_RESET" });
@@ -419,7 +439,7 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
   return (
     <ActivityContext.Provider value={{
       state, logFood, logWorkout, syncSteps, addRecordFood, addRecordWorkout,
-      addMonster, setMonsters, evolveMonster, checkEvolution, resetForNewUser, switchUser,
+      addMonster, setMonsters, evolveMonster, setActiveMonster, checkEvolution, resetForNewUser, switchUser,
     }}>
       {children}
     </ActivityContext.Provider>

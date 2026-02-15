@@ -488,6 +488,13 @@ const en = {
   awesome: "Awesome!",
   nameRequired: "Name Required",
   pleaseNameMonster: "Please give your monster a name!",
+  teamFull: "Team Full",
+  teamFullMessage: "You already have 3 monsters. Max team size is 3!",
+  activeMonsterLabel: "Active",
+  tapToSelect: "Tap to select",
+  monsterTeamSlots: "{current}/3 Slots",
+  switchedTo: "Switched to {name}!",
+  nowTraining: "{name} is now your active monster for training and battles.",
 
   // Add Record Modal
   foodNameExample: "Food name (e.g. Grilled Chicken)",
@@ -1025,6 +1032,13 @@ const zh: Translations = {
   awesome: "太棒了！",
   nameRequired: "需要名字",
   pleaseNameMonster: "請給你的怪獸取個名字！",
+  teamFull: "隊伍已滿",
+  teamFullMessage: "你已經有 3 隻怪獸了。隊伍上限為 3 隻！",
+  activeMonsterLabel: "出戰中",
+  tapToSelect: "點擊選擇",
+  monsterTeamSlots: "{current}/3 位置",
+  switchedTo: "已切換到 {name}！",
+  nowTraining: "{name} 現在是你的出戰怪獸，用於訓練和對戰。",
 
   // Add Record Modal
   foodNameExample: "食物名稱（例如：烤雞胸）",
