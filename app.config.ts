@@ -50,9 +50,15 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+      NSHealthShareUsageDescription: "FitMonster reads your step count and workout data to power your Monster's growth. Your data is stored locally and never shared with third parties.",
+      NSHealthUpdateUsageDescription: "FitMonster may save workout data to Apple Health.",
+    },
+    entitlements: {
+      "com.apple.developer.healthkit": true,
+      "com.apple.developer.healthkit.access": [],
+    },
   },
   android: {
     adaptiveIcon: {
@@ -64,7 +70,15 @@ const config: ExpoConfig = {
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: env.androidPackage,
-    permissions: ["POST_NOTIFICATIONS"],
+    permissions: [
+      "POST_NOTIFICATIONS",
+      "android.permission.ACTIVITY_RECOGNITION",
+      "android.permission.health.READ_STEPS",
+      "android.permission.health.READ_EXERCISE",
+      "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+      "android.permission.health.READ_HEART_RATE",
+      "android.permission.health.READ_DISTANCE",
+    ],
     intentFilters: [
       {
         action: "VIEW",
@@ -116,10 +130,21 @@ const config: ExpoConfig = {
       {
         android: {
           buildArchs: ["armeabi-v7a", "arm64-v8a"],
-          minSdkVersion: 24,
+          minSdkVersion: 26,
         },
       },
     ],
+    // HealthKit (iOS) — config plugin for react-native-health
+    // Uncomment after installing: pnpm add react-native-health
+    // ["react-native-health", {
+    //   healthSharePermission: "FitMonster reads your step count and workout data to power your Monster's growth.",
+    //   healthUpdatePermission: "FitMonster may save workout data to Apple Health.",
+    // }],
+    // Health Connect (Android) — config plugin for react-native-health-connect
+    // Uncomment after installing: pnpm add react-native-health-connect expo-health-connect
+    // ["expo-health-connect", {
+    //   permissions: ["Steps", "ExerciseSession", "TotalCaloriesBurned", "HeartRate", "Distance"],
+    // }],
   ],
   experiments: {
     typedRoutes: true,

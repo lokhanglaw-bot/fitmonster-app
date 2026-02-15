@@ -30,8 +30,11 @@ export default function DashboardScreen() {
   const expBonus = todaySteps >= 10000 ? 1.5 : todaySteps >= 5000 ? 1.2 : 1.0;
   const proteinEfficiency = todaySteps >= 10000 ? 1.3 : todaySteps >= 5000 ? 1.1 : 1.0;
 
-  // Active monster from context
-  const activeMonster = activity.monsters.length > 0 ? activity.monsters[0] : null;
+  // Active monster from context (use activeMonsterIndex)
+  const activeIdx = activity.activeMonsterIndex;
+  const activeMonster = activity.monsters.length > 0 && activeIdx < activity.monsters.length
+    ? activity.monsters[activeIdx]
+    : activity.monsters.length > 0 ? activity.monsters[0] : null;
 
   const quests = [
     { title: t.questProteinChampion, desc: t.questProteinDescFull, progress: proteinIntake, target: 100, reward: 50, color: "#EF4444" },

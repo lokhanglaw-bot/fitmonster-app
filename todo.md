@@ -382,3 +382,19 @@
 - [x] Active monster receives EXP from food and workouts
 - [x] Active monster checked for evolution
 - [x] i18n translations for team management (EN + ZH)
+
+## Feature - Round 22: Health Data Sync (HealthKit + Health Connect)
+- [x] Build HealthService abstraction layer (iOS HealthKit, Android Health Connect, Web simulation)
+- [x] Authorization flow with native permission request and privacy notice
+- [x] Sync steps data (daily step count from wearable/phone)
+- [x] Sync workout sessions (type, duration, calories, heart rate, distance)
+- [x] Background/on-launch sync for last 24 hours of data
+- [x] Convert health data to Monster EXP (steps * 0.04 = calories, workout EXP)
+- [x] Health Sync settings screen (connect/disconnect, sync status, last sync time)
+- [x] Error handling: no device prompt, authorization denied fallback to manual input
+- [x] Update Home screen to show synced health data (quick action card)
+- [x] Update Dashboard with activeMonsterIndex fix
+- [x] Configure Expo plugins for HealthKit and Health Connect (app.config.ts)
+- [x] i18n translations for health sync (EN + ZH)
+- [x] Persist health sync preferences and data per user (AsyncStorage)
+- [x] SYNC_HEALTH_DATA batch action in activity context with Monster EXP

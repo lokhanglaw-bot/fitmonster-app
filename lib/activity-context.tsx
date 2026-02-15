@@ -90,6 +90,7 @@ type Action =
   | { type: "LOG_FOOD"; payload: Omit<FoodLogEntry, "id" | "timestamp"> }
   | { type: "LOG_WORKOUT"; payload: Omit<WorkoutLogEntry, "id" | "timestamp"> }
   | { type: "SYNC_STEPS"; payload: { steps: number } }
+  | { type: "SYNC_HEALTH_DATA"; payload: { steps: number; caloriesBurned: number; workoutMinutes: number; workoutLogs: Omit<WorkoutLogEntry, "id" | "timestamp">[]; stepsExp: number } }
   | { type: "ADD_RECORD_FOOD"; payload: { name: string; calories: number } }
   | { type: "ADD_RECORD_WORKOUT"; payload: { name: string; duration: number } }
   | { type: "ADD_MONSTER"; payload: MonsterData }
@@ -147,6 +148,34 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
         ...state,
         todaySteps: state.todaySteps + action.payload.steps,
       };
+    }
+    case "SYNC_HEALTH_DATA": {
+      const { steps, caloriesBurned, workoutMinutes, workoutLogs, stepsExp } = action.payload;
+      const now = new Date().toISOString();
+      const newWorkoutEntries: WorkoutLogEntry[] = workoutLogs.map((w, i) => ({
+        id: `health-workout-${Date.now()}-${i}`,
+        exercise: w.exercise,
+        duration: w.duration,
+        expEarned: w.expEarned,
+        timestamp: now,
+      }));
+      const totalWorkoutExp = workoutLogs.reduce((sum, w) => sum + w.expEarned, 0);
+      const totalExp = stepsExp + totalWorkoutExp;
+      let healthResult = {
+        ...state,
+        todaySteps: state.todaySteps + steps,
+        todayCaloriesBurned: state.todayCaloriesBurned + caloriesBurned,
+        todayWorkoutMinutes: state.todayWorkoutMinutes + workoutMinutes,
+        todayTotalExp: state.todayTotalExp + totalExp,
+        todayWorkoutLogs: [...state.todayWorkoutLogs, ...newWorkoutEntries],
+        allWorkoutLogs: [...state.allWorkoutLogs, ...newWorkoutEntries],
+        weeklyWorkout: updateWeeklyLast(state.weeklyWorkout, workoutMinutes),
+      };
+      // Add EXP to active monster
+      if (totalExp > 0) {
+        healthResult = addEvolutionExp(healthResult, totalExp);
+      }
+      return healthResult;
     }
     case "ADD_RECORD_FOOD": {
       const { name, calories } = action.payload;
@@ -292,6 +321,7 @@ interface ActivityContextType {
   logFood: (entry: Omit<FoodLogEntry, "id" | "timestamp">) => void;
   logWorkout: (entry: Omit<WorkoutLogEntry, "id" | "timestamp">) => void;
   syncSteps: (steps: number) => void;
+  syncHealthData: (data: { steps: number; caloriesBurned: number; workoutMinutes: number; workoutLogs: Omit<WorkoutLogEntry, "id" | "timestamp">[]; stepsExp: number }) => void;
   addRecordFood: (name: string, calories: number) => void;
   addRecordWorkout: (name: string, duration: number) => void;
   addMonster: (monster: MonsterData) => void;
@@ -382,6 +412,10 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
     dispatch({ type: "SYNC_STEPS", payload: { steps } });
   }, []);
 
+  const syncHealthData = useCallback((data: { steps: number; caloriesBurned: number; workoutMinutes: number; workoutLogs: Omit<WorkoutLogEntry, "id" | "timestamp">[]; stepsExp: number }) => {
+    dispatch({ type: "SYNC_HEALTH_DATA", payload: data });
+  }, []);
+
   const addRecordFood = useCallback((name: string, calories: number) => {
     dispatch({ type: "ADD_RECORD_FOOD", payload: { name, calories } });
   }, []);
@@ -438,7 +472,7 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
 
   return (
     <ActivityContext.Provider value={{
-      state, logFood, logWorkout, syncSteps, addRecordFood, addRecordWorkout,
+      state, logFood, logWorkout, syncSteps, syncHealthData, addRecordFood, addRecordWorkout,
       addMonster, setMonsters, evolveMonster, setActiveMonster, checkEvolution, resetForNewUser, switchUser,
     }}>
       {children}

@@ -508,6 +508,13 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </LinearGradient>
 
+      <LinearGradient colors={["#8B5CF6", "#7C3AED"]} style={styles.actionBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+        <TouchableOpacity style={styles.actionBtnInner} onPress={() => router.push("/health-sync" as any)}>
+          <Text style={styles.actionIcon}>❤️</Text>
+          <View><Text style={styles.actionTitle}>{t.healthSync}</Text><Text style={styles.actionSubtitle}>{t.healthSyncDesc}</Text></View>
+        </TouchableOpacity>
+      </LinearGradient>
+
       {/* Daily Quests */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t.dailyQuests}</Text>
