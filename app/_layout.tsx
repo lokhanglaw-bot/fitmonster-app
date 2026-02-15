@@ -20,8 +20,15 @@ import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { AuthGate } from "@/components/auth-gate";
 import { ActivityProvider } from "@/lib/activity-context";
-import { AuthProvider } from "@/lib/auth-context";
+import { AuthProvider, useAuthContext } from "@/lib/auth-context";
 import { I18nProvider } from "@/lib/i18n-context";
+
+// Wrapper that passes userId from auth context to ActivityProvider
+function AuthenticatedActivityProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthContext();
+  const userId = user ? String(user.id) : null;
+  return <ActivityProvider userId={userId}>{children}</ActivityProvider>;
+}
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -88,7 +95,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <I18nProvider>
           <AuthProvider>
-          <ActivityProvider>
+          <AuthenticatedActivityProvider>
           <AuthGate>
             {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
             {/* If a screen needs the native header, explicitly enable it and set a human title via Stack.Screen options. */}
@@ -103,7 +110,7 @@ export default function RootLayout() {
             </Stack>
             <StatusBar style="auto" />
           </AuthGate>
-          </ActivityProvider>
+          </AuthenticatedActivityProvider>
           </AuthProvider>
           </I18nProvider>
         </QueryClientProvider>

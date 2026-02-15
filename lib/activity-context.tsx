@@ -22,6 +22,23 @@ export interface WorkoutLogEntry {
   timestamp: string; // ISO string
 }
 
+export interface MonsterData {
+  name: string;
+  type: string;
+  level: number;
+  currentHp: number;
+  maxHp: number;
+  currentExp: number;
+  expToNextLevel: number;
+  strength: number;
+  defense: number;
+  agility: number;
+  evolutionProgress: number;
+  evolutionMax: number;
+  status: string;
+  stage: number;
+}
+
 export interface ActivityState {
   // Today's cumulative data
   todayProtein: number;      // grams
@@ -39,6 +56,10 @@ export interface ActivityState {
   weeklyWorkout: number[];   // minutes per day
   // Date tracking
   lastResetDate: string;     // YYYY-MM-DD
+  // Monster team
+  monsters: MonsterData[];
+  // All-time workout logs (for history)
+  allWorkoutLogs: WorkoutLogEntry[];
 }
 
 const getToday = () => new Date().toISOString().split("T")[0];
@@ -57,6 +78,8 @@ const initialState: ActivityState = {
   weeklyProtein: [0, 0, 0, 0, 0, 0, 0],
   weeklyWorkout: [0, 0, 0, 0, 0, 0, 0],
   lastResetDate: getToday(),
+  monsters: [],
+  allWorkoutLogs: [],
 };
 
 // ── Actions ────────────────────────────────────────────────────────────────
@@ -67,8 +90,11 @@ type Action =
   | { type: "SYNC_STEPS"; payload: { steps: number } }
   | { type: "ADD_RECORD_FOOD"; payload: { name: string; calories: number } }
   | { type: "ADD_RECORD_WORKOUT"; payload: { name: string; duration: number } }
+  | { type: "ADD_MONSTER"; payload: MonsterData }
+  | { type: "SET_MONSTERS"; payload: MonsterData[] }
   | { type: "HYDRATE"; payload: ActivityState }
-  | { type: "DAILY_RESET" };
+  | { type: "DAILY_RESET" }
+  | { type: "FULL_RESET" };
 
 function activityReducer(state: ActivityState, action: Action): ActivityState {
   switch (action.type) {
@@ -104,6 +130,7 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
         todayCaloriesBurned: state.todayCaloriesBurned + caloriesBurned,
         todayTotalExp: state.todayTotalExp + expEarned,
         todayWorkoutLogs: [...state.todayWorkoutLogs, entry],
+        allWorkoutLogs: [...state.allWorkoutLogs, entry],
         weeklyWorkout: updateWeeklyLast(state.weeklyWorkout, duration),
       };
     }
@@ -148,21 +175,38 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
         todayCaloriesBurned: state.todayCaloriesBurned + caloriesBurned,
         todayTotalExp: state.todayTotalExp + exp,
         todayWorkoutLogs: [...state.todayWorkoutLogs, entry],
+        allWorkoutLogs: [...state.allWorkoutLogs, entry],
         weeklyWorkout: updateWeeklyLast(state.weeklyWorkout, duration),
+      };
+    }
+    case "ADD_MONSTER": {
+      return {
+        ...state,
+        monsters: [...state.monsters, action.payload],
+      };
+    }
+    case "SET_MONSTERS": {
+      return {
+        ...state,
+        monsters: action.payload,
       };
     }
     case "HYDRATE":
       return action.payload;
     case "DAILY_RESET": {
-      // Shift weekly arrays left, reset today
+      // Shift weekly arrays left, reset today's data but keep monsters and allWorkoutLogs
       return {
         ...initialState,
         weeklyCalories: [...state.weeklyCalories.slice(1), 0],
         weeklyProtein: [...state.weeklyProtein.slice(1), 0],
         weeklyWorkout: [...state.weeklyWorkout.slice(1), 0],
         lastResetDate: getToday(),
+        monsters: state.monsters,
+        allWorkoutLogs: state.allWorkoutLogs,
       };
     }
+    case "FULL_RESET":
+      return initialState;
     default:
       return state;
   }
@@ -183,23 +227,52 @@ interface ActivityContextType {
   syncSteps: (steps: number) => void;
   addRecordFood: (name: string, calories: number) => void;
   addRecordWorkout: (name: string, duration: number) => void;
+  addMonster: (monster: MonsterData) => void;
+  setMonsters: (monsters: MonsterData[]) => void;
+  resetForNewUser: () => void;
+  switchUser: (userId: string) => Promise<void>;
 }
 
 const ActivityContext = createContext<ActivityContextType | null>(null);
 
-const STORAGE_KEY = "@fitmonster_activity";
+const STORAGE_KEY_PREFIX = "@fitmonster_activity_";
 
-export function ActivityProvider({ children }: { children: React.ReactNode }) {
+function getStorageKey(userId: string): string {
+  return `${STORAGE_KEY_PREFIX}${userId}`;
+}
+
+export function ActivityProvider({ children, userId }: { children: React.ReactNode; userId: string | null }) {
   const [state, dispatch] = useReducer(activityReducer, initialState);
   const isHydrated = useRef(false);
+  const currentUserId = useRef<string | null>(null);
 
-  // Load from AsyncStorage on mount
+  // Load user data when userId changes
   useEffect(() => {
+    if (!userId) {
+      // No user logged in — reset to initial state
+      dispatch({ type: "FULL_RESET" });
+      isHydrated.current = false;
+      currentUserId.current = null;
+      return;
+    }
+
+    if (userId === currentUserId.current && isHydrated.current) {
+      // Same user, already loaded
+      return;
+    }
+
+    currentUserId.current = userId;
+    isHydrated.current = false;
+
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        const key = getStorageKey(userId);
+        const raw = await AsyncStorage.getItem(key);
         if (raw) {
           const saved: ActivityState = JSON.parse(raw);
+          // Ensure monsters and allWorkoutLogs arrays exist (migration)
+          if (!saved.monsters) saved.monsters = [];
+          if (!saved.allWorkoutLogs) saved.allWorkoutLogs = [];
           // Check if we need a daily reset
           if (saved.lastResetDate !== getToday()) {
             dispatch({ type: "HYDRATE", payload: saved });
@@ -207,18 +280,23 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
           } else {
             dispatch({ type: "HYDRATE", payload: saved });
           }
+        } else {
+          // New user — start with clean state
+          dispatch({ type: "FULL_RESET" });
         }
       } catch (e) {
         console.log("Failed to load activity state:", e);
+        dispatch({ type: "FULL_RESET" });
       }
       isHydrated.current = true;
     })();
-  }, []);
+  }, [userId]);
 
   // Persist to AsyncStorage on every state change (after hydration)
   useEffect(() => {
-    if (!isHydrated.current) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
+    if (!isHydrated.current || !currentUserId.current) return;
+    const key = getStorageKey(currentUserId.current);
+    AsyncStorage.setItem(key, JSON.stringify(state)).catch(() => {});
   }, [state]);
 
   const logFood = useCallback((entry: Omit<FoodLogEntry, "id" | "timestamp">) => {
@@ -241,8 +319,36 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "ADD_RECORD_WORKOUT", payload: { name, duration } });
   }, []);
 
+  const addMonster = useCallback((monster: MonsterData) => {
+    dispatch({ type: "ADD_MONSTER", payload: monster });
+  }, []);
+
+  const setMonsters = useCallback((monsters: MonsterData[]) => {
+    dispatch({ type: "SET_MONSTERS", payload: monsters });
+  }, []);
+
+  const resetForNewUser = useCallback(() => {
+    dispatch({ type: "FULL_RESET" });
+    isHydrated.current = false;
+    currentUserId.current = null;
+  }, []);
+
+  const switchUser = useCallback(async (newUserId: string) => {
+    // Save current user's data first
+    if (currentUserId.current && isHydrated.current) {
+      const key = getStorageKey(currentUserId.current);
+      await AsyncStorage.setItem(key, JSON.stringify(state)).catch(() => {});
+    }
+    // The useEffect will handle loading the new user's data
+    currentUserId.current = null;
+    isHydrated.current = false;
+  }, [state]);
+
   return (
-    <ActivityContext.Provider value={{ state, logFood, logWorkout, syncSteps, addRecordFood, addRecordWorkout }}>
+    <ActivityContext.Provider value={{
+      state, logFood, logWorkout, syncSteps, addRecordFood, addRecordWorkout,
+      addMonster, setMonsters, resetForNewUser, switchUser,
+    }}>
       {children}
     </ActivityContext.Provider>
   );

@@ -331,3 +331,15 @@
 
 ## Bug Fix - Round 17b
 - [x] Fix back arrow still too high on nearby-map, workout-tracking, chat — uses useSafeAreaInsets() for explicit top padding (Math.max(insets.top, 44) + 8)
+
+## Feature - Round 18: Per-User Data Persistence
+- [x] New users should see completely fresh/empty data (no sample data)
+- [x] Existing users should have their activity data persisted and restored across sessions
+- [x] Data should be isolated per user (different users see different data)
+- [x] Remove hardcoded sample/demo data from screens
+- [x] Persist monster team data per user
+- [x] Persist workout history per user
+- [x] Persist food log history per user
+- [x] Persist quest/daily task progress per user
+- [x] Persist dashboard stats per user
+- [x] Clear data on logout so next login starts fresh or loads correct user data

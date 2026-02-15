@@ -64,7 +64,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  const { state: activity, addRecordFood, addRecordWorkout } = useActivity();
+  const { state: activity, addRecordFood, addRecordWorkout, addMonster, setMonsters: setMonstersCtx } = useActivity();
   const { language, setLanguage, t, tr } = useI18n();
 
   const MONSTER_TYPES = [
@@ -99,13 +99,9 @@ export default function HomeScreen() {
   const [coins, setCoins] = useState(350);
   const [activeTab, setActiveTab] = useState<"home" | "daily" | "history">("home");
 
-  const [monsters, setMonsters] = useState<Monster[]>([
-    {
-      name: "Flexo", type: "Bodybuilder", level: 5, currentHp: 85, maxHp: 120,
-      currentExp: 65, expToNextLevel: 100, strength: 22, defense: 15, agility: 12,
-      evolutionProgress: 35, evolutionMax: 100, status: "Fighter", stage: 1,
-    },
-  ]);
+  // Monsters are stored in the per-user activity context
+  const monsters = activity.monsters;
+  const setMonsters = setMonstersCtx;
 
   const [showHatchModal, setShowHatchModal] = useState(false);
   const [hatchStep, setHatchStep] = useState<"select" | "name" | "hatching" | "done">("select");
@@ -146,11 +142,12 @@ export default function HomeScreen() {
     { id: 3, icon: "💪", title: t.questStrengthTraining, description: t.questStrengthDescFull, progress: activity.todayWorkoutMinutes, target: 30, reward: 100, bgColor: "#F59E0B" },
   ];
 
-  const activeMonster = monsters[0];
-  const hpPercent = (activeMonster.currentHp / activeMonster.maxHp) * 100;
-  const expPercent = (activeMonster.currentExp / activeMonster.expToNextLevel) * 100;
-  const evoPercent = (activeMonster.evolutionProgress / activeMonster.evolutionMax) * 100;
+  const activeMonster = monsters.length > 0 ? monsters[0] : null;
+  const hpPercent = activeMonster ? (activeMonster.currentHp / activeMonster.maxHp) * 100 : 0;
+  const expPercent = activeMonster ? (activeMonster.currentExp / activeMonster.expToNextLevel) * 100 : 0;
+  const evoPercent = activeMonster ? (activeMonster.evolutionProgress / activeMonster.evolutionMax) * 100 : 0;
   const completedQuests = quests.filter((q) => q.progress >= q.target).length;
+  const hasNoMonster = !activeMonster;
 
   const handleHatchEgg = useCallback(() => {
     setHatchStep("select");
@@ -183,7 +180,7 @@ export default function HomeScreen() {
         strength: stats.str, defense: stats.def, agility: stats.agi,
         evolutionProgress: 0, evolutionMax: 100, status: "Rookie", stage: 1,
       };
-      setMonsters((prev) => [...prev, newMonster]);
+      addMonster(newMonster);
       setHatchStep("done");
     }, 2000);
   }, [newMonsterName, selectedType]);
@@ -347,7 +344,13 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {renderMonsterCard(activeMonster, 0)}
+      {activeMonster ? renderMonsterCard(activeMonster, 0) : (
+        <View style={[styles.emptyMonsterCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={{ fontSize: 48 }}>🥚</Text>
+          <Text style={[styles.emptyMonsterText, { color: colors.foreground }]}>{t.hatchEgg}</Text>
+          <Text style={[styles.emptyMonsterSubtext, { color: colors.muted }]}>{t.hatchYourFirstMonster}</Text>
+        </View>
+      )}
 
       {/* Hatch Egg Button */}
       <TouchableOpacity style={[styles.hatchBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleHatchEgg}>
@@ -1075,4 +1078,9 @@ const styles = StyleSheet.create({
   monsterActionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 12 },
   monsterActionIcon: { fontSize: 16 },
   monsterActionText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+
+  // Empty monster state for new users
+  emptyMonsterCard: { borderRadius: 20, padding: 32, borderWidth: 1, alignItems: "center", gap: 12 },
+  emptyMonsterText: { fontSize: 20, fontWeight: "800" },
+  emptyMonsterSubtext: { fontSize: 14, textAlign: "center" as const },
 });

@@ -4,22 +4,24 @@ import { LinearGradient } from "expo-linear-gradient";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useI18n } from "@/lib/i18n-context";
+import { useActivity } from "@/lib/activity-context";
 
 export default function DashboardScreen() {
   const colors = useColors();
   const { t } = useI18n();
+  const { state: activity } = useActivity();
 
-  // Sample data for demo
-  const todaySteps = 6280;
+  // Read from shared activity context — no hardcoded values
+  const todaySteps = activity.todaySteps;
   const stepsGoal = 10000;
-  const caloriesBurned = 420;
-  const caloriesIntake = 1650;
+  const caloriesBurned = activity.todayCaloriesBurned;
+  const caloriesIntake = activity.todayCaloriesIn;
   const dailyCalorieNeed = 1800;
-  const proteinIntake = 68;
+  const proteinIntake = activity.todayProtein;
   const proteinGoal = 100;
-  const workoutExp = 540;
-  const nutritionExp = 310;
-  const netExp = workoutExp + nutritionExp;
+  const workoutExp = Math.round(activity.todayWorkoutMinutes * 5);
+  const nutritionExp = activity.todayTotalExp - workoutExp;
+  const netExp = activity.todayTotalExp;
 
   const stepsPercent = Math.min((todaySteps / stepsGoal) * 100, 100);
   const proteinPercent = Math.min((proteinIntake / proteinGoal) * 100, 100);
@@ -28,10 +30,13 @@ export default function DashboardScreen() {
   const expBonus = todaySteps >= 10000 ? 1.5 : todaySteps >= 5000 ? 1.2 : 1.0;
   const proteinEfficiency = todaySteps >= 10000 ? 1.3 : todaySteps >= 5000 ? 1.1 : 1.0;
 
+  // Active monster from context
+  const activeMonster = activity.monsters.length > 0 ? activity.monsters[0] : null;
+
   const quests = [
-    { title: "Protein Champion", desc: "Consume 100g protein", progress: 68, target: 100, reward: 50, color: "#EF4444" },
-    { title: "Walking Master", desc: "Walk 5,000 steps", progress: todaySteps, target: 5000, reward: 50, color: "#3B82F6" },
-    { title: "Feeding Expert", desc: "Log 3 meals today", progress: 2, target: 3, reward: 75, color: "#22C55E" },
+    { title: t.questProteinChampion, desc: t.questProteinDescFull, progress: proteinIntake, target: 100, reward: 50, color: "#EF4444" },
+    { title: t.questWalkingMaster, desc: t.questWalkingDescFull, progress: todaySteps, target: 5000, reward: 50, color: "#3B82F6" },
+    { title: t.feedingExpert, desc: t.logThreeMeals, progress: activity.todayMealCount, target: 3, reward: 75, color: "#22C55E" },
   ];
 
   return (
@@ -77,7 +82,7 @@ export default function DashboardScreen() {
               </View>
               <View style={styles.expRow}>
                 <Text style={styles.expLabel}>{t.nutritionExp}</Text>
-                <Text style={styles.expAmount}>{nutritionExp}</Text>
+                <Text style={styles.expAmount}>{Math.max(0, nutritionExp)}</Text>
               </View>
               <View style={styles.expRow}>
                 <Text style={styles.expLabel}>{t.workoutExp}</Text>
@@ -137,37 +142,44 @@ export default function DashboardScreen() {
           {/* Monster Growth Status */}
           <View style={[styles.monsterGrowth, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t.monsterGrowth}</Text>
-            <View style={styles.monsterGrowthRow}>
-              <LinearGradient colors={["#DCFCE7", "#BBF7D0"]} style={styles.monsterThumbGradient}>
-                <Image
-                  source={require("@/assets/monsters/bodybuilder-stage1.png")}
-                  style={styles.monsterThumb}
-                  contentFit="contain"
-                />
-              </LinearGradient>
-              <View style={styles.monsterGrowthInfo}>
-                <Text style={[styles.monsterGrowthName, { color: colors.foreground }]}>Flexo</Text>
-                <Text style={[styles.monsterGrowthLevel, { color: colors.muted }]}>{t.level} 5</Text>
-                <View style={styles.growthBarContainer}>
-                  <Text style={[styles.growthBarLabel, { color: colors.muted }]}>EXP</Text>
-                  <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
-                    <View style={[styles.progressFill, { width: "65%", backgroundColor: colors.primary }]} />
+            {activeMonster ? (
+              <View style={styles.monsterGrowthRow}>
+                <LinearGradient colors={["#DCFCE7", "#BBF7D0"]} style={styles.monsterThumbGradient}>
+                  <Image
+                    source={require("@/assets/monsters/bodybuilder-stage1.png")}
+                    style={styles.monsterThumb}
+                    contentFit="contain"
+                  />
+                </LinearGradient>
+                <View style={styles.monsterGrowthInfo}>
+                  <Text style={[styles.monsterGrowthName, { color: colors.foreground }]}>{activeMonster.name}</Text>
+                  <Text style={[styles.monsterGrowthLevel, { color: colors.muted }]}>{t.level} {activeMonster.level}</Text>
+                  <View style={styles.growthBarContainer}>
+                    <Text style={[styles.growthBarLabel, { color: colors.muted }]}>EXP</Text>
+                    <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
+                      <View style={[styles.progressFill, { width: `${activeMonster.expToNextLevel > 0 ? Math.min((activeMonster.currentExp / activeMonster.expToNextLevel) * 100, 100) : 0}%`, backgroundColor: colors.primary }]} />
+                    </View>
                   </View>
-                </View>
-                <View style={styles.growthBarContainer}>
-                  <Text style={[styles.growthBarLabel, { color: colors.muted }]}>{t.evolution}</Text>
-                  <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
-                    <View style={[styles.progressFill, { width: "35%", backgroundColor: "#F59E0B" }]} />
+                  <View style={styles.growthBarContainer}>
+                    <Text style={[styles.growthBarLabel, { color: colors.muted }]}>{t.evolution}</Text>
+                    <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
+                      <View style={[styles.progressFill, { width: `${activeMonster.evolutionMax > 0 ? Math.min((activeMonster.evolutionProgress / activeMonster.evolutionMax) * 100, 100) : 0}%`, backgroundColor: "#F59E0B" }]} />
+                    </View>
                   </View>
-                </View>
-                <Text style={[styles.stageText, { color: colors.muted }]}>{t.evolutionStage} 1/3</Text>
-                <View style={styles.growthStats}>
-                  <Text style={styles.growthStat}>🥩 22</Text>
-                  <Text style={styles.growthStat}>🛡️ 15</Text>
-                  <Text style={styles.growthStat}>⚡ 12</Text>
+                  <Text style={[styles.stageText, { color: colors.muted }]}>{t.evolutionStage} {activeMonster.stage}/3</Text>
+                  <View style={styles.growthStats}>
+                    <Text style={styles.growthStat}>🥩 {activeMonster.strength}</Text>
+                    <Text style={styles.growthStat}>🛡️ {activeMonster.defense}</Text>
+                    <Text style={styles.growthStat}>⚡ {activeMonster.agility}</Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            ) : (
+              <View style={styles.noMonsterContainer}>
+                <Text style={{ fontSize: 40 }}>🥚</Text>
+                <Text style={[styles.noMonsterText, { color: colors.muted }]}>{t.hatchYourFirstMonster}</Text>
+              </View>
+            )}
           </View>
 
           {/* Daily Quest Progress */}
@@ -232,29 +244,31 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     gap: 6,
+    alignItems: "center",
   },
   statCardIcon: {
     fontSize: 24,
   },
   statCardTitle: {
     fontSize: 12,
+    fontWeight: "600",
   },
   statCardValue: {
     fontSize: 28,
     fontWeight: "800",
   },
+  formulaText: {
+    fontSize: 10,
+    textAlign: "center" as const,
+  },
   goalText: {
     fontSize: 11,
-    marginTop: 4,
-  },
-  formulaText: {
-    fontSize: 11,
-    marginTop: 8,
   },
   progressTrack: {
     height: 6,
     borderRadius: 3,
-    overflow: "hidden",
+    width: "100%",
+    overflow: "hidden" as const,
   },
   progressFill: {
     height: "100%",
@@ -263,9 +277,10 @@ const styles = StyleSheet.create({
   expCard: {
     borderRadius: 20,
     padding: 20,
+    gap: 8,
   },
   expCardTitle: {
-    color: "rgba(255,255,255,0.8)",
+    color: "#fff",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -273,33 +288,32 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 36,
     fontWeight: "800",
-    marginVertical: 8,
   },
   expBreakdown: {
-    gap: 8,
+    gap: 6,
+    marginTop: 8,
   },
   expRow: {
     flexDirection: "row",
     justifyContent: "space-between",
   },
   expLabel: {
-    color: "rgba(255,255,255,0.7)",
+    color: "rgba(255,255,255,0.8)",
     fontSize: 13,
   },
   expAmount: {
     color: "#fff",
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   expDivider: {
     height: 1,
     marginVertical: 4,
   },
   balanceBadge: {
-    alignSelf: "center",
-    paddingHorizontal: 16,
+    borderRadius: 8,
     paddingVertical: 6,
-    borderRadius: 12,
+    alignItems: "center",
     marginTop: 4,
   },
   balanceText: {
@@ -316,7 +330,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: "700",
-    marginBottom: 4,
   },
   bonusRow: {
     flexDirection: "row",
@@ -330,11 +343,11 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   bonusIcon: {
-    fontSize: 24,
+    fontSize: 20,
   },
   bonusLabel: {
     fontSize: 12,
-    textAlign: "center",
+    fontWeight: "600",
   },
   bonusValue: {
     fontSize: 20,
@@ -342,46 +355,45 @@ const styles = StyleSheet.create({
   },
   bonusHint: {
     fontSize: 12,
-    textAlign: "center",
+    textAlign: "center" as const,
   },
   nutritionCard: {
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    gap: 12,
+    gap: 10,
   },
   nutritionRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
   },
   nutritionLabel: {
-    fontSize: 14,
+    fontSize: 13,
   },
   nutritionValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
   },
   monsterGrowth: {
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
+    gap: 12,
   },
   monsterGrowthRow: {
     flexDirection: "row",
     gap: 16,
-    marginTop: 8,
   },
   monsterThumbGradient: {
-    borderRadius: 16,
     width: 80,
     height: 80,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
   monsterThumb: {
-    width: 65,
-    height: 65,
+    width: 60,
+    height: 60,
   },
   monsterGrowthInfo: {
     flex: 1,
@@ -392,36 +404,47 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   monsterGrowthLevel: {
-    fontSize: 13,
+    fontSize: 12,
   },
   growthBarContainer: {
-    gap: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   growthBarLabel: {
     fontSize: 11,
+    width: 50,
   },
   stageText: {
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 11,
   },
   growthStats: {
     flexDirection: "row",
-    gap: 16,
+    gap: 12,
     marginTop: 4,
   },
   growthStat: {
+    fontSize: 12,
+  },
+  noMonsterContainer: {
+    alignItems: "center",
+    paddingVertical: 20,
+    gap: 8,
+  },
+  noMonsterText: {
     fontSize: 14,
+    textAlign: "center" as const,
   },
   questSection: {
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    gap: 4,
+    gap: 12,
   },
   questItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
     gap: 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
   },
   questItemHeader: {
     flexDirection: "row",
@@ -430,7 +453,7 @@ const styles = StyleSheet.create({
   },
   questItemTitle: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   questItemDesc: {
     fontSize: 12,
@@ -438,10 +461,10 @@ const styles = StyleSheet.create({
   },
   questItemReward: {
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   questItemProgress: {
-    fontSize: 11,
-    textAlign: "right",
+    fontSize: 12,
+    textAlign: "right" as const,
   },
 });

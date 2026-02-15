@@ -58,15 +58,22 @@ export default function WorkoutScreen() {
     { id: 11, name: t.basketball, icon: "🏀", met: 6.5, category: "Basketball" },
   ];
   const [selectedType, setSelectedType] = useState("All");
-  const [totalExp, setTotalExp] = useState(839);
-  const [completedCount, setCompletedCount] = useState(3);
-  const [steps, setSteps] = useState(4280);
-  const sampleLogs: WorkoutLog[] = useMemo(() => [
-    { exercise: t.running, duration: 30, exp: 294, timestamp: new Date(Date.now() - 3600000) },
-    { exercise: t.benchPress, duration: 45, exp: 331, timestamp: new Date(Date.now() - 86400000) },
-    { exercise: t.swimming, duration: 25, exp: 214, timestamp: new Date(Date.now() - 172800000) },
-  ], [t.running, t.benchPress, t.swimming]);
-  const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>(sampleLogs);
+  const { state: activityState, logWorkout: logWorkoutToContext, syncSteps: syncStepsToContext } = useActivity();
+
+  // Derive stats from activity context — no hardcoded values
+  const totalExp = activityState.todayTotalExp;
+  const completedCount = activityState.todayWorkoutLogs.length;
+  const steps = activityState.todaySteps;
+
+  // Convert activity context workout logs to display format
+  const workoutLogs: WorkoutLog[] = useMemo(() => {
+    return activityState.allWorkoutLogs.slice(-10).reverse().map(log => ({
+      exercise: log.exercise,
+      duration: log.duration,
+      exp: log.expEarned,
+      timestamp: new Date(log.timestamp),
+    }));
+  }, [activityState.allWorkoutLogs]);
 
   // Selected exercise detail
   const [selectedExercise, setSelectedExercise] = useState<typeof EXERCISES[0] | null>(null);
@@ -100,8 +107,6 @@ export default function WorkoutScreen() {
     setDuration(30);
     setBonus("none");
   }, []);
-
-  const { logWorkout: logWorkoutToContext, syncSteps: syncStepsToContext } = useActivity();
 
   const handleStartTraining = useCallback(() => {
     if (!selectedExercise) return;
@@ -138,10 +143,7 @@ export default function WorkoutScreen() {
     const weight = parseInt(manualWeight, 10) || 70;
     const estimatedMet = 5;
     const exp = Math.round(estimatedMet * 3.5 * weight * dur / 200);
-    setTotalExp((prev) => prev + exp);
-    setCompletedCount((prev) => prev + 1);
-    setWorkoutLogs((prev) => [{ exercise: manualExercise.trim(), duration: dur, exp, timestamp: new Date() }, ...prev]);
-    // Update shared activity state
+    // Log to shared activity context (updates totalExp, completedCount, and workoutLogs automatically)
     logWorkoutToContext({
       exercise: manualExercise.trim(),
       duration: dur,
@@ -155,15 +157,12 @@ export default function WorkoutScreen() {
     const simulatedSteps = Math.floor(Math.random() * 3000) + 1000;
     // Update shared activity state for step quests
     syncStepsToContext(simulatedSteps);
-    setSteps((prev) => {
-      const newSteps = prev + simulatedSteps;
-      Alert.alert(
-        t.stepsSyncedTitle,
-        tr("stepsSyncedMessage", { steps: simulatedSteps.toLocaleString(), total: newSteps.toLocaleString() })
-      );
-      return newSteps;
-    });
-  }, [syncStepsToContext]);
+    const newSteps = steps + simulatedSteps;
+    Alert.alert(
+      t.stepsSyncedTitle,
+      tr("stepsSyncedMessage", { steps: simulatedSteps.toLocaleString(), total: newSteps.toLocaleString() })
+    );
+  }, [syncStepsToContext, steps, t, tr]);
 
   // Slider helpers
   const sliderMin = 5;
