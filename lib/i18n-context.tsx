@@ -403,6 +403,14 @@ const en = {
   trackYourProgress: "Track your health progress",
   todaysNetExp: "Today's Net EXP",
   dailyQuestProgress: "Daily Quest Progress",
+  weeklyWorkoutStats: "Weekly Workout Stats",
+  workoutCount: "Workouts",
+  totalDuration: "Total Duration",
+  totalCaloriesBurned: "Calories Burned",
+  weeklyStatsMinUnit: "min",
+  weeklyStatsKcalUnit: "kcal",
+  weeklyStatsSessions: "sessions",
+  noWorkoutsThisWeek: "No workouts this week yet. Start training!",
 
   // Auth Screen
   signIn: "Sign In",
@@ -1013,6 +1021,14 @@ const zh: Translations = {
   trackYourProgress: "追蹤你的健康進度",
   todaysNetExp: "今日淨經驗值",
   dailyQuestProgress: "每日任務進度",
+  weeklyWorkoutStats: "本週運動統計",
+  workoutCount: "運動次數",
+  totalDuration: "總時長",
+  totalCaloriesBurned: "消耗卡路里",
+  weeklyStatsMinUnit: "分鐘",
+  weeklyStatsKcalUnit: "千卡",
+  weeklyStatsSessions: "次",
+  noWorkoutsThisWeek: "本週還沒有運動紀錄，開始訓練吧！",
 
   // Auth Screen
   signIn: "登入",

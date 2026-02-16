@@ -458,3 +458,8 @@
 ## UX - Round 30: Move Active Workout Banner to Bottom
 - [x] Move active workout banner from top to compact floating bar above tab bar
 - [x] Make it easy to reach with one-handed thumb usage
+
+## Feature - Round 31: Weekly Workout Statistics Card on Dashboard
+- [x] Add weekly workout stats card to Dashboard (workout count, total duration, total calories)
+- [x] Calculate stats from workoutLogs in ActivityContext for current week (Mon-Sun)
+- [x] Add i18n translations for weekly stats card (EN + ZH)

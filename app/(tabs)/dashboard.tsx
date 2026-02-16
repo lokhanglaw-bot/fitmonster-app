@@ -1,10 +1,84 @@
 import { ScrollView, Text, View, StyleSheet } from "react-native";
+import { useMemo } from "react";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useI18n } from "@/lib/i18n-context";
 import { useActivity } from "@/lib/activity-context";
+
+function WeeklyWorkoutStatsCard() {
+  const colors = useColors();
+  const { t } = useI18n();
+  const { state: activity } = useActivity();
+
+  const weeklyStats = useMemo(() => {
+    const now = new Date();
+    // Get Monday of this week
+    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
+    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    const weekLogs = activity.allWorkoutLogs.filter((log) => {
+      const logDate = new Date(log.timestamp);
+      return logDate >= monday;
+    });
+
+    const count = weekLogs.length;
+    const totalMinutes = weekLogs.reduce((sum, log) => sum + log.duration, 0);
+    // Estimate calories: ~7.5 kcal/min (consistent with LOG_WORKOUT reducer)
+    const totalCalories = weekLogs.reduce((sum, log) => sum + Math.round(log.duration * 7.5), 0);
+
+    return { count, totalMinutes, totalCalories };
+  }, [activity.allWorkoutLogs]);
+
+  const formatDuration = (minutes: number) => {
+    if (minutes >= 60) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return m > 0 ? `${h}h ${m}${t.weeklyStatsMinUnit}` : `${h}h`;
+    }
+    return `${minutes} ${t.weeklyStatsMinUnit}`;
+  };
+
+  return (
+    <View style={[weeklyStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={weeklyStyles.headerRow}>
+        <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t.weeklyWorkoutStats}</Text>
+        <View style={[weeklyStyles.badge, { backgroundColor: colors.primary + "20" }]}>
+          <Text style={[weeklyStyles.badgeText, { color: colors.primary }]}>{t.thisWeek}</Text>
+        </View>
+      </View>
+
+      {weeklyStats.count === 0 ? (
+        <View style={weeklyStyles.emptyContainer}>
+          <Text style={{ fontSize: 32 }}>🏋️</Text>
+          <Text style={[weeklyStyles.emptyText, { color: colors.muted }]}>{t.noWorkoutsThisWeek}</Text>
+        </View>
+      ) : (
+        <View style={weeklyStyles.statsRow}>
+          <View style={[weeklyStyles.statItem, { backgroundColor: colors.background }]}>
+            <Text style={weeklyStyles.statIcon}>💪</Text>
+            <Text style={[weeklyStyles.statValue, { color: colors.foreground }]}>{weeklyStats.count}</Text>
+            <Text style={[weeklyStyles.statLabel, { color: colors.muted }]}>{t.workoutCount}</Text>
+          </View>
+          <View style={[weeklyStyles.statItem, { backgroundColor: colors.background }]}>
+            <Text style={weeklyStyles.statIcon}>⏱️</Text>
+            <Text style={[weeklyStyles.statValue, { color: colors.foreground }]}>{formatDuration(weeklyStats.totalMinutes)}</Text>
+            <Text style={[weeklyStyles.statLabel, { color: colors.muted }]}>{t.totalDuration}</Text>
+          </View>
+          <View style={[weeklyStyles.statItem, { backgroundColor: colors.background }]}>
+            <Text style={weeklyStyles.statIcon}>🔥</Text>
+            <Text style={[weeklyStyles.statValue, { color: colors.foreground }]}>{weeklyStats.totalCalories}</Text>
+            <Text style={[weeklyStyles.statLabel, { color: colors.muted }]}>{t.totalCaloriesBurned}</Text>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
 
 export default function DashboardScreen() {
   const colors = useColors();
@@ -125,6 +199,9 @@ export default function DashboardScreen() {
               {t.walkMoreStepsHint}
             </Text>
           </View>
+
+          {/* Weekly Workout Stats Card */}
+          <WeeklyWorkoutStatsCard />
 
           {/* Nutrition Card */}
           <View style={[styles.nutritionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -469,5 +546,61 @@ const styles = StyleSheet.create({
   questItemProgress: {
     fontSize: 12,
     textAlign: "right" as const,
+  },
+});
+
+const weeklyStyles = StyleSheet.create({
+  card: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    gap: 14,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  badge: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  statItem: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    gap: 4,
+  },
+  statIcon: {
+    fontSize: 22,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center" as const,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    paddingVertical: 16,
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 13,
+    textAlign: "center" as const,
   },
 });
