@@ -446,15 +446,6 @@ export default function WorkoutTrackingScreen() {
   }, [isRunning, pauseWorkout, resumeWorkout]);
 
   const handleFinish = useCallback(() => {
-    if (elapsedSeconds < 60) {
-      Alert.alert(
-        t.tooShort || "Too Short",
-        t.tooShortMessage || "You need to exercise for at least 1 minute to log this workout.",
-        [{ text: t.ok }]
-      );
-      return;
-    }
-
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }

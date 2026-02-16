@@ -445,3 +445,7 @@
 - [x] Add i18n translations for celebration strings (EN + ZH)
 - [x] Trophy bounce-in animation with glow pulse
 - [x] Haptic feedback on celebration (Success + Heavy impact)
+
+## Bugfix - Round 28: Workout Buttons Unresponsive
+- [x] Fix "Finish Workout" button not responding when timer < 1 minute (removed 60s minimum check)
+- [x] Fix back arrow button not responding on workout tracking screen (cancel Alert i18n keys verified)
