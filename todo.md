@@ -435,3 +435,13 @@
 - [x] Update timer display to count up instead of counting down
 - [x] Add pause/resume support with visual state indicator
 - [x] Prevent starting new workout while one is active (alert message)
+
+## Feature - Round 27: Workout Completion Celebration Animation
+- [x] Add celebration modal/overlay when workout is completed (replaces Alert)
+- [x] Show earned EXP with animated counter (counts up from 0)
+- [x] Show burned calories with animated counter (counts up from 0)
+- [x] Add confetti/particle animation effect (30 particles with random colors)
+- [x] Display workout summary (exercise name, duration, bonus multiplier)
+- [x] Add i18n translations for celebration strings (EN + ZH)
+- [x] Trophy bounce-in animation with glow pulse
+- [x] Haptic feedback on celebration (Success + Heavy impact)

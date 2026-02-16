@@ -260,6 +260,9 @@ const en = {
   workoutInProgress: "Workout in Progress",
   greatJob: "Great Job!",
   bonusApplied: "bonus applied!",
+  backToWorkouts: "Back to Workouts",
+  totalTime: "Total Time",
+  expEarned: "EXP Earned",
 
   // Battle Screen
   pvpBattle: "PvP Battle",
@@ -867,6 +870,9 @@ const zh: Translations = {
   workoutInProgress: "運動進行中",
   greatJob: "做得好！",
   bonusApplied: "加成已套用！",
+  backToWorkouts: "返回運動",
+  totalTime: "總時長",
+  expEarned: "獲得經驗值",
 
   // Battle Screen
   pvpBattle: "PvP 對戰",
