@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   ScrollView,
   Text,
@@ -20,39 +20,48 @@ import * as Haptics from "expo-haptics";
 import { useI18n } from "@/lib/i18n-context";
 import { trpc } from "@/lib/trpc";
 import { useActivity } from "@/lib/activity-context";
+import * as Location from "expo-location";
 
-const MOCK_OPPONENTS = [
-  {
-    id: 1, name: "FitChamp", distance: "2.5km", online: true, level: 18,
-    monsterType: "Powerlifter", monsterImage: require("@/assets/monsters/powerlifter-stage2.png"),
-    streakKey: "streak24HourFitness" as const, matchPercent: 85, todayExp: 450,
-    strength: 25, defense: 20, agility: 18, hp: 280,
-    gradient: ["#FEF3C7", "#FDE68A"] as readonly [string, string],
-  },
-  {
-    id: 2, name: "GymRat", distance: "5km", online: true, level: 14,
-    monsterType: "Bodybuilder", monsterImage: require("@/assets/monsters/bodybuilder-stage2.png"),
-    streakKey: "streakMorningWarrior" as const, matchPercent: 72, todayExp: 320,
-    strength: 22, defense: 15, agility: 20, hp: 220,
-    gradient: ["#DCFCE7", "#BBF7D0"] as readonly [string, string],
-  },
-  {
-    id: 3, name: "YogaMaster", distance: "1km", online: false, level: 12,
-    monsterType: "Physique", monsterImage: require("@/assets/monsters/physique-stage2.png"),
-    streakKey: "streakZenWarrior" as const, matchPercent: 65, todayExp: 200,
-    strength: 15, defense: 18, agility: 25, hp: 200,
-    gradient: ["#DBEAFE", "#BFDBFE"] as readonly [string, string],
-  },
-  {
-    id: 4, name: "IronWill", distance: "8km", online: true, level: 22,
-    monsterType: "Powerlifter", monsterImage: require("@/assets/monsters/powerlifter-stage3.png"),
-    streakKey: "streakBeastMode" as const, matchPercent: 90, todayExp: 600,
-    strength: 30, defense: 25, agility: 15, hp: 350,
-    gradient: ["#FEF3C7", "#FDE68A"] as readonly [string, string],
-  },
-];
+// Opponent type used for battle system
+type Opponent = {
+  id: number;
+  name: string;
+  distance: string;
+  online: boolean;
+  level: number;
+  monsterType: string;
+  monsterImage: any;
+  streakKey: string;
+  matchPercent: number;
+  todayExp: number;
+  strength: number;
+  defense: number;
+  agility: number;
+  hp: number;
+  gradient: readonly [string, string];
+};
 
-type Opponent = typeof MOCK_OPPONENTS[0];
+function buildOpponentFromNearby(user: any): Opponent {
+  const type = (user.monsterType || "bodybuilder").toLowerCase();
+  const stage = user.monsterStage || 1;
+  return {
+    id: user.userId,
+    name: user.name || "Trainer",
+    distance: user.distanceKm ? `${user.distanceKm}km` : "?",
+    online: true,
+    level: user.monsterLevel || 1,
+    monsterType: type.charAt(0).toUpperCase() + type.slice(1),
+    monsterImage: getMonsterImage(type, stage),
+    streakKey: "streakBeastMode",
+    matchPercent: Math.round(50 + Math.random() * 40),
+    todayExp: (user.totalExp || 0) % 1000,
+    strength: 10 + (user.monsterLevel || 1) * 2,
+    defense: 8 + (user.monsterLevel || 1) * 2,
+    agility: 8 + (user.monsterLevel || 1) * 2,
+    hp: 100 + (user.monsterLevel || 1) * 10,
+    gradient: getGradientForType(type),
+  };
+}
 
 type FriendRequest = {
   id: number;
@@ -196,7 +205,35 @@ export default function BattleScreen() {
   const defendFlash = useRef(new RNAnimated.Value(0)).current;
   const specialFlash = useRef(new RNAnimated.Value(0)).current;
 
-  const opponent = MOCK_OPPONENTS[currentOpponent % MOCK_OPPONENTS.length];
+  // Get user's real location for nearby query
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          setUserLoc({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+        }
+      } catch {}
+    })();
+  }, []);
+
+  // Fetch nearby users from backend for match cards
+  const nearbyQuery = trpc.location.nearby.useQuery(
+    { latitude: userLoc?.lat ?? 0, longitude: userLoc?.lng ?? 0, radiusKm: 50 },
+    { retry: 1, enabled: !!userLoc }
+  );
+  const nearbyOpponents: Opponent[] = useMemo(() => {
+    if (nearbyQuery.data && nearbyQuery.data.length > 0) {
+      return nearbyQuery.data.map(buildOpponentFromNearby);
+    }
+    return [];
+  }, [nearbyQuery.data]);
+
+  const opponent = nearbyOpponents.length > 0
+    ? nearbyOpponents[currentOpponent % nearbyOpponents.length]
+    : null;
 
   // Get player's active monster from activity context
   const activeIdx = activityState.activeMonsterIndex;
@@ -226,7 +263,8 @@ export default function BattleScreen() {
 
   // Send friend request (swipe right)
   const handleSwipe = useCallback((direction: "left" | "right" | "star") => {
-    const opp = MOCK_OPPONENTS[currentOpponent % MOCK_OPPONENTS.length];
+    if (nearbyOpponents.length === 0) return;
+    const opp = nearbyOpponents[currentOpponent % nearbyOpponents.length];
 
     if (direction === "left") {
       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -285,33 +323,17 @@ export default function BattleScreen() {
         },
       ]);
 
-      // Simulate the other user accepting after 5-15 seconds
-      const acceptDelay = Math.floor(Math.random() * 10000) + 5000;
-      const reqId = Date.now();
-      setTimeout(() => {
-        setFriendRequests((prev) => {
-          const req = prev.find((r) => r.id === reqId);
-          if (!req || req.status !== "pending") return prev;
-          return prev.map((r) =>
-            r.id === reqId ? { ...r, status: "accepted" as const } : r
-          );
-        });
-        setFriends((prev) => {
-          if (prev.find((f) => f.id === opp.id)) return prev;
-          return [
-            ...prev,
-            {
-              id: opp.id, name: opp.name, level: opp.level,
-              monsterType: opp.monsterType, monsterImage: opp.monsterImage,
-              online: opp.online, gradient: opp.gradient, addedAt: new Date(),
-            },
-          ];
-        });
-      }, acceptDelay);
+      // Send real friend request to backend
+      sendRequestMutation.mutate({ targetUserId: opp.id }, {
+        onSuccess: () => {
+          friendsQuery.refetch();
+          pendingQuery.refetch();
+        },
+      });
     }
 
     setCurrentOpponent((prev) => prev + 1);
-  }, [currentOpponent, friendRequests, friends]);
+  }, [currentOpponent, friendRequests, friends, nearbyOpponents]);
 
   // Accept incoming friend request
   const handleAcceptRequest = useCallback((request: FriendRequest) => {
@@ -373,9 +395,31 @@ export default function BattleScreen() {
   }, []);
 
   const handleWildBattle = useCallback(() => {
-    const randomOpp = MOCK_OPPONENTS[Math.floor(Math.random() * MOCK_OPPONENTS.length)];
-    startBattle(randomOpp);
-  }, [startBattle]);
+    if (nearbyOpponents.length > 0) {
+      const randomOpp = nearbyOpponents[Math.floor(Math.random() * nearbyOpponents.length)];
+      startBattle(randomOpp);
+    } else if (playerMonster) {
+      // Create a wild monster opponent based on player's level
+      const wildOpp: Opponent = {
+        id: -1,
+        name: t.wildMonster || "Wild Monster",
+        distance: "?",
+        online: true,
+        level: Math.max(1, (playerMonster.level || 1) - 2 + Math.floor(Math.random() * 5)),
+        monsterType: ["Bodybuilder", "Physique", "Powerlifter"][Math.floor(Math.random() * 3)],
+        monsterImage: getMonsterImage(["bodybuilder", "physique", "powerlifter"][Math.floor(Math.random() * 3)], 1 + Math.floor(Math.random() * 3)),
+        streakKey: "streakBeastMode",
+        matchPercent: 50,
+        todayExp: 0,
+        strength: 10 + Math.floor(Math.random() * 20),
+        defense: 10 + Math.floor(Math.random() * 15),
+        agility: 10 + Math.floor(Math.random() * 15),
+        hp: 100 + Math.floor(Math.random() * 200),
+        gradient: getGradientForType(["bodybuilder", "physique", "powerlifter"][Math.floor(Math.random() * 3)]),
+      };
+      startBattle(wildOpp);
+    }
+  }, [startBattle, nearbyOpponents, playerMonster]);
 
   const handleBattleAction = useCallback((action: "attack" | "defend" | "special") => {
     if (!battle || battle.turn !== "player" || battle.actionLock) return;
@@ -434,11 +478,24 @@ export default function BattleScreen() {
 
   const handleFriendAction = useCallback((friend: Friend, action: "battle" | "chat") => {
     if (action === "battle") {
-      const opp = MOCK_OPPONENTS.find((o) => o.id === friend.id);
-      if (opp) startBattle(opp);
-      else {
-        startBattle({ ...MOCK_OPPONENTS[0], id: friend.id, name: friend.name, level: friend.level, monsterType: friend.monsterType, monsterImage: friend.monsterImage, gradient: friend.gradient });
-      }
+      const friendOpp: Opponent = {
+        id: friend.id,
+        name: friend.name,
+        distance: "?",
+        online: friend.online,
+        level: friend.level,
+        monsterType: friend.monsterType,
+        monsterImage: friend.monsterImage,
+        streakKey: "streakBeastMode",
+        matchPercent: 75,
+        todayExp: 0,
+        strength: 10 + friend.level * 2,
+        defense: 8 + friend.level * 2,
+        agility: 8 + friend.level * 2,
+        hp: 100 + friend.level * 10,
+        gradient: friend.gradient,
+      };
+      startBattle(friendOpp);
     } else {
       router.push({ pathname: "/chat" as any, params: { friendId: String(friend.id), friendName: friend.name } });
     }
@@ -492,7 +549,7 @@ export default function BattleScreen() {
               <LinearGradient colors={["#7C3AED", "#6D28D9"]} style={styles.banner}>
                 <Text style={styles.bannerText}>{t.swipeToFind}</Text>
                 <View style={styles.nearbyBadge}>
-                  <Text style={styles.nearbyText}>{MOCK_OPPONENTS.length} {t.nearby}</Text>
+                  <Text style={styles.nearbyText}>{nearbyOpponents.length} {t.nearby}</Text>
                 </View>
               </LinearGradient>
 
@@ -515,60 +572,81 @@ export default function BattleScreen() {
               </View>
 
               {/* Opponent Card */}
-              <View style={[styles.opponentCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <View style={styles.cardBadges}>
-                  <View style={[styles.streakBadge, { backgroundColor: "#F59E0B" }]}>
-                    <Text style={styles.streakText}>🔥 {(t as any)[opponent.streakKey] || opponent.streakKey}</Text>
-                  </View>
-                  <View style={[styles.matchBadge, { backgroundColor: "#22C55E" }]}>
-                    <Text style={styles.matchText}>{tr("matchPercent", { percent: String(opponent.matchPercent) })}</Text>
-                  </View>
-                </View>
+              {opponent ? (
+                <>
+                  <View style={[styles.opponentCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.cardBadges}>
+                      <View style={[styles.streakBadge, { backgroundColor: "#F59E0B" }]}>
+                        <Text style={styles.streakText}>🔥 {(t as any)[opponent.streakKey] || opponent.streakKey}</Text>
+                      </View>
+                      <View style={[styles.matchBadge, { backgroundColor: "#22C55E" }]}>
+                        <Text style={styles.matchText}>{tr("matchPercent", { percent: String(opponent.matchPercent) })}</Text>
+                      </View>
+                    </View>
 
-                <View style={styles.opponentMonsterContainer}>
-                  <LinearGradient colors={[opponent.gradient[0], opponent.gradient[1]]} style={styles.opponentGradient}>
-                    <Image source={opponent.monsterImage} style={styles.opponentImage} contentFit="contain" />
-                  </LinearGradient>
-                </View>
+                    <View style={styles.opponentMonsterContainer}>
+                      <LinearGradient colors={[opponent.gradient[0], opponent.gradient[1]]} style={styles.opponentGradient}>
+                        <Image source={opponent.monsterImage} style={styles.opponentImage} contentFit="contain" />
+                      </LinearGradient>
+                    </View>
 
-                <View style={styles.opponentInfo}>
-                  <View style={styles.nameRow}>
-                    <Text style={[styles.opponentName, { color: colors.foreground }]}>{opponent.name}</Text>
-                    {opponent.online && <View style={styles.onlineDot} />}
+                    <View style={styles.opponentInfo}>
+                      <View style={styles.nameRow}>
+                        <Text style={[styles.opponentName, { color: colors.foreground }]}>{opponent.name}</Text>
+                        {opponent.online && <View style={styles.onlineDot} />}
+                      </View>
+                      <Text style={[styles.opponentDistance, { color: colors.muted }]}>{opponent.distance} {t.away}</Text>
+                    </View>
+
+                    <View style={styles.levelRow}>
+                      <View style={[styles.levelBadge, { backgroundColor: colors.primary }]}>
+                        <Text style={styles.levelText}>Lv.{opponent.level}</Text>
+                      </View>
+                      <Text style={[styles.todayExp, { color: colors.muted }]}>{t.todayExpLabel} {opponent.todayExp} EXP</Text>
+                    </View>
+
+                    <View style={[styles.monsterTypeRow, { borderTopColor: colors.border }]}>
+                      <Text style={[styles.monsterType, { color: colors.foreground }]}>{(t as any)[opponent.monsterType.toLowerCase()] || opponent.monsterType} Lv.{opponent.level}</Text>
+                      <View style={styles.statsRow}>
+                        <Text style={styles.statEmoji}>🥩 {opponent.strength}</Text>
+                        <Text style={styles.statEmoji}>🛡️ {opponent.defense}</Text>
+                        <Text style={styles.statEmoji}>⚡ {opponent.agility}</Text>
+                      </View>
+                    </View>
                   </View>
-                  <Text style={[styles.opponentDistance, { color: colors.muted }]}>{opponent.distance} {t.away}</Text>
-                </View>
 
-                <View style={styles.levelRow}>
-                  <View style={[styles.levelBadge, { backgroundColor: colors.primary }]}>
-                    <Text style={styles.levelText}>Lv.{opponent.level}</Text>
+                  {/* Swipe Buttons */}
+                  <View style={styles.swipeButtons}>
+                    <TouchableOpacity style={[styles.swipeBtn, styles.rejectBtn, { borderColor: "#EF4444" }]} onPress={() => handleSwipe("left")}>
+                      <IconSymbol name="xmark" size={28} color="#EF4444" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.swipeBtn, styles.starBtn, { backgroundColor: "#F59E0B" }]} onPress={() => handleSwipe("star")}>
+                      <Text style={styles.starIcon}>⭐</Text>
+                      <Text style={styles.starCost}>10 🪙</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.swipeBtn, styles.likeBtn, { borderColor: "#22C55E" }]} onPress={() => handleSwipe("right")}>
+                      <Text style={styles.heartEmoji}>❤️</Text>
+                    </TouchableOpacity>
                   </View>
-                  <Text style={[styles.todayExp, { color: colors.muted }]}>{t.todayExpLabel} {opponent.todayExp} EXP</Text>
+                </>
+              ) : (
+                <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={{ fontSize: 40 }}>🔍</Text>
+                  <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                    {t.noNearbyTrainers || "No trainers nearby yet"}
+                  </Text>
+                  <Text style={[styles.emptyDesc, { color: colors.muted }]}>
+                    {t.noNearbyTrainersMatchDesc || "Enable location sharing on the Map to find nearby trainers to battle!"}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.mapLinkBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => router.push("/nearby-map" as any)}
+                  >
+                    <IconSymbol name="map.fill" size={16} color="#fff" />
+                    <Text style={styles.mapLinkText}>{t.openMap || "Open Map"}</Text>
+                  </TouchableOpacity>
                 </View>
-
-                <View style={[styles.monsterTypeRow, { borderTopColor: colors.border }]}>
-                  <Text style={[styles.monsterType, { color: colors.foreground }]}>{(t as any)[opponent.monsterType.toLowerCase()] || opponent.monsterType} Lv.{opponent.level}</Text>
-                  <View style={styles.statsRow}>
-                    <Text style={styles.statEmoji}>🥩 {opponent.strength}</Text>
-                    <Text style={styles.statEmoji}>🛡️ {opponent.defense}</Text>
-                    <Text style={styles.statEmoji}>⚡ {opponent.agility}</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Swipe Buttons */}
-              <View style={styles.swipeButtons}>
-                <TouchableOpacity style={[styles.swipeBtn, styles.rejectBtn, { borderColor: "#EF4444" }]} onPress={() => handleSwipe("left")}>
-                  <IconSymbol name="xmark" size={28} color="#EF4444" />
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.swipeBtn, styles.starBtn, { backgroundColor: "#F59E0B" }]} onPress={() => handleSwipe("star")}>
-                  <Text style={styles.starIcon}>⭐</Text>
-                  <Text style={styles.starCost}>10 🪙</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.swipeBtn, styles.likeBtn, { borderColor: "#22C55E" }]} onPress={() => handleSwipe("right")}>
-                  <Text style={styles.heartEmoji}>❤️</Text>
-                </TouchableOpacity>
-              </View>
+              )}
 
               {/* Random Wild Battle */}
               <TouchableOpacity onPress={handleWildBattle}>
@@ -955,4 +1033,6 @@ const styles = StyleSheet.create({
   resultBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   mapBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
   mapBtnText: { fontSize: 13, fontWeight: "600" },
+  mapLinkBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, marginTop: 8 },
+  mapLinkText: { color: "#fff", fontSize: 14, fontWeight: "700" },
 });

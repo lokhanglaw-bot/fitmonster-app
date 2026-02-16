@@ -101,7 +101,7 @@ export default function HealthSyncScreen() {
     switch (prefs.platform) {
       case "apple_healthkit": return t.healthPlatformApple;
       case "health_connect": return t.healthPlatformGoogle;
-      case "simulation": return t.healthPlatformSimulation;
+      case "none": return t.healthDisconnected;
       default: return t.healthDisconnected;
     }
   };
@@ -110,7 +110,7 @@ export default function HealthSyncScreen() {
     switch (prefs.platform) {
       case "apple_healthkit": return "❤️";
       case "health_connect": return "💚";
-      case "simulation": return "🔬";
+      case "none": return "📱";
       default: return "📱";
     }
   };

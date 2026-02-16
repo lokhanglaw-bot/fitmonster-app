@@ -52,16 +52,16 @@ const config: ExpoConfig = {
     bundleIdentifier: env.iosBundleId,
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
-      // HealthKit entitlements — uncomment after installing react-native-health
-      // and enabling HealthKit capability in your Apple Developer provisioning profile
-      // NSHealthShareUsageDescription: "FitMonster reads your step count and workout data to power your Monster's growth. Your data is stored locally and never shared with third parties.",
-      // NSHealthUpdateUsageDescription: "FitMonster may save workout data to Apple Health.",
+      // HealthKit usage descriptions
+      NSHealthShareUsageDescription: "FitMonster reads your step count and workout data to power your Monster's growth. Your data is stored locally and never shared with third parties.",
+      NSHealthUpdateUsageDescription: "FitMonster may save workout data to Apple Health.",
+      // Location usage descriptions for nearby users feature
+      NSLocationWhenInUseUsageDescription: "FitMonster uses your location to find nearby trainers for battles and friend matching.",
     },
-    // HealthKit entitlements — uncomment after enabling HealthKit in provisioning profile
-    // entitlements: {
-    //   "com.apple.developer.healthkit": true,
-    //   "com.apple.developer.healthkit.access": [],
-    // },
+    entitlements: {
+      "com.apple.developer.healthkit": true,
+      "com.apple.developer.healthkit.access": [],
+    },
   },
   android: {
     adaptiveIcon: {
@@ -75,13 +75,16 @@ const config: ExpoConfig = {
     package: env.androidPackage,
     permissions: [
       "POST_NOTIFICATIONS",
-      // Health Connect permissions — uncomment after installing react-native-health-connect
-      // "android.permission.ACTIVITY_RECOGNITION",
-      // "android.permission.health.READ_STEPS",
-      // "android.permission.health.READ_EXERCISE",
-      // "android.permission.health.READ_TOTAL_CALORIES_BURNED",
-      // "android.permission.health.READ_HEART_RATE",
-      // "android.permission.health.READ_DISTANCE",
+      // Health Connect permissions
+      "android.permission.ACTIVITY_RECOGNITION",
+      "android.permission.health.READ_STEPS",
+      "android.permission.health.READ_EXERCISE",
+      "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+      "android.permission.health.READ_HEART_RATE",
+      "android.permission.health.READ_DISTANCE",
+      // Location permissions for nearby users feature
+      "ACCESS_FINE_LOCATION",
+      "ACCESS_COARSE_LOCATION",
     ],
     intentFilters: [
       {
@@ -138,17 +141,13 @@ const config: ExpoConfig = {
         },
       },
     ],
-    // HealthKit (iOS) — config plugin for react-native-health
-    // Uncomment after installing: pnpm add react-native-health
-    // ["react-native-health", {
-    //   healthSharePermission: "FitMonster reads your step count and workout data to power your Monster's growth.",
-    //   healthUpdatePermission: "FitMonster may save workout data to Apple Health.",
-    // }],
-    // Health Connect (Android) — config plugin for react-native-health-connect
-    // Uncomment after installing: pnpm add react-native-health-connect expo-health-connect
-    // ["expo-health-connect", {
-    //   permissions: ["Steps", "ExerciseSession", "TotalCaloriesBurned", "HeartRate", "Distance"],
-    // }],
+    // HealthKit (iOS) — react-native-health config plugin
+    ["react-native-health", {
+      healthSharePermission: "FitMonster reads your step count and workout data to power your Monster's growth.",
+      healthUpdatePermission: "FitMonster may save workout data to Apple Health.",
+    }],
+    // Health Connect (Android) — react-native-health-connect config plugin
+    // Note: expo-health-connect may not be needed if react-native-health-connect handles its own config
   ],
   experiments: {
     typedRoutes: true,

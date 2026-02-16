@@ -68,34 +68,7 @@ interface NearbyUser {
   longitude: number;
 }
 
-// Fallback mock data when API is unavailable
-const MOCK_NEARBY_USERS: NearbyUser[] = [
-  {
-    userId: 101, name: "FitChamp", monsterType: "powerlifter", monsterLevel: 18,
-    monsterStage: 2, monsterImageUrl: null, distanceKm: 0.3,
-    lastUpdated: new Date(), latitude: 0, longitude: 0,
-  },
-  {
-    userId: 102, name: "GymRat", monsterType: "bodybuilder", monsterLevel: 14,
-    monsterStage: 2, monsterImageUrl: null, distanceKm: 0.8,
-    lastUpdated: new Date(), latitude: 0, longitude: 0,
-  },
-  {
-    userId: 103, name: "YogaMaster", monsterType: "physique", monsterLevel: 12,
-    monsterStage: 2, monsterImageUrl: null, distanceKm: 1.2,
-    lastUpdated: new Date(Date.now() - 15 * 60000), latitude: 0, longitude: 0,
-  },
-  {
-    userId: 104, name: "IronWill", monsterType: "powerlifter", monsterLevel: 22,
-    monsterStage: 3, monsterImageUrl: null, distanceKm: 2.1,
-    lastUpdated: new Date(), latitude: 0, longitude: 0,
-  },
-  {
-    userId: 105, name: "CardioKing", monsterType: "bodybuilder", monsterLevel: 16,
-    monsterStage: 3, monsterImageUrl: null, distanceKm: 1.5,
-    lastUpdated: new Date(Date.now() - 60 * 60000), latitude: 0, longitude: 0,
-  },
-];
+// No mock data — real users only from backend API
 
 function getTimeAgo(lastUpdated: Date | string, t: any): { text: string; isOnline: boolean } {
   const now = Date.now();
@@ -148,8 +121,8 @@ export default function NearbyMapScreen() {
       setNearbyUsers(nearbyQuery.data as NearbyUser[]);
       setUsingMockData(false);
     } else if (nearbyQuery.isError || (nearbyQuery.isSuccess && nearbyQuery.data.length === 0)) {
-      setNearbyUsers(MOCK_NEARBY_USERS);
-      setUsingMockData(true);
+      setNearbyUsers([]);
+      setUsingMockData(false);
     }
   }, [nearbyQuery.data, nearbyQuery.isError, nearbyQuery.isSuccess]);
 
@@ -419,13 +392,25 @@ export default function NearbyMapScreen() {
             <Text style={[styles.listTitle, { color: colors.foreground }]}>
               🏃 {nearbyUsers.length} {t.trainersActiveNearby || "trainers active nearby"}
             </Text>
-            <FlatList
-              data={nearbyUsers}
-              renderItem={renderNearbyUser}
-              keyExtractor={(item) => String(item.userId)}
-              contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
-              showsVerticalScrollIndicator={false}
-            />
+            {nearbyUsers.length === 0 ? (
+              <View style={styles.emptyNearby}>
+                <Text style={{ fontSize: 40 }}>🔍</Text>
+                <Text style={[styles.emptyNearbyTitle, { color: colors.foreground }]}>
+                  {t.noNearbyTrainers || "No trainers nearby yet"}
+                </Text>
+                <Text style={[styles.emptyNearbyDesc, { color: colors.muted }]}>
+                  {t.noNearbyTrainersDesc || "Enable location sharing and invite friends to see them here!"}
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={nearbyUsers}
+                renderItem={renderNearbyUser}
+                keyExtractor={(item) => String(item.userId)}
+                contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
           </>
         )}
       </View>
@@ -611,5 +596,21 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+  },
+  emptyNearby: {
+    alignItems: "center",
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  emptyNearbyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center" as const,
+  },
+  emptyNearbyDesc: {
+    fontSize: 13,
+    textAlign: "center" as const,
+    lineHeight: 18,
   },
 });

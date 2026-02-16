@@ -375,6 +375,11 @@ const en = {
   visibleToNearby: "Visible to nearby trainers",
   notVisibleOnMap: "Others can't see you on the map",
   trainersActiveNearby: "trainers active nearby",
+  noNearbyTrainers: "No trainers nearby yet",
+  noNearbyTrainersDesc: "Enable location sharing and invite friends to see them here!",
+  noNearbyTrainersMatchDesc: "Enable location sharing on the Map to find nearby trainers to battle!",
+  openMap: "Open Map",
+  wildMonster: "Wild Monster",
 
   // Dashboard
   dashboardTitle: "Dashboard",
@@ -993,6 +998,11 @@ const zh: Translations = {
   visibleToNearby: "附近的訓練師可以看到你",
   notVisibleOnMap: "其他人無法在地圖上看到你",
   trainersActiveNearby: "位訓練師在附近活躍",
+  noNearbyTrainers: "附近還沒有訓練師",
+  noNearbyTrainersDesc: "開啟位置分享並邀請朋友，就能在這裡看到他們！",
+  noNearbyTrainersMatchDesc: "在地圖上開啟位置分享，尋找附近的訓練師來對戰！",
+  openMap: "開啟地圖",
+  wildMonster: "野生怪獸",
 
   // Dashboard
   dashboardTitle: "數據面板",

@@ -463,3 +463,19 @@
 - [x] Add weekly workout stats card to Dashboard (workout count, total duration, total calories)
 - [x] Calculate stats from workoutLogs in ActivityContext for current week (Mon-Sun)
 - [x] Add i18n translations for weekly stats card (EN + ZH)
+
+## Feature - Round 32: Release Preparation for Real User Testing
+- [x] Install react-native-health and react-native-health-connect native modules
+- [x] Uncomment HealthKit entitlements in app.config.ts (Apple Developer Portal capability enabled)
+- [x] Uncomment Health Connect permissions in app.config.ts
+- [x] Enable Maps capability in app.config.ts (location permissions added)
+- [x] Remove simulated/mock data from HealthService (native APIs on device, empty on web)
+- [x] Remove MOCK_OPPONENTS from battle screen (uses real nearby users from backend)
+- [x] Remove MOCK_NEARBY_USERS from nearby-map screen
+- [x] Remove simulated auto-accept friend request logic (uses real backend API)
+- [x] Ensure new users start with completely empty state (no pre-populated data)
+- [x] Audit nearby user discovery — uses real location + backend Haversine distance query
+- [x] Battle swipe cards use real nearby users from backend API
+- [x] Added empty state UI for no nearby users (with link to open map)
+- [x] Wild battle generates procedural opponent based on player level when no nearby users
+- [x] Updated health-sync screen to remove 'simulation' platform references
