@@ -449,3 +449,8 @@
 ## Bugfix - Round 28: Workout Buttons Unresponsive
 - [x] Fix "Finish Workout" button not responding when timer < 1 minute (removed 60s minimum check)
 - [x] Fix back arrow button not responding on workout tracking screen (cancel Alert i18n keys verified)
+
+## Bugfix - Round 29: Back Arrow Should Navigate Without Cancelling
+- [x] Change back arrow to navigate back without cancelling workout timer (now uses router.back())
+- [x] Allow users to browse other pages while workout timer continues in background
+- [x] Added separate "Cancel" text button in top-right for explicit workout cancellation

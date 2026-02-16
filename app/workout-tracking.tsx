@@ -511,7 +511,9 @@ export default function WorkoutTrackingScreen() {
         {/* Top bar */}
         <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 44) + 8 }]}>
           <TouchableOpacity
-            onPress={handleCancel}
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+            }}
             style={[styles.backBtn, { backgroundColor: colors.surface }]}
             activeOpacity={0.7}
           >
@@ -520,7 +522,15 @@ export default function WorkoutTrackingScreen() {
           <Text style={[styles.topTitle, { color: colors.foreground }]}>
             {t.workoutInProgress || "Workout in Progress"}
           </Text>
-          <View style={{ width: 40 }} />
+          <TouchableOpacity
+            onPress={handleCancel}
+            style={{ padding: 8 }}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 13, color: "#EF4444", fontWeight: "600" }}>
+              {t.cancel}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Active workout screen */}
