@@ -52,13 +52,16 @@ const config: ExpoConfig = {
     bundleIdentifier: env.iosBundleId,
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
-      NSHealthShareUsageDescription: "FitMonster reads your step count and workout data to power your Monster's growth. Your data is stored locally and never shared with third parties.",
-      NSHealthUpdateUsageDescription: "FitMonster may save workout data to Apple Health.",
+      // HealthKit entitlements — uncomment after installing react-native-health
+      // and enabling HealthKit capability in your Apple Developer provisioning profile
+      // NSHealthShareUsageDescription: "FitMonster reads your step count and workout data to power your Monster's growth. Your data is stored locally and never shared with third parties.",
+      // NSHealthUpdateUsageDescription: "FitMonster may save workout data to Apple Health.",
     },
-    entitlements: {
-      "com.apple.developer.healthkit": true,
-      "com.apple.developer.healthkit.access": [],
-    },
+    // HealthKit entitlements — uncomment after enabling HealthKit in provisioning profile
+    // entitlements: {
+    //   "com.apple.developer.healthkit": true,
+    //   "com.apple.developer.healthkit.access": [],
+    // },
   },
   android: {
     adaptiveIcon: {
@@ -72,12 +75,13 @@ const config: ExpoConfig = {
     package: env.androidPackage,
     permissions: [
       "POST_NOTIFICATIONS",
-      "android.permission.ACTIVITY_RECOGNITION",
-      "android.permission.health.READ_STEPS",
-      "android.permission.health.READ_EXERCISE",
-      "android.permission.health.READ_TOTAL_CALORIES_BURNED",
-      "android.permission.health.READ_HEART_RATE",
-      "android.permission.health.READ_DISTANCE",
+      // Health Connect permissions — uncomment after installing react-native-health-connect
+      // "android.permission.ACTIVITY_RECOGNITION",
+      // "android.permission.health.READ_STEPS",
+      // "android.permission.health.READ_EXERCISE",
+      // "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+      // "android.permission.health.READ_HEART_RATE",
+      // "android.permission.health.READ_DISTANCE",
     ],
     intentFilters: [
       {

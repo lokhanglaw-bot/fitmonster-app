@@ -418,3 +418,8 @@
 - [x] Cap HP display to never exceed maxHp
 - [x] Show evolution stage label (Stage X/3) under evolution bar
 - [x] Changed from auto-popup to user-triggered evolution via Evolve button
+
+## Bugfix - Round 25: iOS Build Failure
+- [x] Remove HealthKit entitlements from app.config.ts (provisioning profile doesn't support it)
+- [x] Comment out Health Connect Android permissions (native modules not installed yet)
+- [x] Keep health entitlements as comments for future re-enabling when native modules are installed
