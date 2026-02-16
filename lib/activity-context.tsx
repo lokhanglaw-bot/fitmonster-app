@@ -303,8 +303,8 @@ function addEvolutionExp(state: ActivityState, exp: number): ActivityState {
   if (activeIdx < 0 || activeIdx >= state.monsters.length) return state;
   const monsters = [...state.monsters];
   const m = { ...monsters[activeIdx] };
-  // Add to evolution progress
-  m.evolutionProgress = (m.evolutionProgress || 0) + exp;
+  // Add to evolution progress (cap at evolutionMax)
+  m.evolutionProgress = Math.min((m.evolutionProgress || 0) + exp, m.evolutionMax);
   // Add to level EXP
   m.currentExp = (m.currentExp || 0) + exp;
   // Level up logic

@@ -408,3 +408,13 @@
 - [x] Add carbs and fat tracking to Macros tab (protein/carbs/fat sub-tabs with individual charts)
 - [x] Add daily carbs and fat to activity context state (todayCarbs, todayFat, weeklyCarbs, weeklyFat)
 - [x] Fix Lv.{level} display bug in dashboard (was showing literal {level} text)
+
+## Bugfix - Round 24: Evolution System Fixes
+- [x] Cap evolution progress display at max value (110/100 → 100/100)
+- [x] Cap evolution progress internally so it never exceeds evolutionMax (Math.min in addEvolutionExp)
+- [x] Add "Evolve" button when evolution bar is full (golden button with shadow)
+- [x] Add evolution animation effect when evolve button is pressed (glow + scale animation modal)
+- [x] Ensure evolution resets progress and advances stage correctly
+- [x] Cap HP display to never exceed maxHp
+- [x] Show evolution stage label (Stage X/3) under evolution bar
+- [x] Changed from auto-popup to user-triggered evolution via Evolve button

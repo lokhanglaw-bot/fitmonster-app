@@ -130,38 +130,36 @@ export default function HomeScreen() {
   const evolutionScale = useSharedValue(1);
   const evolutionGlow = useSharedValue(0);
 
-  // Check for evolution readiness whenever monsters change
-  useEffect(() => {
-    const evoCheck = checkEvolution();
-    if (evoCheck && evoCheck.ready && monsters.length > 0) {
-      const m = monsters[evoCheck.monsterIndex];
-      setEvolutionData({
-        monsterName: m.name,
-        monsterType: m.type,
-        newStage: evoCheck.newStage,
-        monsterIndex: evoCheck.monsterIndex,
-      });
-      setEvolutionPhase("glowing");
-      setShowEvolutionModal(true);
-      // Start glow animation
-      evolutionScale.value = withRepeat(
-        withSequence(
-          withTiming(1.15, { duration: 600, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) })
-        ),
-        3,
-        true
-      );
-      evolutionGlow.value = withRepeat(
-        withSequence(
-          withTiming(1, { duration: 600 }),
-          withTiming(0.3, { duration: 600 })
-        ),
-        3,
-        true
-      );
-    }
-  }, [activity.monsters]);
+  // Helper to open evolution modal for a specific monster
+  const openEvolutionModal = useCallback((monsterIndex: number) => {
+    const m = monsters[monsterIndex];
+    if (!m || m.stage >= 3) return;
+    setEvolutionData({
+      monsterName: m.name,
+      monsterType: m.type,
+      newStage: m.stage + 1,
+      monsterIndex,
+    });
+    setEvolutionPhase("glowing");
+    setShowEvolutionModal(true);
+    // Start glow animation
+    evolutionScale.value = withRepeat(
+      withSequence(
+        withTiming(1.15, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) })
+      ),
+      3,
+      true
+    );
+    evolutionGlow.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 600 }),
+        withTiming(0.3, { duration: 600 })
+      ),
+      3,
+      true
+    );
+  }, [monsters]);
 
   const handleEvolve = useCallback(() => {
     if (!evolutionData) return;
@@ -325,8 +323,8 @@ export default function HomeScreen() {
 
   const renderMonsterCard = (monster: Monster, index: number, showSelectAction = false) => {
     const isActive = index === activeMonsterIdx;
-    const hp = (monster.currentHp / monster.maxHp) * 100;
-    const exp = (monster.currentExp / monster.expToNextLevel) * 100;
+    const hp = Math.min((monster.currentHp / monster.maxHp) * 100, 100);
+    const exp = Math.min((monster.currentExp / monster.expToNextLevel) * 100, 100);
     const gradient = MONSTER_GRADIENTS[monster.type] || ["#DCFCE7", "#BBF7D0"];
 
     return (
@@ -357,7 +355,7 @@ export default function HomeScreen() {
         <View style={styles.barContainer}>
           <View style={styles.barLabelRow}>
             <Text style={[styles.barLabel, { color: colors.muted }]}>HP</Text>
-            <Text style={[styles.barValue, { color: colors.muted }]}>{monster.currentHp}/{monster.maxHp}</Text>
+            <Text style={[styles.barValue, { color: colors.muted }]}>{Math.min(monster.currentHp, monster.maxHp)}/{monster.maxHp}</Text>
           </View>
           <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
             <View style={[styles.barFill, { width: `${hp}%`, backgroundColor: "#22C55E" }]} />
@@ -383,12 +381,23 @@ export default function HomeScreen() {
         <View style={styles.barContainer}>
           <View style={styles.barLabelRow}>
             <Text style={[styles.barLabel, { color: colors.muted }]}>{t.evolution}</Text>
-            <Text style={[styles.barValue, { color: colors.muted }]}>{monster.evolutionProgress}/{monster.evolutionMax}</Text>
+            <Text style={[styles.barValue, { color: colors.muted }]}>{Math.min(monster.evolutionProgress, monster.evolutionMax)}/{monster.evolutionMax}</Text>
           </View>
           <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
             <View style={[styles.barFill, { width: `${Math.min((monster.evolutionProgress / monster.evolutionMax) * 100, 100)}%`, backgroundColor: "#F59E0B" }]} />
           </View>
+          <Text style={[styles.barLabel, { color: colors.muted, fontSize: 11, marginTop: 2 }]}>{t.evolutionStage} {monster.stage}/3</Text>
         </View>
+
+        {/* Evolve Button - shows when evolution bar is full */}
+        {monster.evolutionProgress >= monster.evolutionMax && monster.stage < 3 && (
+          <TouchableOpacity
+            onPress={() => openEvolutionModal(index)}
+            style={styles.evolveButton}
+          >
+            <Text style={styles.evolveButtonText}>✨ {t.evolveNow} ✨</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Monster Action Buttons */}
         <View style={styles.monsterActions}>
@@ -1319,6 +1328,8 @@ const styles = StyleSheet.create({
   todayDot: { width: 8, height: 8, borderRadius: 4 },
 
   // Monster Action Buttons
+  evolveButton: { backgroundColor: "#F59E0B", paddingVertical: 12, borderRadius: 14, alignItems: "center", marginTop: 12, shadowColor: "#F59E0B", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  evolveButtonText: { color: "#fff", fontSize: 16, fontWeight: "800" },
   monsterActions: { flexDirection: "row", gap: 10, marginTop: 12 },
   monsterActionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 12 },
   monsterActionIcon: { fontSize: 16 },
