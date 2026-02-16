@@ -454,3 +454,7 @@
 - [x] Change back arrow to navigate back without cancelling workout timer (now uses router.back())
 - [x] Allow users to browse other pages while workout timer continues in background
 - [x] Added separate "Cancel" text button in top-right for explicit workout cancellation
+
+## UX - Round 30: Move Active Workout Banner to Bottom
+- [x] Move active workout banner from top to compact floating bar above tab bar
+- [x] Make it easy to reach with one-handed thumb usage

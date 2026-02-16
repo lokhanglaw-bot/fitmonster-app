@@ -7,7 +7,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useI18n } from "@/lib/i18n-context";
 import { useWorkoutTimer } from "@/lib/workout-timer-context";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 
 function ActiveWorkoutBanner() {
   const colors = useColors();
@@ -27,17 +27,27 @@ function ActiveWorkoutBanner() {
 
   if (!activeWorkout) return null;
 
+  const isRunning = activeWorkout.isRunning;
+
   return (
     <TouchableOpacity
       onPress={handlePress}
-      style={[styles.banner, { backgroundColor: activeWorkout.isRunning ? "#22C55E" : "#F59E0B" }]}
+      style={[
+        styles.floatingBanner,
+        { backgroundColor: isRunning ? "#22C55E" : "#F59E0B" },
+      ]}
       activeOpacity={0.8}
     >
-      <Text style={styles.bannerIcon}>{activeWorkout.isRunning ? "🏃" : "⏸️"}</Text>
-      <Text style={styles.bannerText}>
-        {activeWorkout.exerciseName} — {formatTime(elapsedSeconds)}
-      </Text>
-      <Text style={styles.bannerArrow}>→</Text>
+      <View style={styles.bannerLeft}>
+        <Text style={styles.bannerDot}>{isRunning ? "●" : "❚❚"}</Text>
+        <Text style={styles.bannerExercise} numberOfLines={1}>
+          {activeWorkout.exerciseName}
+        </Text>
+      </View>
+      <View style={styles.bannerRight}>
+        <Text style={styles.bannerTime}>{formatTime(elapsedSeconds)}</Text>
+        <Text style={styles.bannerArrow}>›</Text>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -46,12 +56,12 @@ export default function TabLayout() {
   const colors = useColors();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const { activeWorkout } = useWorkoutTimer();
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const tabBarHeight = 56 + bottomPadding;
 
   return (
     <View style={{ flex: 1 }}>
-      <ActiveWorkoutBanner />
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: colors.primary,
@@ -103,30 +113,73 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
+      {/* Floating banner positioned just above the tab bar */}
+      {activeWorkout && (
+        <View
+          style={[
+            styles.floatingBannerContainer,
+            { bottom: tabBarHeight },
+          ]}
+        >
+          <ActiveWorkoutBanner />
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  banner: {
+  floatingBannerContainer: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    zIndex: 100,
+  },
+  floatingBanner: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    // Shadow for iOS
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    // Shadow for Android
+    elevation: 6,
+  },
+  bannerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
+    flex: 1,
   },
-  bannerIcon: {
-    fontSize: 16,
+  bannerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  bannerText: {
+  bannerDot: {
+    color: "#fff",
+    fontSize: 10,
+  },
+  bannerExercise: {
     color: "#fff",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
+    flex: 1,
   },
-  bannerArrow: {
+  bannerTime: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "800",
+    fontVariant: ["tabular-nums"],
+  },
+  bannerArrow: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 20,
     fontWeight: "700",
   },
 });
