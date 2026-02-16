@@ -423,3 +423,15 @@
 - [x] Remove HealthKit entitlements from app.config.ts (provisioning profile doesn't support it)
 - [x] Comment out Health Connect Android permissions (native modules not installed yet)
 - [x] Keep health entitlements as comments for future re-enabling when native modules are installed
+
+## Feature - Round 26: Workout Timer Redesign
+- [x] Remove preset duration slider from workout setup
+- [x] Change to open-ended stopwatch (no target time)
+- [x] Calculate calories and EXP based on actual workout duration on completion
+- [x] Persist timer when navigating to other tabs (WorkoutTimerContext in _layout.tsx)
+- [x] Add return-to-timer banner when workout is active and user is on other tabs (green/yellow banner)
+- [x] Timer continues when screen is off (uses startTime-based calculation, not interval)
+- [x] Remove progress bar percentage (no target to compare against)
+- [x] Update timer display to count up instead of counting down
+- [x] Add pause/resume support with visual state indicator
+- [x] Prevent starting new workout while one is active (alert message)

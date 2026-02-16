@@ -10,16 +10,14 @@ import {
   TextInput,
   Platform,
 } from "react-native";
-import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useActivity } from "@/lib/activity-context";
 import { useRouter } from "expo-router";
 import { useI18n } from "@/lib/i18n-context";
+import { useWorkoutTimer } from "@/lib/workout-timer-context";
 import * as Haptics from "expo-haptics";
-
-// WORKOUT_TYPES and EXERCISES are built inside the component to use i18n
 
 type WorkoutLog = {
   exercise: string;
@@ -30,12 +28,11 @@ type WorkoutLog = {
 
 type BonusType = "none" | "outdoor" | "gym";
 
-// SAMPLE_LOGS is built inside the component to use i18n
-
 export default function WorkoutScreen() {
   const colors = useColors();
   const router = useRouter();
   const { t, tr } = useI18n();
+  const { activeWorkout } = useWorkoutTimer();
 
   const WORKOUT_TYPES = [
     { key: "All", label: t.allExercises },
@@ -58,15 +55,14 @@ export default function WorkoutScreen() {
     { id: 10, name: t.yogaFlow, icon: "🧘", met: 3, category: "Yoga" },
     { id: 11, name: t.basketball, icon: "🏀", met: 6.5, category: "Basketball" },
   ];
+
   const [selectedType, setSelectedType] = useState("All");
   const { state: activityState, logWorkout: logWorkoutToContext, syncSteps: syncStepsToContext } = useActivity();
 
-  // Derive stats from activity context — no hardcoded values
   const totalExp = activityState.todayTotalExp;
   const completedCount = activityState.todayWorkoutLogs.length;
   const steps = activityState.todaySteps;
 
-  // Convert activity context workout logs to display format
   const workoutLogs: WorkoutLog[] = useMemo(() => {
     return activityState.allWorkoutLogs.slice(-10).reverse().map(log => ({
       exercise: log.exercise,
@@ -76,9 +72,7 @@ export default function WorkoutScreen() {
     }));
   }, [activityState.allWorkoutLogs]);
 
-  // Selected exercise detail
   const [selectedExercise, setSelectedExercise] = useState<typeof EXERCISES[0] | null>(null);
-  const [duration, setDuration] = useState(30);
   const [bonus, setBonus] = useState<BonusType>("none");
 
   // Manual Log Modal
@@ -87,31 +81,24 @@ export default function WorkoutScreen() {
   const [manualDuration, setManualDuration] = useState("");
   const [manualWeight, setManualWeight] = useState("70");
 
-  const bodyWeight = 70; // kg default
-
   const filteredExercises = selectedType === "All" ? EXERCISES : EXERCISES.filter((e) => e.category === selectedType);
-
-  const bonusMultiplier = bonus === "outdoor" ? 1.5 : bonus === "gym" ? 2.0 : 1.0;
-
-  const expGained = useMemo(() => {
-    if (!selectedExercise) return 0;
-    return Math.round(selectedExercise.met * 3.5 * bodyWeight * duration / 200 * bonusMultiplier);
-  }, [selectedExercise, duration, bonusMultiplier]);
-
-  const caloriesBurned = useMemo(() => {
-    if (!selectedExercise) return 0;
-    return Math.round(selectedExercise.met * 3.5 * bodyWeight * duration / 200);
-  }, [selectedExercise, duration]);
 
   const handleExercisePress = useCallback((exercise: typeof EXERCISES[0]) => {
     setSelectedExercise(exercise);
-    setDuration(30);
     setBonus("none");
   }, []);
 
   const handleStartTraining = useCallback(() => {
     if (!selectedExercise) return;
-    // Navigate to the workout tracking page with live timer
+    if (activeWorkout) {
+      Alert.alert(
+        t.workoutInProgress,
+        t.finishCurrentWorkout || "Please finish or cancel your current workout first.",
+        [{ text: t.ok }]
+      );
+      return;
+    }
+    // Navigate to the workout tracking page — timer starts there via context
     router.push({
       pathname: "/workout-tracking" as any,
       params: {
@@ -119,11 +106,10 @@ export default function WorkoutScreen() {
         exerciseIcon: selectedExercise.icon,
         exerciseMet: String(selectedExercise.met),
         bonus: bonus,
-        targetDuration: String(duration),
       },
     });
     setSelectedExercise(null);
-  }, [selectedExercise, duration, bonus, router]);
+  }, [selectedExercise, bonus, router, activeWorkout, t]);
 
   const handleManualLog = useCallback(() => {
     setManualExercise("");
@@ -144,7 +130,6 @@ export default function WorkoutScreen() {
     const weight = parseInt(manualWeight, 10) || 70;
     const estimatedMet = 5;
     const exp = Math.round(estimatedMet * 3.5 * weight * dur / 200);
-    // Log to shared activity context (updates totalExp, completedCount, and workoutLogs automatically)
     logWorkoutToContext({
       exercise: manualExercise.trim(),
       duration: dur,
@@ -152,14 +137,13 @@ export default function WorkoutScreen() {
     });
     setShowManualLog(false);
     Alert.alert(t.workoutLoggedTitle, tr("workoutLoggedMessage", { exercise: manualExercise.trim(), duration: String(dur), exp: String(exp) }));
-  }, [manualExercise, manualDuration, manualWeight, logWorkoutToContext]);
+  }, [manualExercise, manualDuration, manualWeight, logWorkoutToContext, t, tr]);
 
   const handleSyncSteps = useCallback(() => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     const simulatedSteps = Math.floor(Math.random() * 3000) + 1000;
-    // Update shared activity state for step quests
     syncStepsToContext(simulatedSteps);
     const newSteps = steps + simulatedSteps;
     Alert.alert(
@@ -167,22 +151,6 @@ export default function WorkoutScreen() {
       tr("stepsSyncedMessage", { steps: simulatedSteps.toLocaleString(), total: newSteps.toLocaleString() })
     );
   }, [syncStepsToContext, steps, t, tr]);
-
-  // Slider helpers
-  const sliderMin = 5;
-  const sliderMax = 120;
-  const [sliderWidth, setSliderWidth] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-
-  const sliderPosition = sliderWidth > 0 ? ((duration - sliderMin) / (sliderMax - sliderMin)) * sliderWidth : 0;
-
-  const handleSliderTouch = useCallback((pageX: number, layoutX: number) => {
-    if (sliderWidth <= 0) return;
-    const x = pageX - layoutX;
-    const ratio = Math.max(0, Math.min(1, x / sliderWidth));
-    const newDuration = Math.round(sliderMin + ratio * (sliderMax - sliderMin));
-    setDuration(newDuration);
-  }, [sliderWidth]);
 
   return (
     <ScreenContainer>
@@ -239,7 +207,7 @@ export default function WorkoutScreen() {
             ))}
           </ScrollView>
 
-          {/* Exercise Grid - 2 columns matching screenshot */}
+          {/* Exercise Grid */}
           <View style={styles.exerciseGrid}>
             {filteredExercises.map((exercise) => {
               const isSelected = selectedExercise?.id === exercise.id;
@@ -259,14 +227,16 @@ export default function WorkoutScreen() {
                 >
                   <Text style={styles.exerciseIcon}>{exercise.icon}</Text>
                   <Text style={[styles.exerciseName, { color: colors.foreground }]}>{exercise.name}</Text>
-                  <Text style={[styles.exerciseCategory, { color: colors.muted }]}>{exercise.category === "Running" ? t.running : exercise.category === "Weight Training" ? t.weightTraining : exercise.category === "Yoga" ? t.yoga : t.basketball}</Text>
+                  <Text style={[styles.exerciseCategory, { color: colors.muted }]}>
+                    {exercise.category === "Running" ? t.running : exercise.category === "Weight Training" ? t.weightTraining : exercise.category === "Yoga" ? t.yoga : t.basketball}
+                  </Text>
                   <Text style={[styles.exerciseMet, { color: colors.primary }]}>⚡ MET {exercise.met}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          {/* Exercise Detail Panel - shown when exercise is selected */}
+          {/* Exercise Detail Panel — no duration slider, just bonus + start */}
           {selectedExercise && (
             <View style={[styles.detailPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               {/* Exercise Header */}
@@ -275,61 +245,10 @@ export default function WorkoutScreen() {
                 <Text style={[styles.detailName, { color: colors.foreground }]}>{selectedExercise.name}</Text>
               </View>
 
-              {/* Duration */}
-              <View style={styles.durationRow}>
-                <Text style={[styles.durationLabel, { color: colors.muted }]}>⏱ {tr("durationDisplay", { duration: String(duration) })}</Text>
-              </View>
-
-              {/* Custom Slider */}
-              <View style={styles.sliderContainer}>
-                <View
-                  style={styles.sliderTrackWrapper}
-                  onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
-                  onStartShouldSetResponder={() => true}
-                  onMoveShouldSetResponder={() => true}
-                  onResponderGrant={(e) => {
-                    setIsDragging(true);
-                    const layoutX = e.nativeEvent.locationX;
-                    const ratio = Math.max(0, Math.min(1, layoutX / (sliderWidth || 1)));
-                    setDuration(Math.round(sliderMin + ratio * (sliderMax - sliderMin)));
-                  }}
-                  onResponderMove={(e) => {
-                    if (!isDragging) return;
-                    const touch = e.nativeEvent;
-                    // Use locationX relative to the track
-                    const ratio = Math.max(0, Math.min(1, touch.locationX / (sliderWidth || 1)));
-                    setDuration(Math.round(sliderMin + ratio * (sliderMax - sliderMin)));
-                  }}
-                  onResponderRelease={() => setIsDragging(false)}
-                >
-                  {/* Track background */}
-                  <View style={[styles.sliderTrack, { backgroundColor: "#D1D5DB" }]} />
-                  {/* Track fill */}
-                  <View
-                    style={[
-                      styles.sliderFill,
-                      {
-                        backgroundColor: colors.primary,
-                        width: sliderPosition,
-                      },
-                    ]}
-                  />
-                  {/* Thumb */}
-                  <View
-                    style={[
-                      styles.sliderThumb,
-                      {
-                        backgroundColor: colors.primary,
-                        left: sliderPosition - 12,
-                      },
-                    ]}
-                  />
-                </View>
-                <View style={styles.sliderLabels}>
-                  <Text style={[styles.sliderLabelText, { color: colors.muted }]}>{t.sliderMin}</Text>
-                  <Text style={[styles.sliderLabelText, { color: colors.muted }]}>{t.sliderMax}</Text>
-                </View>
-              </View>
+              {/* Info text — no preset duration */}
+              <Text style={[styles.infoText, { color: colors.muted }]}>
+                {t.openTimerHint || "Timer starts when you begin. Finish when you're done!"}
+              </Text>
 
               {/* Bonus Section */}
               <Text style={[styles.bonusTitle, { color: colors.foreground }]}>{t.bonus}</Text>
@@ -346,7 +265,7 @@ export default function WorkoutScreen() {
                   onPress={() => setBonus(bonus === "outdoor" ? "none" : "outdoor")}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.bonusIcon}>📍</Text>
+                  <Text style={styles.bonusIconText}>📍</Text>
                   <View>
                     <Text style={[styles.bonusName, { color: colors.foreground }]}>{t.outdoor}</Text>
                     <Text style={[styles.bonusMultiplier, { color: colors.primary }]}>x1.5</Text>
@@ -364,24 +283,12 @@ export default function WorkoutScreen() {
                   onPress={() => setBonus(bonus === "gym" ? "none" : "gym")}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.bonusIcon}>🏋️</Text>
+                  <Text style={styles.bonusIconText}>🏋️</Text>
                   <View>
                     <Text style={[styles.bonusName, { color: colors.foreground }]}>{t.gym}</Text>
                     <Text style={[styles.bonusMultiplier, { color: colors.primary }]}>x2.0</Text>
                   </View>
                 </TouchableOpacity>
-              </View>
-
-              {/* EXP & Calories Preview */}
-              <View style={[styles.previewCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                <View style={styles.previewRow}>
-                  <Text style={[styles.previewLabel, { color: colors.foreground }]}>{t.expGained}</Text>
-                  <Text style={[styles.previewValue, { color: colors.primary }]}>+{expGained}</Text>
-                </View>
-                <View style={styles.previewRow}>
-                  <Text style={[styles.previewLabel, { color: colors.foreground }]}>{t.caloriesBurned}</Text>
-                  <Text style={[styles.previewCalories, { color: "#F59E0B" }]}>~{caloriesBurned} kcal</Text>
-                </View>
               </View>
 
               {/* Start Training Button */}
@@ -498,93 +405,42 @@ const styles = StyleSheet.create({
   headerBtn: { width: 48, height: 48, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   headerBtnIcon: { fontSize: 20 },
 
-  // Filter pills
   filterScroll: { maxHeight: 44 },
   filterRow: { gap: 8, paddingVertical: 2, alignItems: "center" },
   filterPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, height: 36, justifyContent: "center" },
   filterText: { fontSize: 13, fontWeight: "600" },
 
-  // Exercise grid - 2 columns matching screenshot
   exerciseGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  exerciseCard: {
-    width: "47%",
-    padding: 16,
-    borderRadius: 16,
-    gap: 4,
-  },
+  exerciseCard: { width: "47%", padding: 16, borderRadius: 16, gap: 4 },
   exerciseIcon: { fontSize: 32 },
   exerciseName: { fontSize: 15, fontWeight: "700", marginTop: 4 },
   exerciseCategory: { fontSize: 12 },
   exerciseMet: { fontSize: 12, fontWeight: "700", marginTop: 2 },
 
-  // Detail panel
   detailPanel: { borderRadius: 20, padding: 20, borderWidth: 1, gap: 16 },
   detailHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   detailIcon: { fontSize: 28 },
   detailName: { fontSize: 22, fontWeight: "800" },
+  infoText: { fontSize: 14, lineHeight: 20 },
 
-  // Duration
-  durationRow: { flexDirection: "row", alignItems: "center" },
-  durationLabel: { fontSize: 15, fontWeight: "600" },
-
-  // Custom slider
-  sliderContainer: { gap: 6 },
-  sliderTrackWrapper: { height: 40, justifyContent: "center", position: "relative" },
-  sliderTrack: { height: 6, borderRadius: 3, width: "100%" },
-  sliderFill: { height: 6, borderRadius: 3, position: "absolute", top: 17, left: 0 },
-  sliderThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    position: "absolute",
-    top: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  sliderLabels: { flexDirection: "row", justifyContent: "space-between" },
-  sliderLabelText: { fontSize: 12 },
-
-  // Bonus
   bonusTitle: { fontSize: 16, fontWeight: "700" },
   bonusRow: { flexDirection: "row", gap: 12 },
-  bonusCard: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 14,
-    borderRadius: 14,
-  },
-  bonusIcon: { fontSize: 22 },
+  bonusCard: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 14 },
+  bonusIconText: { fontSize: 22 },
   bonusName: { fontSize: 14, fontWeight: "600" },
   bonusMultiplier: { fontSize: 13, fontWeight: "700" },
 
-  // Preview card
-  previewCard: { borderRadius: 14, padding: 16, borderWidth: 1, gap: 10 },
-  previewRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  previewLabel: { fontSize: 15, fontWeight: "600" },
-  previewValue: { fontSize: 20, fontWeight: "800" },
-  previewCalories: { fontSize: 16, fontWeight: "700" },
-
-  // Start Training button
   startBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 18, borderRadius: 16 },
   startBtnIcon: { color: "#fff", fontSize: 18 },
   startBtnText: { color: "#fff", fontSize: 18, fontWeight: "800" },
 
-  // Section title
   sectionTitle: { fontSize: 18, fontWeight: "700", marginTop: 4 },
-
-  // Log items
   logItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14, borderRadius: 12, borderWidth: 1 },
   logInfo: { gap: 2 },
   logName: { fontSize: 15, fontWeight: "600" },
   logDuration: { fontSize: 12 },
   logExp: { fontSize: 14, fontWeight: "700" },
 
-  // Bottom stats
   bottomStats: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4, borderTopLeftRadius: 16, borderTopRightRadius: 16, borderWidth: 1, borderBottomWidth: 0 },
   bottomStatIcon: { fontSize: 18 },
   bottomStatLabel: { fontSize: 14, fontWeight: "600" },
@@ -596,7 +452,6 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, marginTop: 2 },
   statDivider: { width: 1, height: 36, alignSelf: "center" },
 
-  // Modal styles
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderWidth: 1, gap: 12 },
   modalTitle: { fontSize: 22, fontWeight: "800", textAlign: "center" },
