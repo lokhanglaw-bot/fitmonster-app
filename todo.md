@@ -398,3 +398,13 @@
 - [x] i18n translations for health sync (EN + ZH)
 - [x] Persist health sync preferences and data per user (AsyncStorage)
 - [x] SYNC_HEALTH_DATA batch action in activity context with Monster EXP
+
+## Bugfix - Round 23: UI and Data Fixes
+- [x] Fix daily calorie trend chart showing wrong values (removed /100 division that turned 290 into 3)
+- [x] Fix food item names showing English in Chinese mode (pass language param to AI, localize labels)
+- [x] Fix food description showing English in Chinese mode (AI now responds in user's language)
+- [x] Improve AI nutrition prompt for more accurate estimates (detailed prompt with portion-based estimation)
+- [x] Fix evolution bar overflow (capped at 100%, added overflow:hidden)
+- [x] Add carbs and fat tracking to Macros tab (protein/carbs/fat sub-tabs with individual charts)
+- [x] Add daily carbs and fat to activity context state (todayCarbs, todayFat, weeklyCarbs, weeklyFat)
+- [x] Fix Lv.{level} display bug in dashboard (was showing literal {level} text)

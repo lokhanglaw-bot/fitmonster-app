@@ -112,6 +112,7 @@ export default function HomeScreen() {
 
   // History tab state
   const [historySubTab, setHistorySubTab] = useState<"calories" | "macros" | "workout">("calories");
+  const [macroSubTab, setMacroSubTab] = useState<"protein" | "carbs" | "fat">("protein");
   const [dailyTaskView, setDailyTaskView] = useState<"workout" | "diet">("workout");
   const [historyViewMode, setHistoryViewMode] = useState<"chart" | "calendar" | "list">("chart");
   // Derive history stats from shared activity state
@@ -119,6 +120,8 @@ export default function HomeScreen() {
   const caloriesBurned = activity.todayCaloriesBurned;
   const workoutDuration = activity.todayWorkoutMinutes;
   const avgProtein = activity.todayProtein;
+  const avgCarbs = activity.todayCarbs || 0;
+  const avgFat = activity.todayFat || 0;
 
   // Evolution modal
   const [showEvolutionModal, setShowEvolutionModal] = useState(false);
@@ -188,9 +191,14 @@ export default function HomeScreen() {
   const [recordDuration, setRecordDuration] = useState("");
 
   // Chart data from shared activity state (weekly arrays)
+  const macroData = {
+    protein: activity.weeklyProtein,
+    carbs: activity.weeklyCarbs || [0,0,0,0,0,0,0],
+    fat: activity.weeklyFat || [0,0,0,0,0,0,0],
+  };
   const chartData = {
     calories: activity.weeklyCalories,
-    macros: activity.weeklyProtein,
+    macros: macroData[macroSubTab],
     workout: activity.weeklyWorkout,
   };
 
@@ -378,7 +386,7 @@ export default function HomeScreen() {
             <Text style={[styles.barValue, { color: colors.muted }]}>{monster.evolutionProgress}/{monster.evolutionMax}</Text>
           </View>
           <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
-            <View style={[styles.barFill, { width: `${(monster.evolutionProgress / monster.evolutionMax) * 100}%`, backgroundColor: "#F59E0B" }]} />
+            <View style={[styles.barFill, { width: `${Math.min((monster.evolutionProgress / monster.evolutionMax) * 100, 100)}%`, backgroundColor: "#F59E0B" }]} />
           </View>
         </View>
 
@@ -683,6 +691,18 @@ export default function HomeScreen() {
           <Text style={[styles.historyStatSub, { color: colors.muted }]}>{t.dailyAvg}</Text>
         </View>
       </View>
+      <View style={styles.historyStatsRow}>
+        <View style={[styles.historyStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.historyStatLabel, { color: "#3B82F6" }]}>🍞 {t.avgCarbs}</Text>
+          <Text style={[styles.historyStatValue, { color: colors.foreground }]}>{avgCarbs}g</Text>
+          <Text style={[styles.historyStatSub, { color: colors.muted }]}>{t.dailyAvg}</Text>
+        </View>
+        <View style={[styles.historyStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.historyStatLabel, { color: "#8B5CF6" }]}>🧈 {t.avgFat}</Text>
+          <Text style={[styles.historyStatValue, { color: colors.foreground }]}>{avgFat}g</Text>
+          <Text style={[styles.historyStatSub, { color: colors.muted }]}>{t.dailyAvg}</Text>
+        </View>
+      </View>
 
       {/* Sub-tabs */}
       <View style={[styles.subTabRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -698,6 +718,23 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Macro sub-tabs (protein/carbs/fat) */}
+      {historySubTab === "macros" && (
+        <View style={[styles.subTabRow, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 8 }]}>
+          {(["protein", "carbs", "fat"] as const).map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.subTab, macroSubTab === tab && { backgroundColor: tab === "protein" ? "#22C55E" : tab === "carbs" ? "#3B82F6" : "#8B5CF6" }]}
+              onPress={() => setMacroSubTab(tab)}
+            >
+              <Text style={[styles.subTabText, { color: macroSubTab === tab ? "#fff" : colors.muted }]}>
+                {tab === "protein" ? t.proteinShort : tab === "carbs" ? t.carbsShort : t.fatShort}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* View toggle icons */}
       <View style={styles.viewToggleRow}>
@@ -723,7 +760,7 @@ export default function HomeScreen() {
       {historyViewMode === "chart" && (
         <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.chartTitle, { color: colors.foreground }]}>
-            {historySubTab === "calories" ? `🔥 ${t.dailyCalorieTrend}` : historySubTab === "macros" ? `🥩 ${t.dailyProteinTrend}` : `🏋️ ${t.workoutDurationTrend}`}
+            {historySubTab === "calories" ? `🔥 ${t.dailyCalorieTrend}` : historySubTab === "macros" ? (macroSubTab === "protein" ? `🥩 ${t.dailyProteinTrend}` : macroSubTab === "carbs" ? `🍞 ${t.dailyCarbsTrend}` : `🧈 ${t.dailyFatTrend}`) : `🏋️ ${t.workoutDurationTrend}`}
           </Text>
           <View style={styles.chartArea}>
             {[t.daySat, t.daySun, t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri].map((day, i) => {
@@ -734,7 +771,7 @@ export default function HomeScreen() {
               return (
                 <View key={day} style={styles.chartCol}>
                   <Text style={[styles.chartBarValue, { color: colors.muted }]}>
-                    {historySubTab === "calories" ? Math.round(data[i] / 100) : data[i]}
+                    {data[i]}
                   </Text>
                   <View style={[styles.chartBar, { height: barHeight, backgroundColor: isToday ? colors.primary : "#E5E7EB" }]} />
                   <Text style={[styles.chartDay, { color: colors.muted }]}>{day}</Text>
@@ -772,7 +809,7 @@ export default function HomeScreen() {
           <Text style={[styles.chartTitle, { color: colors.foreground }]}>📋 {t.dailyRecords}</Text>
           {[t.daySat, t.daySun, t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri].map((day, i) => {
             const data = chartData[historySubTab];
-            const unit = historySubTab === "calories" ? t.kcalUnit : historySubTab === "macros" ? t.gProtein : t.minUnit;
+            const unit = historySubTab === "calories" ? t.kcalUnit : historySubTab === "macros" ? (macroSubTab === "protein" ? t.gProtein : macroSubTab === "carbs" ? t.gCarbs : t.gFat) : t.minUnit;
             const isToday = i === 6;
             return (
               <View key={day} style={[styles.listRow, { borderBottomColor: colors.border }]}>

@@ -52,7 +52,7 @@ type AnalysisState =
 
 export default function CameraScreen() {
   const colors = useColors();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [analysisState, setAnalysisState] = useState<AnalysisState>({ status: "idle" });
   const [isSaving, setIsSaving] = useState(false);
@@ -151,6 +151,7 @@ export default function CameraScreen() {
         const response = await analyzeMutation.mutateAsync({
           imageBase64: base64,
           mimeType: asset.mimeType || "image/jpeg",
+          language: language as "en" | "zh",
         });
 
         setAnalysisState({
@@ -244,22 +245,22 @@ export default function CameraScreen() {
         <View style={styles.nutrientPill}>
           <Text style={styles.nutrientEmoji}>🔥</Text>
           <Text style={[styles.nutrientValue, { color: "#F59E0B" }]}>{item.calories}</Text>
-          <Text style={[styles.nutrientLabel, { color: colors.muted }]}>cal</Text>
+          <Text style={[styles.nutrientLabel, { color: colors.muted }]}>{t.calLabel}</Text>
         </View>
         <View style={styles.nutrientPill}>
           <Text style={styles.nutrientEmoji}>🥩</Text>
           <Text style={[styles.nutrientValue, { color: "#EF4444" }]}>{item.protein}g</Text>
-          <Text style={[styles.nutrientLabel, { color: colors.muted }]}>protein</Text>
+          <Text style={[styles.nutrientLabel, { color: colors.muted }]}>{t.proteinLabel}</Text>
         </View>
         <View style={styles.nutrientPill}>
           <Text style={styles.nutrientEmoji}>🍞</Text>
           <Text style={[styles.nutrientValue, { color: "#3B82F6" }]}>{item.carbs}g</Text>
-          <Text style={[styles.nutrientLabel, { color: colors.muted }]}>carbs</Text>
+          <Text style={[styles.nutrientLabel, { color: colors.muted }]}>{t.carbsLabel}</Text>
         </View>
         <View style={styles.nutrientPill}>
           <Text style={styles.nutrientEmoji}>🧈</Text>
           <Text style={[styles.nutrientValue, { color: "#8B5CF6" }]}>{item.fat}g</Text>
-          <Text style={[styles.nutrientLabel, { color: colors.muted }]}>fat</Text>
+          <Text style={[styles.nutrientLabel, { color: colors.muted }]}>{t.fatLabel}</Text>
         </View>
       </View>
     </View>
@@ -341,8 +342,7 @@ export default function CameraScreen() {
               </Text>
               <View style={styles.mealTypeBadge}>
                 <Text style={styles.mealTypeText}>
-                  {analysisState.analysis.mealType.charAt(0).toUpperCase() +
-                    analysisState.analysis.mealType.slice(1)}
+                  {analysisState.analysis.mealType === "breakfast" ? t.mealBreakfast : analysisState.analysis.mealType === "lunch" ? t.mealLunch : analysisState.analysis.mealType === "dinner" ? t.mealDinner : t.mealSnack}
                 </Text>
               </View>
             </View>

@@ -6,6 +6,7 @@ import { z } from "zod";
 import * as db from "./db";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
+import { getFoodAnalysisPrompt, getFoodAnalysisUserPrompt } from "./food-prompt";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -130,6 +131,7 @@ export const appRouter = router({
         z.object({
           imageBase64: z.string(), // base64 encoded image data
           mimeType: z.string().default("image/jpeg"),
+          language: z.enum(["en", "zh"]).default("en"),
         })
       )
       .mutation(async ({ input }) => {
@@ -143,34 +145,12 @@ export const appRouter = router({
           messages: [
             {
               role: "system",
-              content: `You are a professional nutritionist AI. Analyze the food image and return a JSON object with the following structure:
-{
-  "foods": [
-    {
-      "name": "string - name of the food item",
-      "portion": "string - estimated portion size (e.g., '1 cup', '200g')",
-      "calories": number,
-      "protein": number (in grams),
-      "carbs": number (in grams),
-      "fat": number (in grams),
-      "fiber": number (in grams)
-    }
-  ],
-  "totalCalories": number,
-  "totalProtein": number,
-  "totalCarbs": number,
-  "totalFat": number,
-  "mealType": "breakfast" | "lunch" | "dinner" | "snack",
-  "healthScore": number (1-10, how healthy is this meal),
-  "summary": "string - brief description of the meal"
-}
-
-Be accurate with nutritional estimates. If you cannot identify the food, still provide your best guess. Always return valid JSON.`,
+              content: getFoodAnalysisPrompt(input.language),
             },
             {
               role: "user",
               content: [
-                { type: "text", text: "Analyze this food image and provide detailed nutrition information." },
+                { type: "text", text: getFoodAnalysisUserPrompt(input.language) },
                 { type: "image_url", image_url: { url: imageUrl, detail: "high" } },
               ],
             },

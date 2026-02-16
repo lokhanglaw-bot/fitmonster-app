@@ -156,7 +156,7 @@ export default function DashboardScreen() {
                 </LinearGradient>
                 <View style={styles.monsterGrowthInfo}>
                   <Text style={[styles.monsterGrowthName, { color: colors.foreground }]}>{activeMonster.name}</Text>
-                  <Text style={[styles.monsterGrowthLevel, { color: colors.muted }]}>{t.level} {activeMonster.level}</Text>
+                  <Text style={[styles.monsterGrowthLevel, { color: colors.muted }]}>Lv.{activeMonster.level}</Text>
                   <View style={styles.growthBarContainer}>
                     <Text style={[styles.growthBarLabel, { color: colors.muted }]}>EXP</Text>
                     <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>

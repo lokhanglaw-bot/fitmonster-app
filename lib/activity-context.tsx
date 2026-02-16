@@ -42,6 +42,8 @@ export interface MonsterData {
 export interface ActivityState {
   // Today's cumulative data
   todayProtein: number;      // grams
+  todayCarbs: number;        // grams
+  todayFat: number;          // grams
   todayCaloriesIn: number;   // kcal consumed
   todayCaloriesBurned: number; // kcal burned
   todayWorkoutMinutes: number;
@@ -53,6 +55,8 @@ export interface ActivityState {
   // Lifetime / weekly aggregates
   weeklyCalories: number[];  // last 7 days
   weeklyProtein: number[];
+  weeklyCarbs: number[];     // last 7 days
+  weeklyFat: number[];       // last 7 days
   weeklyWorkout: number[];   // minutes per day
   // Date tracking
   lastResetDate: string;     // YYYY-MM-DD
@@ -67,6 +71,8 @@ const getToday = () => new Date().toISOString().split("T")[0];
 
 const initialState: ActivityState = {
   todayProtein: 0,
+  todayCarbs: 0,
+  todayFat: 0,
   todayCaloriesIn: 0,
   todayCaloriesBurned: 0,
   todayWorkoutMinutes: 0,
@@ -77,6 +83,8 @@ const initialState: ActivityState = {
   todayTotalExp: 0,
   weeklyCalories: [0, 0, 0, 0, 0, 0, 0],
   weeklyProtein: [0, 0, 0, 0, 0, 0, 0],
+  weeklyCarbs: [0, 0, 0, 0, 0, 0, 0],
+  weeklyFat: [0, 0, 0, 0, 0, 0, 0],
   weeklyWorkout: [0, 0, 0, 0, 0, 0, 0],
   lastResetDate: getToday(),
   monsters: [],
@@ -113,12 +121,16 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
       const foodResult = {
         ...state,
         todayProtein: state.todayProtein + protein,
+        todayCarbs: (state.todayCarbs || 0) + carbs,
+        todayFat: (state.todayFat || 0) + fat,
         todayCaloriesIn: state.todayCaloriesIn + calories,
         todayMealCount: state.todayMealCount + 1,
         todayTotalExp: state.todayTotalExp + expEarned,
         todayFoodLogs: [...state.todayFoodLogs, entry],
         weeklyCalories: updateWeeklyLast(state.weeklyCalories, calories),
         weeklyProtein: updateWeeklyLast(state.weeklyProtein, protein),
+        weeklyCarbs: updateWeeklyLast(state.weeklyCarbs || [0,0,0,0,0,0,0], carbs),
+        weeklyFat: updateWeeklyLast(state.weeklyFat || [0,0,0,0,0,0,0], fat),
       };
       // Add EXP to active monster's evolution progress
       return addEvolutionExp(foodResult, expEarned);
@@ -269,6 +281,8 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
         ...initialState,
         weeklyCalories: [...state.weeklyCalories.slice(1), 0],
         weeklyProtein: [...state.weeklyProtein.slice(1), 0],
+        weeklyCarbs: [...(state.weeklyCarbs || [0,0,0,0,0,0,0]).slice(1), 0],
+        weeklyFat: [...(state.weeklyFat || [0,0,0,0,0,0,0]).slice(1), 0],
         weeklyWorkout: [...state.weeklyWorkout.slice(1), 0],
         lastResetDate: getToday(),
         monsters: state.monsters,
