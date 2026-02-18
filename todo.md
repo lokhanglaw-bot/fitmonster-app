@@ -479,3 +479,12 @@
 - [x] Added empty state UI for no nearby users (with link to open map)
 - [x] Wild battle generates procedural opponent based on player level when no nearby users
 - [x] Updated health-sync screen to remove 'simulation' platform references
+
+## Audit - Round 33: HealthKit and Map Functionality Check
+- [x] Verify app.config.ts HealthKit entitlements and Health Connect permissions
+- [x] Verify HealthService native module integration (react-native-health, react-native-health-connect)
+- [x] Verify Map/Location functionality (expo-location, nearby-map, battle screen)
+- [x] No issues found — all configurations correct
+
+## Fix - Round 34: EAS Project ID Configuration
+- [x] Add extra.eas.projectId to app.config.ts for EAS CLI linking

@@ -149,6 +149,11 @@ const config: ExpoConfig = {
     // Health Connect (Android) — react-native-health-connect config plugin
     // Note: expo-health-connect may not be needed if react-native-health-connect handles its own config
   ],
+  extra: {
+    eas: {
+      projectId: "d2d082ac-2355-4462-b14b-591a913d941b",
+    },
+  },
   experiments: {
     typedRoutes: true,
     reactCompiler: true,
