@@ -104,6 +104,7 @@ type Action =
   | { type: "ADD_MONSTER"; payload: MonsterData }
   | { type: "SET_MONSTERS"; payload: MonsterData[] }
   | { type: "SET_ACTIVE_MONSTER"; payload: { index: number } }
+  | { type: "REMOVE_MONSTER"; payload: { monsterIndex: number } }
   | { type: "EVOLVE_MONSTER"; payload: { monsterIndex: number } }
   | { type: "HYDRATE"; payload: ActivityState }
   | { type: "DAILY_RESET" }
@@ -247,6 +248,20 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
         monsters: action.payload,
       };
     }
+    case "REMOVE_MONSTER": {
+      const rmIdx = action.payload.monsterIndex;
+      if (rmIdx < 0 || rmIdx >= state.monsters.length) return state;
+      const newMonsters = state.monsters.filter((_, i) => i !== rmIdx);
+      let newActiveIdx = state.activeMonsterIndex;
+      if (newMonsters.length === 0) {
+        newActiveIdx = 0;
+      } else if (rmIdx === state.activeMonsterIndex) {
+        newActiveIdx = 0;
+      } else if (rmIdx < state.activeMonsterIndex) {
+        newActiveIdx = state.activeMonsterIndex - 1;
+      }
+      return { ...state, monsters: newMonsters, activeMonsterIndex: newActiveIdx };
+    }
     case "EVOLVE_MONSTER": {
       const idx = action.payload.monsterIndex;
       if (idx < 0 || idx >= state.monsters.length) return state;
@@ -340,6 +355,7 @@ interface ActivityContextType {
   addRecordWorkout: (name: string, duration: number) => void;
   addMonster: (monster: MonsterData) => void;
   setMonsters: (monsters: MonsterData[]) => void;
+  removeMonster: (monsterIndex: number) => void;
   evolveMonster: (monsterIndex: number) => void;
   setActiveMonster: (index: number) => void;
   checkEvolution: () => { ready: boolean; monsterIndex: number; monsterName: string; newStage: number } | null;
@@ -446,6 +462,10 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
     dispatch({ type: "SET_MONSTERS", payload: monsters });
   }, []);
 
+  const removeMonster = useCallback((monsterIndex: number) => {
+    dispatch({ type: "REMOVE_MONSTER", payload: { monsterIndex } });
+  }, []);
+
   const evolveMonster = useCallback((monsterIndex: number) => {
     dispatch({ type: "EVOLVE_MONSTER", payload: { monsterIndex } });
   }, []);
@@ -487,7 +507,7 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
   return (
     <ActivityContext.Provider value={{
       state, logFood, logWorkout, syncSteps, syncHealthData, addRecordFood, addRecordWorkout,
-      addMonster, setMonsters, evolveMonster, setActiveMonster, checkEvolution, resetForNewUser, switchUser,
+      addMonster, setMonsters, removeMonster, evolveMonster, setActiveMonster, checkEvolution, resetForNewUser, switchUser,
     }}>
       {children}
     </ActivityContext.Provider>

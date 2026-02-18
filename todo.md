@@ -497,3 +497,11 @@
 - [x] Fix 1: Use stable openId (local-{email}) as ActivityProvider storage key instead of numeric id
 - [x] Fix 2: localLogin and localSignup now reuse existing ID for the same email
 - [x] Both fixes ensure same email always maps to same data, even after logout/re-login
+
+## Feature - Round 37: Delete Monster + Fix Home Hatch Button
+- [x] Add delete monster functionality (with confirmation dialog)
+- [x] Add REMOVE_MONSTER action to ActivityContext reducer
+- [x] Add delete button in monster list modal (dashed red border style)
+- [x] Allow deleting any monster (including last one, user can hatch new)
+- [x] Fix home screen egg card — now tappable to directly trigger hatch flow when no monsters exist
+- [x] Add i18n translations for delete monster (EN + ZH)

@@ -65,7 +65,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  const { state: activity, addRecordFood, addRecordWorkout, addMonster, setMonsters: setMonstersCtx, evolveMonster, checkEvolution, setActiveMonster } = useActivity();
+  const { state: activity, addRecordFood, addRecordWorkout, addMonster, setMonsters: setMonstersCtx, removeMonster, evolveMonster, checkEvolution, setActiveMonster } = useActivity();
   const { language, setLanguage, t, tr } = useI18n();
 
   const MONSTER_TYPES = [
@@ -321,6 +321,23 @@ export default function HomeScreen() {
     router.push("/(tabs)/workout");
   }, [router]);
 
+  const handleDeleteMonster = useCallback((index: number, name: string) => {
+    Alert.alert(
+      t.deleteMonster,
+      t.deleteMonsterConfirm,
+      [
+        { text: t.cancel, style: "cancel" },
+        {
+          text: t.delete,
+          style: "destructive",
+          onPress: () => {
+            removeMonster(index);
+          },
+        },
+      ]
+    );
+  }, [t, removeMonster]);
+
   const renderMonsterCard = (monster: Monster, index: number, showSelectAction = false) => {
     const isActive = index === activeMonsterIdx;
     const hp = Math.min((monster.currentHp / monster.maxHp) * 100, 100);
@@ -495,11 +512,15 @@ export default function HomeScreen() {
 
       {/* Active Monster Card */}
       {activeMonster ? renderMonsterCard(activeMonster, activeMonsterIdx) : (
-        <View style={[styles.emptyMonsterCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleHatchEgg}
+          style={[styles.emptyMonsterCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
           <Text style={{ fontSize: 48 }}>🥚</Text>
           <Text style={[styles.emptyMonsterText, { color: colors.foreground }]}>{t.hatchEgg}</Text>
           <Text style={[styles.emptyMonsterSubtext, { color: colors.muted }]}>{t.hatchYourFirstMonster}</Text>
-        </View>
+        </TouchableOpacity>
       )}
 
       {/* Hatch Egg Button - only show if team not full */}
@@ -907,7 +928,17 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView style={{ maxHeight: 500 }}>
-              {monsters.map((m, i) => renderMonsterCard(m, i, true))}
+              {monsters.map((m, i) => (
+                <View key={`monster-list-${i}`}>
+                  {renderMonsterCard(m, i, true)}
+                  <TouchableOpacity
+                    onPress={() => handleDeleteMonster(i, m.name)}
+                    style={[styles.deleteMonsterBtn, { borderColor: "#EF4444" }]}
+                  >
+                    <Text style={styles.deleteMonsterText}>🗑️ {t.deleteMonster}</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
             </ScrollView>
             {monsters.length < 3 && (
               <TouchableOpacity style={[styles.hatchConfirmBtn, { backgroundColor: colors.primary }]} onPress={() => { setShowMonsterList(false); handleHatchEgg(); }}>
@@ -1350,6 +1381,10 @@ const styles = StyleSheet.create({
   teamSlotLevel: { fontSize: 10, fontWeight: "600" },
   teamSlotEmpty: { width: 64, height: 64, borderRadius: 12, borderWidth: 2, borderStyle: "dashed" as const, alignItems: "center", justifyContent: "center" },
   teamSlotsLabel: { fontSize: 13, fontWeight: "600" },
+
+  // Delete monster button
+  deleteMonsterBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 10, marginTop: -4, marginBottom: 12, marginHorizontal: 16, borderRadius: 12, borderWidth: 1, borderStyle: "dashed" as const },
+  deleteMonsterText: { color: "#EF4444", fontSize: 13, fontWeight: "600" },
 
   // Empty monster state for new users
   emptyMonsterCard: { borderRadius: 20, padding: 32, borderWidth: 1, alignItems: "center", gap: 12 },
