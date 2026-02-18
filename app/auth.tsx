@@ -20,7 +20,9 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/use-colors";
 import { useAuth } from "@/hooks/use-auth";
-import { useI18n } from "@/lib/i18n-context";
+import { useI18n, type Language } from "@/lib/i18n-context";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 // Share uses react-native Share API for native, Web Share API for web
 
 type AuthMode = "signin" | "signup" | "forgot";
@@ -38,7 +40,11 @@ export default function AuthScreen() {
   const router = useRouter();
   const colors = useColors();
   const { localLogin, localSignup } = useAuth({ autoFetch: false });
-  const { t } = useI18n();
+  const { t, language, setLanguage } = useI18n();
+
+  const toggleLanguage = () => {
+    setLanguage(language === "en" ? "zh" : "en");
+  };
 
   const handleEmailAuth = async () => {
     if (!email || !password) {
@@ -158,6 +164,18 @@ export default function AuthScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
+          {/* Language Toggle */}
+          <TouchableOpacity
+            onPress={toggleLanguage}
+            style={styles.langToggle}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons name="language" size={18} color="#687076" />
+            <Text style={styles.langToggleText}>
+              {language === "en" ? "中文" : "EN"}
+            </Text>
+          </TouchableOpacity>
+
           {/* Logo & Branding */}
           <View style={styles.logoContainer}>
             <View style={[styles.logoBox, { backgroundColor: colors.primary }]}>
@@ -202,7 +220,7 @@ export default function AuthScreen() {
               style={[styles.socialBtn, { borderColor: colors.border, opacity: loading ? 0.5 : 1 }]}
               activeOpacity={0.7}
             >
-              <Text style={styles.appleIcon}></Text>
+              <FontAwesome name="apple" size={20} color="#000" />
               <Text style={[styles.socialBtnText, { color: colors.foreground }]}>
                 {t.continueWithApple}
               </Text>
@@ -749,5 +767,23 @@ const styles = StyleSheet.create({
   },
   successIcon: {
     fontSize: 36,
+  },
+
+  // Language toggle
+  langToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-end",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#F3F4F6",
+    marginBottom: 8,
+  },
+  langToggleText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#687076",
   },
 });

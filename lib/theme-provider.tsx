@@ -12,8 +12,8 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useSystemColorScheme() ?? "light";
-  const [colorScheme, setColorSchemeState] = useState<ColorScheme>(systemScheme);
+  // Force light mode - ignore system scheme
+  const [colorScheme, setColorSchemeState] = useState<ColorScheme>("light");
 
   const applyScheme = useCallback((scheme: ColorScheme) => {
     nativewindColorScheme.set(scheme);
@@ -30,13 +30,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setColorScheme = useCallback((scheme: ColorScheme) => {
-    setColorSchemeState(scheme);
-    applyScheme(scheme);
+    // Force light mode - ignore dark mode requests
+    setColorSchemeState("light");
+    applyScheme("light");
   }, [applyScheme]);
 
   useEffect(() => {
-    applyScheme(colorScheme);
-  }, [applyScheme, colorScheme]);
+    applyScheme("light");
+  }, [applyScheme]);
 
   const themeVariables = useMemo(
     () =>
@@ -61,8 +62,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }),
     [colorScheme, setColorScheme],
   );
-  console.log(value, themeVariables)
-
   return (
     <ThemeContext.Provider value={value}>
       <View style={[{ flex: 1 }, themeVariables]}>{children}</View>

@@ -510,3 +510,8 @@
 - [x] Fix: replaced Alert.alert with inline confirmation panel (Alert doesn't work inside Modal on iOS)
 - [x] Fix: replaced TouchableOpacity with Pressable for delete button (avoids parent TouchableOpacity intercepting press)
 - [x] Added visual press feedback (opacity: 0.5 on press)
+
+## Bug - Round 39: Login Page Fixes
+- [x] Force light mode only (disable dark mode) — dark mode text invisible
+- [x] Add language toggle (EN/ZH) on login page
+- [x] Add Apple icon to Apple login button
