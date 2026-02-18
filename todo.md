@@ -505,3 +505,8 @@
 - [x] Allow deleting any monster (including last one, user can hatch new)
 - [x] Fix home screen egg card — now tappable to directly trigger hatch flow when no monsters exist
 - [x] Add i18n translations for delete monster (EN + ZH)
+
+## Bug - Round 38: Delete Monster button not responding
+- [x] Fix: replaced Alert.alert with inline confirmation panel (Alert doesn't work inside Modal on iOS)
+- [x] Fix: replaced TouchableOpacity with Pressable for delete button (avoids parent TouchableOpacity intercepting press)
+- [x] Added visual press feedback (opacity: 0.5 on press)

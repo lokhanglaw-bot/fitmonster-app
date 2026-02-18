@@ -5,6 +5,7 @@ import {
   Text,
   View,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   Alert,
   Modal,
@@ -321,22 +322,18 @@ export default function HomeScreen() {
     router.push("/(tabs)/workout");
   }, [router]);
 
-  const handleDeleteMonster = useCallback((index: number, name: string) => {
-    Alert.alert(
-      t.deleteMonster,
-      t.deleteMonsterConfirm,
-      [
-        { text: t.cancel, style: "cancel" },
-        {
-          text: t.delete,
-          style: "destructive",
-          onPress: () => {
-            removeMonster(index);
-          },
-        },
-      ]
-    );
-  }, [t, removeMonster]);
+  const [deleteConfirmIdx, setDeleteConfirmIdx] = useState<number | null>(null);
+
+  const handleDeleteMonster = useCallback((index: number) => {
+    setDeleteConfirmIdx(index);
+  }, []);
+
+  const confirmDeleteMonster = useCallback(() => {
+    if (deleteConfirmIdx !== null) {
+      removeMonster(deleteConfirmIdx);
+      setDeleteConfirmIdx(null);
+    }
+  }, [deleteConfirmIdx, removeMonster]);
 
   const renderMonsterCard = (monster: Monster, index: number, showSelectAction = false) => {
     const isActive = index === activeMonsterIdx;
@@ -931,15 +928,40 @@ export default function HomeScreen() {
               {monsters.map((m, i) => (
                 <View key={`monster-list-${i}`}>
                   {renderMonsterCard(m, i, true)}
-                  <TouchableOpacity
-                    onPress={() => handleDeleteMonster(i, m.name)}
-                    style={[styles.deleteMonsterBtn, { borderColor: "#EF4444" }]}
+                  <Pressable
+                    onPress={() => handleDeleteMonster(i)}
+                    style={({ pressed }) => [
+                      styles.deleteMonsterBtn,
+                      { borderColor: "#EF4444", opacity: pressed ? 0.5 : 1 },
+                    ]}
                   >
                     <Text style={styles.deleteMonsterText}>🗑️ {t.deleteMonster}</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 </View>
               ))}
             </ScrollView>
+
+            {/* Delete Confirmation */}
+            {deleteConfirmIdx !== null && (
+              <View style={[styles.deleteConfirmOverlay]}>
+                <Text style={[styles.deleteConfirmTitle, { color: colors.foreground }]}>{t.deleteMonster}</Text>
+                <Text style={[styles.deleteConfirmText, { color: colors.muted }]}>{t.deleteMonsterConfirm}</Text>
+                <View style={styles.deleteConfirmBtns}>
+                  <TouchableOpacity
+                    style={[styles.deleteConfirmCancelBtn, { borderColor: colors.border }]}
+                    onPress={() => setDeleteConfirmIdx(null)}
+                  >
+                    <Text style={[styles.deleteConfirmCancelText, { color: colors.foreground }]}>{t.cancel}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteConfirmDeleteBtn}
+                    onPress={confirmDeleteMonster}
+                  >
+                    <Text style={styles.deleteConfirmDeleteText}>{t.delete}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
             {monsters.length < 3 && (
               <TouchableOpacity style={[styles.hatchConfirmBtn, { backgroundColor: colors.primary }]} onPress={() => { setShowMonsterList(false); handleHatchEgg(); }}>
                 <Text style={styles.hatchConfirmText}>🥚 {t.hatchNewEgg} ({tr("monsterTeamSlots", { current: String(monsters.length) })})</Text>
@@ -1385,6 +1407,14 @@ const styles = StyleSheet.create({
   // Delete monster button
   deleteMonsterBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 10, marginTop: -4, marginBottom: 12, marginHorizontal: 16, borderRadius: 12, borderWidth: 1, borderStyle: "dashed" as const },
   deleteMonsterText: { color: "#EF4444", fontSize: 13, fontWeight: "600" },
+  deleteConfirmOverlay: { backgroundColor: "#FEF2F2", borderRadius: 16, padding: 20, marginTop: 8, borderWidth: 1, borderColor: "#FECACA", gap: 8 },
+  deleteConfirmTitle: { fontSize: 18, fontWeight: "800", textAlign: "center" as const },
+  deleteConfirmText: { fontSize: 14, textAlign: "center" as const },
+  deleteConfirmBtns: { flexDirection: "row", gap: 12, marginTop: 8 },
+  deleteConfirmCancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, alignItems: "center" },
+  deleteConfirmCancelText: { fontSize: 14, fontWeight: "600" },
+  deleteConfirmDeleteBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: "#EF4444", alignItems: "center" },
+  deleteConfirmDeleteText: { color: "#fff", fontSize: 14, fontWeight: "700" },
 
   // Empty monster state for new users
   emptyMonsterCard: { borderRadius: 20, padding: 32, borderWidth: 1, alignItems: "center", gap: 12 },
