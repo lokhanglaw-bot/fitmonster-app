@@ -488,3 +488,6 @@
 
 ## Fix - Round 34: EAS Project ID Configuration
 - [x] Add extra.eas.projectId to app.config.ts for EAS CLI linking
+
+## Fix - Round 35: Create eas.json for EAS Build
+- [x] Create eas.json with development, preview, and production build profiles
