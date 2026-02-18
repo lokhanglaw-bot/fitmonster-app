@@ -861,9 +861,9 @@ export default function HomeScreen() {
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <View>
-              <Text style={[styles.greeting, { color: colors.foreground }]}>{tr("greeting", { name: trainerName })}</Text>
-              <Text style={[styles.subtitle, { color: colors.muted }]}>{t.stayHealthy}</Text>
+            <View style={styles.headerTextArea}>
+              <Text style={[styles.greeting, { color: colors.foreground }]} numberOfLines={1} ellipsizeMode="tail">{tr("greeting", { name: trainerName })}</Text>
+              <Text style={[styles.subtitle, { color: colors.muted }]} numberOfLines={1}>{t.stayHealthy}</Text>
             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity style={[styles.langBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleToggleLanguage}>
@@ -1209,8 +1209,9 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 8, gap: 16 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  headerActions: { flexDirection: "row", gap: 8 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
+  headerTextArea: { flex: 1, minWidth: 0 },
+  headerActions: { flexDirection: "row", gap: 8, flexShrink: 0 },
   greeting: { fontSize: 26, fontWeight: "800" },
   subtitle: { fontSize: 14, marginTop: 2 },
   settingsBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", borderWidth: 1 },

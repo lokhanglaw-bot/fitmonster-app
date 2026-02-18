@@ -515,3 +515,6 @@
 - [x] Force light mode only (disable dark mode) — dark mode text invisible
 - [x] Add language toggle (EN/ZH) on login page
 - [x] Add Apple icon to Apple login button
+
+## Bug - Round 40: Long username pushes logout button off screen
+- [x] Fix home screen header: truncate long username so logout/language buttons always visible
