@@ -491,3 +491,9 @@
 
 ## Fix - Round 35: Create eas.json for EAS Build
 - [x] Create eas.json with development, preview, and production build profiles
+
+## Bug - Round 36: Old records disappear after re-login
+- [x] Investigate data persistence mechanism — root cause: localLogin used Date.now() as user ID, generating new ID each login, so AsyncStorage key changed and old data was orphaned
+- [x] Fix 1: Use stable openId (local-{email}) as ActivityProvider storage key instead of numeric id
+- [x] Fix 2: localLogin and localSignup now reuse existing ID for the same email
+- [x] Both fixes ensure same email always maps to same data, even after logout/re-login

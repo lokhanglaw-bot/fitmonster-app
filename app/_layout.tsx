@@ -27,7 +27,8 @@ import { WorkoutTimerProvider } from "@/lib/workout-timer-context";
 // Wrapper that passes userId from auth context to ActivityProvider
 function AuthenticatedActivityProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuthContext();
-  const userId = user ? String(user.id) : null;
+  // Use openId (stable across logins) instead of numeric id (Date.now() changes each login)
+  const userId = user ? (user.openId || String(user.id)) : null;
   return <ActivityProvider userId={userId}>{children}</ActivityProvider>;
 }
 

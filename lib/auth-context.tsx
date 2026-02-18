@@ -105,8 +105,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const localLogin = useCallback(async (name: string, email: string) => {
+    // Reuse existing ID if the same email has logged in before, so data persists
+    let existingId: number | null = null;
+    try {
+      const existingRaw = await AsyncStorage.getItem(LOCAL_AUTH_KEY);
+      if (existingRaw) {
+        const existing = JSON.parse(existingRaw);
+        if (existing.email === email.trim()) {
+          existingId = existing.id;
+        }
+      }
+    } catch (_) { /* ignore */ }
     const localUser = {
-      id: Date.now(),
+      id: existingId || Date.now(),
       openId: `local-${email}`,
       name,
       email,
@@ -128,8 +139,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const localSignup = useCallback(async (name: string, email: string) => {
+    // Reuse existing ID if the same email has signed up before, so data persists
+    let existingId: number | null = null;
+    try {
+      const existingRaw = await AsyncStorage.getItem(LOCAL_AUTH_KEY);
+      if (existingRaw) {
+        const existing = JSON.parse(existingRaw);
+        if (existing.email === email.trim()) {
+          existingId = existing.id;
+        }
+      }
+    } catch (_) { /* ignore */ }
     const localUser = {
-      id: Date.now(),
+      id: existingId || Date.now(),
       openId: `local-${email}`,
       name,
       email,
