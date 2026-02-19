@@ -346,11 +346,13 @@ export default function WorkoutTrackingScreen() {
   const {
     activeWorkout,
     elapsedSeconds,
+    isRestored,
     startWorkout,
     pauseWorkout,
     resumeWorkout,
     finishWorkout,
     cancelWorkout,
+    clearRestored,
   } = useWorkoutTimer();
 
   const params = useLocalSearchParams<{
@@ -387,6 +389,10 @@ export default function WorkoutTrackingScreen() {
         exerciseMet: parseFloat(params.exerciseMet || "5"),
         bonus: (params.bonus as "none" | "outdoor" | "gym") || "none",
       });
+    }
+    // Clear the restored flag once user is on the tracking screen
+    if (isRestored) {
+      clearRestored();
     }
   }, []); // Only on mount
 

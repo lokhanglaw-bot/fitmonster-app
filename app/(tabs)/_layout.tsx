@@ -13,7 +13,7 @@ function ActiveWorkoutBanner() {
   const colors = useColors();
   const { t } = useI18n();
   const router = useRouter();
-  const { activeWorkout, elapsedSeconds } = useWorkoutTimer();
+  const { activeWorkout, elapsedSeconds, isRestored } = useWorkoutTimer();
 
   const formatTime = useCallback((totalSeconds: number) => {
     const m = Math.floor(totalSeconds / 60);
@@ -34,14 +34,14 @@ function ActiveWorkoutBanner() {
       onPress={handlePress}
       style={[
         styles.floatingBanner,
-        { backgroundColor: isRunning ? "#22C55E" : "#F59E0B" },
+        { backgroundColor: isRestored ? "#3B82F6" : isRunning ? "#22C55E" : "#F59E0B" },
       ]}
       activeOpacity={0.8}
     >
       <View style={styles.bannerLeft}>
-        <Text style={styles.bannerDot}>{isRunning ? "●" : "❚❚"}</Text>
+        <Text style={styles.bannerDot}>{isRestored ? "🔄" : isRunning ? "●" : "❚❚"}</Text>
         <Text style={styles.bannerExercise} numberOfLines={1}>
-          {activeWorkout.exerciseName}
+          {isRestored ? `${t.workoutRecovered || "Workout recovered"} - ` : ""}{activeWorkout.exerciseName}
         </Text>
       </View>
       <View style={styles.bannerRight}>

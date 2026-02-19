@@ -653,6 +653,7 @@ const en = {
   foodUpdated: "Food item updated",
   editTotalNutrition: "Edit Totals",
   aiMayBeWrong: "AI result not right? Tap to edit",
+  workoutRecovered: "Workout recovered",
 };
 
 const zh: Translations = {
@@ -1300,6 +1301,7 @@ const zh: Translations = {
   foodUpdated: "食物項目已更新",
   editTotalNutrition: "修改總計",
   aiMayBeWrong: "AI 辨識有誤？點擊修改",
+  workoutRecovered: "運動已恢復",
 };
 
 const translations: Record<Language, Translations> = { en, zh };

@@ -534,3 +534,11 @@
 - [x] Recalculate macros totals after user edits
 - [x] Add i18n translations for edit food feature (EN + ZH)
 - [x] Persist edited food data correctly in activity context (re-enables save button after edit)
+
+## Feature - Round 43: Workout Timer Persistence & Recovery
+- [x] Persist active workout state to AsyncStorage on start/pause/resume
+- [x] Restore workout state from AsyncStorage on app relaunch
+- [x] Show recovery banner (blue) when reopening app with an active workout
+- [x] Send local notification when workout is running (sticky, cannot be swiped away)
+- [x] Cancel notification when workout finishes or is cancelled
+- [x] Add i18n translations for recovery messages (EN + ZH)
