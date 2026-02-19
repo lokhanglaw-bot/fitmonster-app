@@ -518,3 +518,12 @@
 
 ## Bug - Round 40: Long username pushes logout button off screen
 - [x] Fix home screen header: truncate long username so logout/language buttons always visible
+
+## Bug - Round 41: Fake Data Issues (CRITICAL)
+- [x] Fix day-of-week: today is Thursday but shows Friday in Daily Records — now dynamically computed from real Date().getDay()
+- [x] Remove fake random step sync — now uses expo-sensors Pedometer.getStepCountAsync() for real Apple Health data, shows unavailable message if not supported
+- [x] Audit workout screen for any fake/mock data — clean (user-input only)
+- [x] Audit calories/food screen for any fake/mock data — clean (AI analysis + user-input only)
+- [x] Audit dashboard screen for any fake/mock data — clean (reads from shared activity context)
+- [x] Audit home screen health score / steps for any fake/mock data — clean (computed from real activity data)
+- [x] Remove all random number generation for health/fitness data — only battle.tsx uses random for game mechanics (acceptable)

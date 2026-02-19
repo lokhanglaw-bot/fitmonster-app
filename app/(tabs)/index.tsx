@@ -98,6 +98,17 @@ export default function HomeScreen() {
   const todaySteps = activity.todaySteps;
   const netExp = activity.todayTotalExp;
   const healthScore = Math.min(100, 50 + Math.round(activity.todayProtein * 0.2) + Math.round(activity.todayWorkoutMinutes * 0.3) + Math.round(activity.todaySteps * 0.002));
+
+  // Dynamic day labels: weekly array is [6 days ago, 5 days ago, ..., yesterday, today]
+  // We compute the correct day name for each slot based on today's actual day-of-week
+  const allDayLabels = [t.daySun, t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri, t.daySat];
+  const todayDow = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const weekDayLabels = Array.from({ length: 7 }, (_, i) => {
+    // i=0 is 6 days ago, i=6 is today
+    const daysAgo = 6 - i;
+    const dow = ((todayDow - daysAgo) % 7 + 7) % 7;
+    return allDayLabels[dow];
+  });
   const [coins, setCoins] = useState(350);
   const [activeTab, setActiveTab] = useState<"home" | "daily" | "history">("home");
 
@@ -790,7 +801,7 @@ export default function HomeScreen() {
             {historySubTab === "calories" ? `🔥 ${t.dailyCalorieTrend}` : historySubTab === "macros" ? (macroSubTab === "protein" ? `🥩 ${t.dailyProteinTrend}` : macroSubTab === "carbs" ? `🍞 ${t.dailyCarbsTrend}` : `🧈 ${t.dailyFatTrend}`) : `🏋️ ${t.workoutDurationTrend}`}
           </Text>
           <View style={styles.chartArea}>
-            {[t.daySat, t.daySun, t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri].map((day, i) => {
+            {weekDayLabels.map((day, i) => {
               const data = chartData[historySubTab];
               const maxVal = Math.max(...data);
               const barHeight = maxVal > 0 ? Math.max(4, (data[i] / maxVal) * 70) : 4;
@@ -813,7 +824,7 @@ export default function HomeScreen() {
         <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.chartTitle, { color: colors.foreground }]}>📅 {t.weeklyCalendar}</Text>
           <View style={styles.calendarGrid}>
-            {[t.daySat, t.daySun, t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri].map((day, i) => {
+            {weekDayLabels.map((day, i) => {
               const data = chartData[historySubTab];
               const hasData = data[i] > 0;
               const isToday = i === 6;
@@ -834,7 +845,7 @@ export default function HomeScreen() {
       {historyViewMode === "list" && (
         <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.chartTitle, { color: colors.foreground }]}>📋 {t.dailyRecords}</Text>
-          {[t.daySat, t.daySun, t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri].map((day, i) => {
+          {weekDayLabels.map((day, i) => {
             const data = chartData[historySubTab];
             const unit = historySubTab === "calories" ? t.kcalUnit : historySubTab === "macros" ? (macroSubTab === "protein" ? t.gProtein : macroSubTab === "carbs" ? t.gCarbs : t.gFat) : t.minUnit;
             const isToday = i === 6;

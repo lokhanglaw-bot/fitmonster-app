@@ -237,6 +237,11 @@ const en = {
   workoutLoggedMessage: "{exercise} - {duration} min\n+{exp} EXP earned!",
   stepsSyncedTitle: "Steps Synced! \ud83d\udc63",
   stepsSyncedMessage: "+{steps} steps synced\nTotal: {total} steps\n\nOn a real device, this will sync from Apple Health / Google Fit.",
+  stepsSyncedRealMessage: "Today's steps: {steps}\n+{synced} new steps synced",
+  stepsSyncUnavailableTitle: "Pedometer Unavailable",
+  stepsSyncUnavailableMessage: "Step counting is not available on this device. Please ensure you have granted motion permissions in Settings.",
+  stepsSyncPermissionTitle: "Permission Required",
+  stepsSyncPermissionMessage: "Please grant motion & fitness permission in Settings to sync steps.",
   pleaseEnterExercise: "Please enter the exercise name.",
   pleaseEnterValidDuration: "Please enter a valid duration in minutes.",
 
@@ -863,6 +868,11 @@ const zh: Translations = {
   workoutLoggedMessage: "{exercise} - {duration} 分鐘\n+{exp} 經驗值獲得！",
   stepsSyncedTitle: "步數已同步！👣",
   stepsSyncedMessage: "+{steps} 步已同步\n總計：{total} 步\n\n在真實裝置上，這將從 Apple Health / Google Fit 同步。",
+  stepsSyncedRealMessage: "今日步數：{steps}\n+{synced} 步已同步",
+  stepsSyncUnavailableTitle: "計步器不可用",
+  stepsSyncUnavailableMessage: "此裝置無法使用計步功能。請確認已在設定中授權動態與健身權限。",
+  stepsSyncPermissionTitle: "需要權限",
+  stepsSyncPermissionMessage: "請在設定中授權動態與健身權限以同步步數。",
   pleaseEnterExercise: "請輸入運動名稱。",
   pleaseEnterValidDuration: "請輸入有效的時長（分鐘）。",
 

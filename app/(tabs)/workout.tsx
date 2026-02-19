@@ -18,6 +18,7 @@ import { useRouter } from "expo-router";
 import { useI18n } from "@/lib/i18n-context";
 import { useWorkoutTimer } from "@/lib/workout-timer-context";
 import * as Haptics from "expo-haptics";
+import { Pedometer } from "expo-sensors";
 
 type WorkoutLog = {
   exercise: string;
@@ -139,17 +140,51 @@ export default function WorkoutScreen() {
     Alert.alert(t.workoutLoggedTitle, tr("workoutLoggedMessage", { exercise: manualExercise.trim(), duration: String(dur), exp: String(exp) }));
   }, [manualExercise, manualDuration, manualWeight, logWorkoutToContext, t, tr]);
 
-  const handleSyncSteps = useCallback(() => {
+  const handleSyncSteps = useCallback(async () => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    const simulatedSteps = Math.floor(Math.random() * 3000) + 1000;
-    syncStepsToContext(simulatedSteps);
-    const newSteps = steps + simulatedSteps;
-    Alert.alert(
-      t.stepsSyncedTitle,
-      tr("stepsSyncedMessage", { steps: simulatedSteps.toLocaleString(), total: newSteps.toLocaleString() })
-    );
+    try {
+      // Check if pedometer is available on this device
+      const isAvailable = await Pedometer.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert(
+          t.stepsSyncUnavailableTitle || "Pedometer Unavailable",
+          t.stepsSyncUnavailableMessage || "Step counting is not available on this device. Please ensure you have granted motion permissions in Settings."
+        );
+        return;
+      }
+      // Request permissions if needed
+      const { granted } = await Pedometer.requestPermissionsAsync();
+      if (!granted) {
+        Alert.alert(
+          t.stepsSyncPermissionTitle || "Permission Required",
+          t.stepsSyncPermissionMessage || "Please grant motion & fitness permission in Settings to sync steps."
+        );
+        return;
+      }
+      // Get today's steps from midnight to now
+      const end = new Date();
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const result = await Pedometer.getStepCountAsync(start, end);
+      const realSteps = result?.steps || 0;
+      // Calculate delta: real steps minus what we already have
+      const delta = Math.max(0, realSteps - steps);
+      if (delta > 0) {
+        syncStepsToContext(delta);
+      }
+      Alert.alert(
+        t.stepsSyncedTitle,
+        tr("stepsSyncedRealMessage", { steps: realSteps.toLocaleString(), synced: delta.toLocaleString() })
+      );
+    } catch (error: any) {
+      // Pedometer not available (e.g. web or Expo Go without native module)
+      Alert.alert(
+        t.stepsSyncUnavailableTitle || "Pedometer Unavailable",
+        t.stepsSyncUnavailableMessage || "Step counting is not available in this environment. It requires a native iOS/Android build."
+      );
+    }
   }, [syncStepsToContext, steps, t, tr]);
 
   return (
