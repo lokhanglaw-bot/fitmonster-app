@@ -527,3 +527,10 @@
 - [x] Audit dashboard screen for any fake/mock data — clean (reads from shared activity context)
 - [x] Audit home screen health score / steps for any fake/mock data — clean (computed from real activity data)
 - [x] Remove all random number generation for health/fitness data — only battle.tsx uses random for game mechanics (acceptable)
+
+## Feature - Round 42: Edit Food Record (AI Correction)
+- [x] Add edit button on food analysis result screen to allow manual correction
+- [x] Allow editing food name, portion, calories, protein, carbs, fat, fiber after AI analysis
+- [x] Recalculate macros totals after user edits
+- [x] Add i18n translations for edit food feature (EN + ZH)
+- [x] Persist edited food data correctly in activity context (re-enables save button after edit)

@@ -637,6 +637,22 @@ const en = {
   healthExpEarned: "+{exp} EXP",
   healthStepBonus: "Step Bonus",
   healthStepBonusDesc: "{steps} steps = {exp} EXP for your Monster",
+
+  // Food Edit
+  editFood: "Edit",
+  editFoodTitle: "Edit Food Item",
+  foodNameLabel: "Food Name",
+  portionLabel: "Portion",
+  caloriesLabel: "Calories (kcal)",
+  proteinGrams: "Protein (g)",
+  carbsGrams: "Carbs (g)",
+  fatGrams: "Fat (g)",
+  fiberGrams: "Fiber (g)",
+  saveChanges: "Save Changes",
+  cancelEdit: "Cancel",
+  foodUpdated: "Food item updated",
+  editTotalNutrition: "Edit Totals",
+  aiMayBeWrong: "AI result not right? Tap to edit",
 };
 
 const zh: Translations = {
@@ -1268,6 +1284,22 @@ const zh: Translations = {
   healthExpEarned: "+{exp} EXP",
   healthStepBonus: "步數獎勵",
   healthStepBonusDesc: "{steps} 步 = {exp} EXP 給你的 Monster",
+
+  // Food Edit
+  editFood: "編輯",
+  editFoodTitle: "編輯食物項目",
+  foodNameLabel: "食物名稱",
+  portionLabel: "份量",
+  caloriesLabel: "卡路里 (kcal)",
+  proteinGrams: "蛋白質 (g)",
+  carbsGrams: "碳水化合物 (g)",
+  fatGrams: "脂肪 (g)",
+  fiberGrams: "纖維 (g)",
+  saveChanges: "儲存修改",
+  cancelEdit: "取消",
+  foodUpdated: "食物項目已更新",
+  editTotalNutrition: "修改總計",
+  aiMayBeWrong: "AI 辨識有誤？點擊修改",
 };
 
 const translations: Record<Language, Translations> = { en, zh };

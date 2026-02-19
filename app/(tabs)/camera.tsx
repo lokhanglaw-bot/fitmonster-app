@@ -11,6 +11,8 @@ import {
   FlatList,
   Animated,
   Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -57,6 +59,11 @@ export default function CameraScreen() {
   const [analysisState, setAnalysisState] = useState<AnalysisState>({ status: "idle" });
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Edit food item state
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<FoodItem | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Feed monster animation state
   const [showFeedAnimation, setShowFeedAnimation] = useState(false);
@@ -217,6 +224,47 @@ export default function CameraScreen() {
     setSaved(false);
   }, []);
 
+  // ─── Edit food item handlers ───
+  const handleEditFoodItem = useCallback((index: number) => {
+    if (analysisState.status !== "done") return;
+    const item = analysisState.analysis.foods[index];
+    setEditingIndex(index);
+    setEditForm({ ...item });
+    setShowEditModal(true);
+  }, [analysisState]);
+
+  const handleSaveEdit = useCallback(() => {
+    if (analysisState.status !== "done" || editingIndex === null || !editForm) return;
+    const updatedFoods = [...analysisState.analysis.foods];
+    updatedFoods[editingIndex] = { ...editForm };
+    // Recalculate totals from all food items
+    const totalCalories = updatedFoods.reduce((sum, f) => sum + f.calories, 0);
+    const totalProtein = updatedFoods.reduce((sum, f) => sum + f.protein, 0);
+    const totalCarbs = updatedFoods.reduce((sum, f) => sum + f.carbs, 0);
+    const totalFat = updatedFoods.reduce((sum, f) => sum + f.fat, 0);
+    setAnalysisState({
+      ...analysisState,
+      analysis: {
+        ...analysisState.analysis,
+        foods: updatedFoods,
+        totalCalories,
+        totalProtein,
+        totalCarbs,
+        totalFat,
+      },
+    });
+    setShowEditModal(false);
+    setEditingIndex(null);
+    setEditForm(null);
+    setSaved(false); // Allow re-saving with corrected data
+  }, [analysisState, editingIndex, editForm]);
+
+  const handleCancelEdit = useCallback(() => {
+    setShowEditModal(false);
+    setEditingIndex(null);
+    setEditForm(null);
+  }, []);
+
   const renderHealthBar = (score: number) => {
     const barColor =
       score >= 7 ? "#22C55E" : score >= 4 ? "#F59E0B" : "#EF4444";
@@ -235,11 +283,20 @@ export default function CameraScreen() {
     );
   };
 
-  const renderFoodItem = ({ item }: { item: FoodItem }) => (
+  const renderFoodItem = ({ item, index }: { item: FoodItem; index: number }) => (
     <View style={[styles.foodItemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.foodItemHeader}>
         <Text style={[styles.foodItemName, { color: colors.foreground }]}>{item.name}</Text>
-        <Text style={[styles.foodItemPortion, { color: colors.muted }]}>{item.portion}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text style={[styles.foodItemPortion, { color: colors.muted }]}>{item.portion}</Text>
+          <TouchableOpacity
+            onPress={() => handleEditFoodItem(index)}
+            activeOpacity={0.7}
+            style={[styles.editItemBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "40" }]}
+          >
+            <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "600" }}>✏️ {t.editFood}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={styles.foodItemNutrients}>
         <View style={styles.nutrientPill}>
@@ -379,6 +436,7 @@ export default function CameraScreen() {
             </View>
 
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t.foodItems}</Text>
+            <Text style={[styles.editHint, { color: colors.muted }]}>{t.aiMayBeWrong}</Text>
             <FlatList
               data={analysisState.analysis.foods}
               renderItem={renderFoodItem}
@@ -460,6 +518,118 @@ export default function CameraScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Edit Food Item Modal */}
+      <Modal visible={showEditModal} transparent animationType="slide" onRequestClose={handleCancelEdit}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.editModalOverlay}>
+          <View style={[styles.editModalContent, { backgroundColor: colors.background }]}>
+            <Text style={[styles.editModalTitle, { color: colors.foreground }]}>{t.editFoodTitle}</Text>
+
+            <ScrollView style={styles.editFormScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.editFormGroup}>
+                <Text style={[styles.editLabel, { color: colors.muted }]}>{t.foodNameLabel}</Text>
+                <TextInput
+                  style={[styles.editInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
+                  value={editForm?.name || ""}
+                  onChangeText={(v) => setEditForm(prev => prev ? { ...prev, name: v } : prev)}
+                  placeholder={t.foodNameLabel}
+                  placeholderTextColor={colors.muted}
+                />
+              </View>
+
+              <View style={styles.editFormGroup}>
+                <Text style={[styles.editLabel, { color: colors.muted }]}>{t.portionLabel}</Text>
+                <TextInput
+                  style={[styles.editInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
+                  value={editForm?.portion || ""}
+                  onChangeText={(v) => setEditForm(prev => prev ? { ...prev, portion: v } : prev)}
+                  placeholder={t.portionLabel}
+                  placeholderTextColor={colors.muted}
+                />
+              </View>
+
+              <View style={styles.editFormRow}>
+                <View style={[styles.editFormGroup, { flex: 1 }]}>
+                  <Text style={[styles.editLabel, { color: colors.muted }]}>{t.caloriesLabel}</Text>
+                  <TextInput
+                    style={[styles.editInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
+                    value={String(editForm?.calories ?? "")}
+                    onChangeText={(v) => setEditForm(prev => prev ? { ...prev, calories: parseInt(v) || 0 } : prev)}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={colors.muted}
+                  />
+                </View>
+                <View style={[styles.editFormGroup, { flex: 1 }]}>
+                  <Text style={[styles.editLabel, { color: colors.muted }]}>{t.proteinGrams}</Text>
+                  <TextInput
+                    style={[styles.editInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
+                    value={String(editForm?.protein ?? "")}
+                    onChangeText={(v) => setEditForm(prev => prev ? { ...prev, protein: parseFloat(v) || 0 } : prev)}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={colors.muted}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.editFormRow}>
+                <View style={[styles.editFormGroup, { flex: 1 }]}>
+                  <Text style={[styles.editLabel, { color: colors.muted }]}>{t.carbsGrams}</Text>
+                  <TextInput
+                    style={[styles.editInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
+                    value={String(editForm?.carbs ?? "")}
+                    onChangeText={(v) => setEditForm(prev => prev ? { ...prev, carbs: parseFloat(v) || 0 } : prev)}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={colors.muted}
+                  />
+                </View>
+                <View style={[styles.editFormGroup, { flex: 1 }]}>
+                  <Text style={[styles.editLabel, { color: colors.muted }]}>{t.fatGrams}</Text>
+                  <TextInput
+                    style={[styles.editInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
+                    value={String(editForm?.fat ?? "")}
+                    onChangeText={(v) => setEditForm(prev => prev ? { ...prev, fat: parseFloat(v) || 0 } : prev)}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={colors.muted}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.editFormGroup}>
+                <Text style={[styles.editLabel, { color: colors.muted }]}>{t.fiberGrams}</Text>
+                <TextInput
+                  style={[styles.editInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
+                  value={String(editForm?.fiber ?? "")}
+                  onChangeText={(v) => setEditForm(prev => prev ? { ...prev, fiber: parseFloat(v) || 0 } : prev)}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  placeholderTextColor={colors.muted}
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.editModalActions}>
+              <TouchableOpacity
+                style={[styles.editCancelBtn, { borderColor: colors.border }]}
+                onPress={handleCancelEdit}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.editCancelText, { color: colors.muted }]}>{t.cancelEdit}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.editSaveBtn, { backgroundColor: colors.primary }]}
+                onPress={handleSaveEdit}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.editSaveText}>{t.saveChanges}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Feed Monster Animation Overlay */}
       {showFeedAnimation && (
@@ -645,5 +815,80 @@ const styles = StyleSheet.create({
   feedSubtitle: {
     fontSize: 15,
     color: "rgba(255,255,255,0.8)",
+  },
+
+  // Edit food styles
+  editHint: { fontSize: 13, marginTop: -8, marginBottom: 4, fontStyle: "italic" },
+  editItemBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  editModalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  editModalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: "85%",
+  },
+  editModalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  editFormScroll: {
+    maxHeight: 400,
+  },
+  editFormGroup: {
+    marginBottom: 14,
+  },
+  editFormRow: {
+    flexDirection: "row" as const,
+    gap: 12,
+  },
+  editLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  editInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  editModalActions: {
+    flexDirection: "row" as const,
+    gap: 12,
+    marginTop: 16,
+  },
+  editCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center" as const,
+  },
+  editCancelText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  editSaveBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center" as const,
+  },
+  editSaveText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
   },
 });
