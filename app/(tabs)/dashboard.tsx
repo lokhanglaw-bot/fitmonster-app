@@ -6,6 +6,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useI18n } from "@/lib/i18n-context";
 import { useActivity } from "@/lib/activity-context";
+import { useProfileData } from "@/hooks/use-profile-data";
 
 function WeeklyWorkoutStatsCard() {
   const colors = useColors();
@@ -90,9 +91,26 @@ export default function DashboardScreen() {
   const stepsGoal = 10000;
   const caloriesBurned = activity.todayCaloriesBurned;
   const caloriesIntake = activity.todayCaloriesIn;
-  const dailyCalorieNeed = 1800;
+  const profileData = useProfileData();
+  const dailyCalorieNeed = profileData?.dailyCalorieGoal || 1800;
   const proteinIntake = activity.todayProtein;
-  const proteinGoal = 100;
+
+  // Active monster from context (use activeMonsterIndex)
+  const activeIdx = activity.activeMonsterIndex;
+  const activeMonster = activity.monsters.length > 0 && activeIdx < activity.monsters.length
+    ? activity.monsters[activeIdx]
+    : activity.monsters.length > 0 ? activity.monsters[0] : null;
+
+  // Protein goal based on monster type and body weight
+  const monsterTypeCoefficient = activeMonster
+    ? (activeMonster.type === "powerlifter" ? 2.0
+      : activeMonster.type === "bodybuilder" ? 1.6
+      : activeMonster.type === "physique" ? 1.4
+      : activeMonster.type === "colossus" ? 1.8
+      : 1.2) // athlete or default
+    : 1.2;
+  const bodyWeight = profileData?.weight || 65;
+  const proteinGoal = Math.round(bodyWeight * monsterTypeCoefficient);
   const workoutExp = Math.round(activity.todayWorkoutMinutes * 5);
   const nutritionExp = activity.todayTotalExp - workoutExp;
   const netExp = activity.todayTotalExp;
@@ -103,12 +121,6 @@ export default function DashboardScreen() {
   // Step bonus calculations
   const expBonus = todaySteps >= 10000 ? 1.5 : todaySteps >= 5000 ? 1.2 : 1.0;
   const proteinEfficiency = todaySteps >= 10000 ? 1.3 : todaySteps >= 5000 ? 1.1 : 1.0;
-
-  // Active monster from context (use activeMonsterIndex)
-  const activeIdx = activity.activeMonsterIndex;
-  const activeMonster = activity.monsters.length > 0 && activeIdx < activity.monsters.length
-    ? activity.monsters[activeIdx]
-    : activity.monsters.length > 0 ? activity.monsters[0] : null;
 
   const quests = [
     { title: t.questProteinChampion, desc: t.questProteinDescFull, progress: proteinIntake, target: 100, reward: 50, color: "#EF4444" },
@@ -206,9 +218,28 @@ export default function DashboardScreen() {
           {/* Nutrition Card */}
           <View style={[styles.nutritionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t.totalNutrition}</Text>
+            {profileData?.bmr ? (
+              <View style={[styles.bmrBadge, { backgroundColor: colors.primary + "15" }]}>
+                <Text style={[styles.bmrBadgeText, { color: colors.primary }]}>
+                  BMR: {profileData.bmr} kcal ({t.basedOnProfile})
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.nutritionRow}>
               <Text style={[styles.nutritionLabel, { color: colors.muted }]}>{t.dailyCalorieNeed}</Text>
               <Text style={[styles.nutritionValue, { color: colors.foreground }]}>{dailyCalorieNeed} kcal</Text>
+            </View>
+            <View style={styles.nutritionRow}>
+              <Text style={[styles.nutritionLabel, { color: colors.muted }]}>{t.caloriesConsumed}</Text>
+              <Text style={[styles.nutritionValue, { color: caloriesIntake > dailyCalorieNeed ? colors.error : colors.foreground }]}>{caloriesIntake} kcal</Text>
+            </View>
+            <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
+              <View style={[styles.progressFill, { width: `${Math.min((caloriesIntake / dailyCalorieNeed) * 100, 100)}%`, backgroundColor: caloriesIntake > dailyCalorieNeed ? colors.error : "#F59E0B" }]} />
+            </View>
+            <View style={[styles.nutritionDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.nutritionRow}>
+              <Text style={[styles.nutritionLabel, { color: colors.muted }]}>{t.recommendedProtein}</Text>
+              <Text style={[styles.nutritionValue, { color: colors.foreground }]}>{proteinGoal}g ({monsterTypeCoefficient}{t.gPerKg})</Text>
             </View>
             <View style={styles.nutritionRow}>
               <Text style={[styles.nutritionLabel, { color: colors.muted }]}>{t.proteinIntake}</Text>
@@ -236,13 +267,13 @@ export default function DashboardScreen() {
                   <Text style={[styles.monsterGrowthLevel, { color: colors.muted }]}>Lv.{activeMonster.level}</Text>
                   <View style={styles.growthBarContainer}>
                     <Text style={[styles.growthBarLabel, { color: colors.muted }]}>EXP</Text>
-                    <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
+                    <View style={[styles.progressTrack, { flex: 1, backgroundColor: colors.background }]}>
                       <View style={[styles.progressFill, { width: `${activeMonster.expToNextLevel > 0 ? Math.min((activeMonster.currentExp / activeMonster.expToNextLevel) * 100, 100) : 0}%`, backgroundColor: colors.primary }]} />
                     </View>
                   </View>
                   <View style={styles.growthBarContainer}>
                     <Text style={[styles.growthBarLabel, { color: colors.muted }]}>{t.evolution}</Text>
-                    <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
+                    <View style={[styles.progressTrack, { flex: 1, backgroundColor: colors.background }]}>
                       <View style={[styles.progressFill, { width: `${activeMonster.evolutionMax > 0 ? Math.min((activeMonster.evolutionProgress / activeMonster.evolutionMax) * 100, 100) : 0}%`, backgroundColor: "#F59E0B" }]} />
                     </View>
                   </View>
@@ -453,6 +484,21 @@ const styles = StyleSheet.create({
   nutritionValue: {
     fontSize: 13,
     fontWeight: "700",
+  },
+  bmrBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: "flex-start" as const,
+    marginBottom: 2,
+  },
+  bmrBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  nutritionDivider: {
+    height: 1,
+    marginVertical: 2,
   },
   monsterGrowth: {
     borderRadius: 16,

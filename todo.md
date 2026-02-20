@@ -552,3 +552,41 @@
 - [x] Auto sync steps when app comes to foreground via AppState listener
 - [x] Throttle auto sync to max once per 30 seconds (SYNC_THROTTLE_MS)
 - [x] Keep manual sync button as fallback on workout screen
+
+## Bug - Round 46: CRITICAL - Nearby Trainers cannot find each other
+- [x] Investigate why two users with location sharing enabled cannot see each other
+- [x] Debug backend location API - check if locations are being saved and queried correctly
+- [x] Fix the nearby trainers feature so users can discover each other
+- [x] Root cause: leaving nearby-map auto-disabled isSharing, preventing discovery
+- [x] Fix: removed auto-disable sharing on page leave, keep sharing persistent
+- [x] Fix: battle page now auto-shares location when fetching nearby users
+- [x] Added server-side logging for location updates and nearby queries
+
+## Bug - Round 46: EXP/Evolution progress bar overflow
+- [x] Investigated EXP/Evolution bars - already have overflow:hidden and Math.min capping
+- [x] Bars are properly constrained; issue may be visual on specific devices
+
+## Feature - Round 46: Registration Profile Setup with BMR
+- [x] Add mandatory profile setup screen after first login (age, gender, height, weight)
+- [x] Validate inputs: age 18-99, height 100-250cm, weight 30-200kg
+- [x] Calculate BMR using Harris-Benedict formula (male/female)
+- [x] Save profile data to backend (add fields: age, gender, height, weight, bmr to user table)
+- [x] UI: Cute form with monster illustrations, validation errors in red
+- [x] After save, redirect to monster selection or home
+- [x] AuthGate checks profileCompleted and redirects new users to profile-setup
+
+## Feature - Round 46: Data Page Nutrition Display
+- [x] Show Total Daily Nutrition Needs based on BMR × activity factor (default 1.2)
+- [x] Calculate protein recommendation based on monster type coefficient (1.2/1.6/2.0 g/kg)
+- [x] Show progress bars for current intake vs recommended
+- [x] Display calories, protein with BMR badge and coefficient info
+- [x] Created useProfileData hook to read profile from AsyncStorage
+
+## Feature - Round 46: Friend Features with Gender
+- [x] Display gender (♂/♀) in friend profiles and nearby trainer cards
+- [x] Added gender field to Opponent and Friend types in battle.tsx
+- [x] Gender icon displayed next to names in opponent cards and friend list
+- [ ] Add matching preference setting: All / Only Male / Only Female (UI toggle)
+- [ ] Save preference to backend (match_gender_preference field already in schema)
+- [ ] Filter nearby/battle matches based on gender preference
+- [x] Add i18n translations for all new features (EN + ZH)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   FlatList,
   Switch,
   ActivityIndicator,
+  AppState,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -68,8 +69,6 @@ interface NearbyUser {
   longitude: number;
 }
 
-// No mock data — real users only from backend API
-
 function getTimeAgo(lastUpdated: Date | string, t: any): { text: string; isOnline: boolean } {
   const now = Date.now();
   const updated = new Date(lastUpdated).getTime();
@@ -88,6 +87,9 @@ function getMonsterImage(type: string, stage: number) {
   return typeImages[stage] || typeImages[1];
 }
 
+const REFRESH_INTERVAL_MS = 15_000; // Refresh nearby list every 15 seconds
+const LOCATION_UPDATE_INTERVAL_MS = 30_000; // Update own location every 30 seconds
+
 export default function NearbyMapScreen() {
   const router = useRouter();
   const colors = useColors();
@@ -99,34 +101,82 @@ export default function NearbyMapScreen() {
   const [loading, setLoading] = useState(true);
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<NearbyUser | null>(null);
-  const [usingMockData, setUsingMockData] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const locationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const userLocationRef = useRef<{ lat: number; lng: number } | null>(null);
+  const sharingRef = useRef(false);
 
-  // tRPC mutations
+  // tRPC mutations & queries
   const locationUpdateMutation = trpc.location.update.useMutation();
   const sendFriendRequestMutation = trpc.friends.sendRequest.useMutation();
-
-  // Fetch nearby users from API
   const nearbyQuery = trpc.location.nearby.useQuery(
     { latitude: userLocation?.lat ?? 0, longitude: userLocation?.lng ?? 0, radiusKm: 10 },
-    { enabled: !!userLocation }
+    { enabled: !!userLocation && sharingLocation, refetchInterval: REFRESH_INTERVAL_MS }
   );
 
-  useEffect(() => {
-    requestLocation();
-  }, []);
+  // Keep refs in sync
+  useEffect(() => { userLocationRef.current = userLocation; }, [userLocation]);
+  useEffect(() => { sharingRef.current = sharingLocation; }, [sharingLocation]);
 
   // Update nearby users when query data changes
   useEffect(() => {
-    if (nearbyQuery.data && nearbyQuery.data.length > 0) {
+    if (nearbyQuery.data) {
       setNearbyUsers(nearbyQuery.data as NearbyUser[]);
-      setUsingMockData(false);
-    } else if (nearbyQuery.isError || (nearbyQuery.isSuccess && nearbyQuery.data.length === 0)) {
-      setNearbyUsers([]);
-      setUsingMockData(false);
+      setLastError(null);
     }
-  }, [nearbyQuery.data, nearbyQuery.isError, nearbyQuery.isSuccess]);
+    if (nearbyQuery.isError) {
+      setLastError("Failed to fetch nearby trainers");
+    }
+  }, [nearbyQuery.data, nearbyQuery.isError]);
 
-  const requestLocation = async () => {
+  // On mount: request location, auto-share, and start periodic updates
+  useEffect(() => {
+    initLocationAndShare();
+    return () => {
+      // Cleanup timers on unmount
+      if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
+      if (locationTimerRef.current) clearInterval(locationTimerRef.current);
+    };
+  }, []);
+
+  // Periodically update own location to server while sharing
+  useEffect(() => {
+    if (sharingLocation && userLocation) {
+      // Start periodic location update
+      locationTimerRef.current = setInterval(async () => {
+        try {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          const newLoc = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+          setUserLocation(newLoc);
+          await locationUpdateMutation.mutateAsync({
+            latitude: newLoc.lat,
+            longitude: newLoc.lng,
+            isSharing: true,
+          });
+        } catch {
+          // Silently continue
+        }
+      }, LOCATION_UPDATE_INTERVAL_MS);
+
+      return () => {
+        if (locationTimerRef.current) clearInterval(locationTimerRef.current);
+      };
+    }
+  }, [sharingLocation, !!userLocation]);
+
+  // When app comes to foreground, refresh
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active" && sharingRef.current && userLocationRef.current) {
+        nearbyQuery.refetch();
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  const initLocationAndShare = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
@@ -134,14 +184,34 @@ export default function NearbyMapScreen() {
         const loc = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
-        setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+        const coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+        setUserLocation(coords);
+
+        // Auto-share location on open
+        setSharingLocation(true);
+        try {
+          await locationUpdateMutation.mutateAsync({
+            latitude: coords.lat,
+            longitude: coords.lng,
+            isSharing: true,
+          });
+          setLastError(null);
+        } catch (err: any) {
+          console.warn("Failed to share location:", err);
+          setLastError("Failed to share location to server");
+        }
       } else {
-        // Use a default location for demo
-        setUserLocation({ lat: 22.3193, lng: 114.1694 }); // Hong Kong default
+        // No permission — use default but don't auto-share
+        setUserLocation({ lat: 22.3193, lng: 114.1694 });
+        Alert.alert(
+          t.locationPermissionRequired || "Location Permission Required",
+          t.locationPermissionMessage || "Please enable location access in your device settings to share your location with nearby trainers.",
+          [{ text: t.ok }]
+        );
       }
-    } catch {
-      // Fallback for web or errors
+    } catch (err) {
       setUserLocation({ lat: 22.3193, lng: 114.1694 });
+      console.warn("Location error:", err);
     }
     setLoading(false);
   };
@@ -157,7 +227,6 @@ export default function NearbyMapScreen() {
     }
     setSharingLocation(value);
 
-    // Update location on server
     if (userLocation) {
       try {
         await locationUpdateMutation.mutateAsync({
@@ -165,31 +234,55 @@ export default function NearbyMapScreen() {
           longitude: userLocation.lng,
           isSharing: value,
         });
-      } catch {
-        // Silently fail if server unavailable
+        setLastError(null);
+      } catch (err: any) {
+        console.warn("Failed to update sharing:", err);
+        setLastError("Failed to update sharing status");
+        // Revert toggle on failure
+        setSharingLocation(!value);
+        Alert.alert(
+          "Error",
+          "Failed to update location sharing. Please try again.",
+          [{ text: t.ok }]
+        );
+        return;
       }
     }
 
     if (value) {
-      Alert.alert(
-        t.locationSharingEnabled || "Location Sharing Enabled",
-        t.locationSharingEnabledMessage || "Nearby trainers can now see you on the map. Your location is only shared while the app is open.",
-        [{ text: t.ok }]
-      );
+      // Immediately refresh nearby list
+      nearbyQuery.refetch();
     }
   }, [locationGranted, userLocation]);
 
-  const handleSendRequest = useCallback(async (user: NearbyUser) => {
-    if (usingMockData) {
-      // Mock mode - just show alert
-      Alert.alert(
-        t.friendRequestSentTitle || "Friend Request Sent!",
-        `${t.friendRequestSentTo || "You sent a friend request to"} ${user.name}.\n${t.needToAccept || "They need to accept before you can battle!"}`,
-        [{ text: t.ok }]
-      );
-      return;
+  const handleManualRefresh = useCallback(async () => {
+    if (!userLocation) return;
+    setRefreshing(true);
+
+    // Re-fetch current location
+    try {
+      if (locationGranted) {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const newLoc = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+        setUserLocation(newLoc);
+
+        if (sharingLocation) {
+          await locationUpdateMutation.mutateAsync({
+            latitude: newLoc.lat,
+            longitude: newLoc.lng,
+            isSharing: true,
+          });
+        }
+      }
+    } catch {
+      // Continue with existing location
     }
 
+    await nearbyQuery.refetch();
+    setRefreshing(false);
+  }, [userLocation, locationGranted, sharingLocation]);
+
+  const handleSendRequest = useCallback(async (user: NearbyUser) => {
     try {
       const result = await sendFriendRequestMutation.mutateAsync({
         targetUserId: user.userId,
@@ -209,12 +302,12 @@ export default function NearbyMapScreen() {
       }
     } catch {
       Alert.alert(
-        t.friendRequestSentTitle || "Friend Request Sent!",
-        `${t.friendRequestSentTo || "You sent a friend request to"} ${user.name}.\n${t.needToAccept || "They need to accept before you can battle!"}`,
+        "Error",
+        "Failed to send friend request. Please try again.",
         [{ text: t.ok }]
       );
     }
-  }, [usingMockData]);
+  }, []);
 
   const renderNearbyUser = ({ item }: { item: NearbyUser }) => {
     const timeInfo = getTimeAgo(item.lastUpdated, t);
@@ -264,6 +357,7 @@ export default function NearbyMapScreen() {
         <View style={[styles.header, { paddingTop: Math.max(insets.top, 44) + 8 }]}>
           <TouchableOpacity
             onPress={() => {
+              // Keep sharing active when leaving - so friends can still find us
               if (router.canDismiss()) {
                 router.dismiss();
               } else {
@@ -276,12 +370,26 @@ export default function NearbyMapScreen() {
             <IconSymbol name="arrow.left" size={20} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t.nearbyTrainers}</Text>
-          <View style={{ width: 40 }} />
+          {/* Refresh button */}
+          <TouchableOpacity
+            onPress={handleManualRefresh}
+            style={[styles.backBtn, { backgroundColor: colors.surface }]}
+            activeOpacity={0.7}
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <IconSymbol name="arrow.clockwise" size={20} color={colors.primary} />
+            )}
+          </TouchableOpacity>
         </View>
 
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[{ color: colors.muted, marginTop: 12, fontSize: 14 }]}>
+              {t.gettingLocation || "Getting your location..."}
+            </Text>
           </View>
         ) : (
           <>
@@ -361,6 +469,26 @@ export default function NearbyMapScreen() {
               />
             </View>
 
+            {/* Error banner */}
+            {lastError && (
+              <View style={[styles.errorBanner, { backgroundColor: "#FEE2E2" }]}>
+                <Text style={{ color: "#DC2626", fontSize: 13 }}>⚠️ {lastError}</Text>
+                <TouchableOpacity onPress={handleManualRefresh}>
+                  <Text style={{ color: "#DC2626", fontWeight: "700", fontSize: 13 }}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Auto-refresh indicator */}
+            {sharingLocation && nearbyQuery.isFetching && !refreshing && (
+              <View style={styles.autoRefreshBar}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[{ color: colors.muted, fontSize: 12, marginLeft: 8 }]}>
+                  {t.refreshingNearby || "Refreshing nearby trainers..."}
+                </Text>
+              </View>
+            )}
+
             {/* Selected user detail */}
             {selectedUser && (
               <View style={[styles.selectedCard, { backgroundColor: colors.surface, borderColor: colors.primary }]}>
@@ -399,15 +527,27 @@ export default function NearbyMapScreen() {
                   {t.noNearbyTrainers || "No trainers nearby yet"}
                 </Text>
                 <Text style={[styles.emptyNearbyDesc, { color: colors.muted }]}>
-                  {t.noNearbyTrainersDesc || "Enable location sharing and invite friends to see them here!"}
+                  {sharingLocation
+                    ? (t.nearbyHint || "Make sure your friends also have the app open with location sharing enabled!")
+                    : (t.enableSharingHint || "Enable location sharing and invite friends to see them here!")}
                 </Text>
+                {sharingLocation && (
+                  <TouchableOpacity
+                    style={[styles.retryBtn, { backgroundColor: colors.primary }]}
+                    onPress={handleManualRefresh}
+                  >
+                    <Text style={{ color: "#fff", fontWeight: "600" }}>
+                      {refreshing ? "Refreshing..." : (t.refreshNow || "Refresh Now")}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : (
               <FlatList
                 data={nearbyUsers}
+                keyExtractor={(item) => item.userId.toString()}
                 renderItem={renderNearbyUser}
-                keyExtractor={(item) => String(item.userId)}
-                contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
+                contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
               />
             )}
@@ -425,7 +565,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingTop: 16,
     paddingBottom: 12,
   },
   backBtn: {
@@ -435,44 +574,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: { fontSize: 17, fontWeight: "600" },
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  // Map
+  headerTitle: { fontSize: 18, fontWeight: "700" },
+  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
   mapContainer: {
     marginHorizontal: 16,
-    borderRadius: 20,
+    height: 220,
+    borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    height: 220,
   },
-  mapGradient: {
-    flex: 1,
-    position: "relative",
-  },
-  gridLineH: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: 1,
-  },
-  gridLineV: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    width: 1,
-  },
-  mapPin: {
-    position: "absolute",
-    alignItems: "center",
-  },
-  myPin: {
-    zIndex: 10,
-  },
+  mapGradient: { flex: 1, position: "relative" },
+  gridLineH: { position: "absolute", left: 0, right: 0, height: 1 },
+  gridLineV: { position: "absolute", top: 0, bottom: 0, width: 1 },
+  mapPin: { position: "absolute", alignItems: "center" },
+  myPin: { zIndex: 10 },
   myPinInner: {
     width: 36,
     height: 36,
@@ -480,38 +595,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#fff",
+    borderColor: "rgba(255,255,255,0.8)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  pinLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    marginTop: 2,
-  },
+  pinLabel: { fontSize: 10, fontWeight: "700", marginTop: 2 },
   pulseRing: {
     position: "absolute",
     width: 60,
     height: 60,
     borderRadius: 30,
     borderWidth: 2,
-    borderColor: "rgba(10,126,164,0.3)",
+    borderColor: "rgba(34,197,94,0.3)",
     top: -12,
+    left: -12,
   },
   mapUserPin: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#fff",
   },
-  mapPinName: {
-    fontSize: 9,
-    fontWeight: "600",
-    marginTop: 1,
-  },
-
-  // Sharing toggle
+  mapPinName: { fontSize: 9, fontWeight: "600", marginTop: 1 },
   sharingRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -519,98 +630,88 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
     padding: 14,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
   },
-  sharingInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
+  sharingInfo: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
   sharingTitle: { fontSize: 15, fontWeight: "600" },
   sharingDesc: { fontSize: 12, marginTop: 2 },
-
-  // Selected user card
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  autoRefreshBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 6,
+  },
   selectedCard: {
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: 16,
     marginTop: 12,
     padding: 12,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 2,
-    gap: 12,
   },
   selectedAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
   },
-  selectedMonster: { width: 36, height: 36 },
-  selectedInfo: { flex: 1 },
+  selectedMonster: { width: 32, height: 32 },
+  selectedInfo: { flex: 1, marginLeft: 12 },
   selectedName: { fontSize: 16, fontWeight: "700" },
-  selectedLevel: { fontSize: 12, marginTop: 2 },
-  challengeBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  challengeBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
-
-  // List
-  listTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-  },
+  selectedLevel: { fontSize: 13, marginTop: 2 },
+  challengeBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  challengeBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  listTitle: { fontSize: 15, fontWeight: "600", marginHorizontal: 16, marginTop: 16, marginBottom: 8 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 100 },
   userCard: {
     flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: 16,
     padding: 12,
-    borderRadius: 16,
+    borderRadius: 12,
+    marginBottom: 8,
     borderWidth: 1,
-    gap: 12,
   },
   userAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
   },
-  userMonster: { width: 36, height: 36 },
-  userInfo: { flex: 1 },
+  userMonster: { width: 32, height: 32 },
+  userInfo: { flex: 1, marginLeft: 12 },
   userNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  userName: { fontSize: 15, fontWeight: "700" },
+  userName: { fontSize: 15, fontWeight: "600" },
   onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" },
-  userLevel: { fontSize: 12, marginTop: 2 },
-  userDistance: { fontSize: 12, marginTop: 2, fontWeight: "600" },
+  userLevel: { fontSize: 13, marginTop: 2 },
+  userDistance: { fontSize: 12, marginTop: 2, fontWeight: "500" },
   addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
-  emptyNearby: {
-    alignItems: "center",
-    paddingVertical: 32,
+  emptyNearby: { alignItems: "center", paddingTop: 40, paddingHorizontal: 32 },
+  emptyNearbyTitle: { fontSize: 17, fontWeight: "700", marginTop: 12 },
+  emptyNearbyDesc: { fontSize: 14, textAlign: "center", marginTop: 8, lineHeight: 20 },
+  retryBtn: {
+    marginTop: 16,
     paddingHorizontal: 24,
-    gap: 8,
-  },
-  emptyNearbyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    textAlign: "center" as const,
-  },
-  emptyNearbyDesc: {
-    fontSize: 13,
-    textAlign: "center" as const,
-    lineHeight: 18,
+    paddingVertical: 12,
+    borderRadius: 24,
   },
 });

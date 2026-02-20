@@ -39,6 +39,7 @@ type Opponent = {
   agility: number;
   hp: number;
   gradient: readonly [string, string];
+  gender?: "male" | "female";
 };
 
 function buildOpponentFromNearby(user: any): Opponent {
@@ -60,6 +61,7 @@ function buildOpponentFromNearby(user: any): Opponent {
     agility: 8 + (user.monsterLevel || 1) * 2,
     hp: 100 + (user.monsterLevel || 1) * 10,
     gradient: getGradientForType(type),
+    gender: user.gender || undefined,
   };
 }
 
@@ -80,6 +82,7 @@ type Friend = {
   online: boolean;
   gradient: readonly [string, string];
   addedAt: Date;
+  gender?: "male" | "female";
 };
 
 // Helper to get monster image by type and stage
@@ -159,6 +162,7 @@ export default function BattleScreen() {
         online: Math.random() > 0.5,
         gradient: getGradientForType(f.monsterType || 'bodybuilder'),
         addedAt: new Date(f.createdAt || Date.now()),
+        gender: f.gender || undefined,
       }));
       setFriends(realFriends);
     }
@@ -205,15 +209,27 @@ export default function BattleScreen() {
   const defendFlash = useRef(new RNAnimated.Value(0)).current;
   const specialFlash = useRef(new RNAnimated.Value(0)).current;
 
-  // Get user's real location for nearby query
+  // Get user's real location for nearby query AND auto-share it
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const locationShareMutation = trpc.location.update.useMutation();
   useEffect(() => {
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === "granted") {
           const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          setUserLoc({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+          const coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+          setUserLoc(coords);
+          // Auto-share location so other users can find us
+          try {
+            await locationShareMutation.mutateAsync({
+              latitude: coords.lat,
+              longitude: coords.lng,
+              isSharing: true,
+            });
+          } catch (err) {
+            console.warn("Failed to share location from battle:", err);
+          }
         }
       } catch {}
     })();
@@ -593,6 +609,7 @@ export default function BattleScreen() {
                     <View style={styles.opponentInfo}>
                       <View style={styles.nameRow}>
                         <Text style={[styles.opponentName, { color: colors.foreground }]}>{opponent.name}</Text>
+                        {opponent.gender && <Text style={styles.genderIcon}>{opponent.gender === "male" ? "♂" : "♀"}</Text>}
                         {opponent.online && <View style={styles.onlineDot} />}
                       </View>
                       <Text style={[styles.opponentDistance, { color: colors.muted }]}>{opponent.distance} {t.away}</Text>
@@ -762,6 +779,7 @@ export default function BattleScreen() {
                       <View style={styles.friendInfo}>
                         <View style={styles.friendNameRow}>
                           <Text style={[styles.friendName, { color: colors.foreground }]}>{friend.name}</Text>
+                          {friend.gender && <Text style={styles.genderIcon}>{friend.gender === "male" ? "♂" : "♀"}</Text>}
                           {friend.online && <View style={styles.onlineDot} />}
                         </View>
                         <Text style={[styles.friendLevel, { color: colors.muted }]}>{(t as any)[friend.monsterType.toLowerCase()] || friend.monsterType} Lv.{friend.level}</Text>
@@ -1035,4 +1053,5 @@ const styles = StyleSheet.create({
   mapBtnText: { fontSize: 13, fontWeight: "600" },
   mapLinkBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, marginTop: 8 },
   mapLinkText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  genderIcon: { fontSize: 16, marginLeft: 4 },
 });

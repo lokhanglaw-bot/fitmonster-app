@@ -111,6 +111,7 @@ export default function RootLayout() {
               <Stack.Screen name="workout-tracking" options={{ presentation: "fullScreenModal" }} />
               <Stack.Screen name="nearby-map" options={{ presentation: "fullScreenModal" }} />
               <Stack.Screen name="health-sync" options={{ presentation: "fullScreenModal" }} />
+              <Stack.Screen name="profile-setup" options={{ presentation: "fullScreenModal" }} />
             </Stack>
             <StatusBar style="auto" />
           </AuthGate>

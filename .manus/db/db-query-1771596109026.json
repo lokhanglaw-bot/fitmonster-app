@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `profiles` ADD `age` int;\nALTER TABLE `profiles` ADD `gender` enum('male','female');\nALTER TABLE `profiles` ADD `height` float;\nALTER TABLE `profiles` ADD `weight` float;\nALTER TABLE `profiles` ADD `bmr` float;\nALTER TABLE `profiles` ADD `matchGenderPreference` enum('all','male','female') DEFAULT 'all';\nALTER TABLE `profiles` ADD `profileCompleted` boolean DEFAULT false NOT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute ALTER TABLE `profiles` ADD `age` int;\nALTER TABLE `profiles` ADD `gender` enum('male','female');\nALTER TABLE `profiles` ADD `height` float;\nALTER TABLE `profiles` ADD `weight` float;\nALTER TABLE `profiles` ADD `bmr` float;\nALTER TABLE `profiles` ADD `matchGenderPreference` enum('all','male','female') DEFAULT 'all';\nALTER TABLE `profiles` ADD `profileCompleted` boolean DEFAULT false NOT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4901
+}

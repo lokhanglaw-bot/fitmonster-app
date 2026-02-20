@@ -49,6 +49,45 @@ export const appRouter = router({
         await db.updateProfile(ctx.user.id, input);
         return { success: true };
       }),
+    setupProfile: protectedProcedure
+      .input(
+        z.object({
+          age: z.number().min(18).max(99),
+          gender: z.enum(["male", "female"]),
+          height: z.number().min(100).max(250),
+          weight: z.number().min(30).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        // Calculate BMR using Harris-Benedict formula
+        let bmr: number;
+        if (input.gender === "male") {
+          bmr = 88.362 + (13.397 * input.weight) + (4.799 * input.height) - (5.677 * input.age);
+        } else {
+          bmr = 447.593 + (9.247 * input.weight) + (3.098 * input.height) - (4.330 * input.age);
+        }
+        bmr = Math.round(bmr);
+        
+        // Calculate daily calorie goal (BMR × 1.2 for sedentary)
+        const dailyCalorieGoal = Math.round(bmr * 1.2);
+        
+        await db.updateProfile(ctx.user.id, {
+          age: input.age,
+          gender: input.gender,
+          height: input.height,
+          weight: input.weight,
+          bmr,
+          dailyCalorieGoal,
+          profileCompleted: true,
+        });
+        return { success: true, bmr, dailyCalorieGoal };
+      }),
+    updateMatchPreference: protectedProcedure
+      .input(z.object({ matchGenderPreference: z.enum(["all", "male", "female"]) }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateProfile(ctx.user.id, { matchGenderPreference: input.matchGenderPreference });
+        return { success: true };
+      }),
   }),
 
   monsters: router({

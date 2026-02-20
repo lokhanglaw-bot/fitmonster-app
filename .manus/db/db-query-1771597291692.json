@@ -1,0 +1,19 @@
+{
+  "query": "SELECT ul.id, ul.userId, ul.latitude, ul.longitude, ul.isSharing, ul.lastUpdated, u.name FROM userLocations ul LEFT JOIN users u ON ul.userId = u.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT ul.id, ul.userId, ul.latitude, ul.longitude, ul.isSharing, ul.lastUpdated, u.name FROM userLocations ul LEFT JOIN users u ON ul.userId = u.id;",
+  "rows": [
+    {
+      "id": "1",
+      "userId": "90001",
+      "latitude": "22.307152",
+      "longitude": "114.257645",
+      "isSharing": "1",
+      "lastUpdated": "2026-02-20 10:51:03",
+      "name": "chenghiuching denise"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tlatitude\tlongitude\tisSharing\tlastUpdated\tname\n1\t90001\t22.307152\t114.257645\t1\t2026-02-20 10:51:03\tchenghiuching denise\n",
+  "stderr": "",
+  "execution_time_ms": 1479
+}

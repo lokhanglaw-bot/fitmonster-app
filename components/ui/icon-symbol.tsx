@@ -45,6 +45,7 @@ const MAPPING = {
   "person.badge.plus": "person-add",
   "checkmark.circle.fill": "check-circle",
   "clock.arrow.circlepath": "history",
+  "arrow.clockwise": "refresh",
 } as IconMapping;
 
 /**

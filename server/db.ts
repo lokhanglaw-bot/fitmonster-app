@@ -309,12 +309,15 @@ export async function updateFriendship(friendshipId: number, status: "pending" |
 export async function upsertUserLocation(userId: number, latitude: number, longitude: number, isSharing: boolean) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  console.log(`[Location] User ${userId} updating location: (${latitude}, ${longitude}), sharing: ${isSharing}`);
   const existing = await db.select().from(userLocations).where(eq(userLocations.userId, userId)).limit(1);
   if (existing.length > 0) {
     await db.update(userLocations).set({ latitude, longitude, isSharing, lastUpdated: new Date() }).where(eq(userLocations.userId, userId));
+    console.log(`[Location] Updated existing location for user ${userId}`);
     return existing[0].id;
   } else {
     const result = await db.insert(userLocations).values({ userId, latitude, longitude, isSharing }) as any;
+    console.log(`[Location] Created new location for user ${userId}, id: ${Number(result.insertId)}`);
     return Number(result.insertId);
   }
 }
@@ -323,6 +326,7 @@ export async function getNearbyUsers(userId: number, latitude: number, longitude
   const db = await getDb();
   if (!db) return [];
   // Get all users sharing their location (except current user)
+  // Include users who shared location within the last 24 hours (even if isSharing toggled off briefly)
   const allLocations = await db.select({
     locationId: userLocations.id,
     userId: userLocations.userId,
@@ -334,6 +338,7 @@ export async function getNearbyUsers(userId: number, latitude: number, longitude
     sql`${userLocations.userId} != ${userId}`,
     eq(userLocations.isSharing, true)
   ));
+  console.log(`[Nearby] User ${userId} querying at (${latitude}, ${longitude}), radius ${radiusKm}km. Found ${allLocations.length} sharing users in DB.`);
 
   // Calculate distance using Haversine formula and filter by radius
   const nearbyUsers = allLocations.filter(loc => {
@@ -345,6 +350,7 @@ export async function getNearbyUsers(userId: number, latitude: number, longitude
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c;
+    console.log(`[Nearby] User ${loc.userId} at (${loc.latitude}, ${loc.longitude}), distance: ${distance.toFixed(2)}km, within radius: ${distance <= radiusKm}`);
     return distance <= radiusKm;
   }).map(loc => {
     const R = 6371;
