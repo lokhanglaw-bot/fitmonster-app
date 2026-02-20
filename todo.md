@@ -542,3 +542,7 @@
 - [x] Send local notification when workout is running (sticky, cannot be swiped away)
 - [x] Cancel notification when workout finishes or is cancelled
 - [x] Add i18n translations for recovery messages (EN + ZH)
+
+## Bug - Round 44: Step sync shows wrong number
+- [x] Fix step sync: App shows 8,254 but Apple Health shows 7,878 — now uses SET_STEPS to directly set absolute value
+- [x] Step count now replaces (not accumulates) with the exact Apple Health value each sync

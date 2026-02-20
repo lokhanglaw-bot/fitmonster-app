@@ -58,7 +58,7 @@ export default function WorkoutScreen() {
   ];
 
   const [selectedType, setSelectedType] = useState("All");
-  const { state: activityState, logWorkout: logWorkoutToContext, syncSteps: syncStepsToContext } = useActivity();
+  const { state: activityState, logWorkout: logWorkoutToContext, setSteps: setStepsToContext } = useActivity();
 
   const totalExp = activityState.todayTotalExp;
   const completedCount = activityState.todayWorkoutLogs.length;
@@ -169,14 +169,11 @@ export default function WorkoutScreen() {
       start.setHours(0, 0, 0, 0);
       const result = await Pedometer.getStepCountAsync(start, end);
       const realSteps = result?.steps || 0;
-      // Calculate delta: real steps minus what we already have
-      const delta = Math.max(0, realSteps - steps);
-      if (delta > 0) {
-        syncStepsToContext(delta);
-      }
+      // Directly set steps to the exact Apple Health value (no delta accumulation)
+      setStepsToContext(realSteps);
       Alert.alert(
         t.stepsSyncedTitle,
-        tr("stepsSyncedRealMessage", { steps: realSteps.toLocaleString(), synced: delta.toLocaleString() })
+        tr("stepsSyncedRealMessage", { steps: realSteps.toLocaleString(), synced: realSteps.toLocaleString() })
       );
     } catch (error: any) {
       // Pedometer not available (e.g. web or Expo Go without native module)
@@ -185,7 +182,7 @@ export default function WorkoutScreen() {
         t.stepsSyncUnavailableMessage || "Step counting is not available in this environment. It requires a native iOS/Android build."
       );
     }
-  }, [syncStepsToContext, steps, t, tr]);
+  }, [setStepsToContext, t, tr]);
 
   return (
     <ScreenContainer>

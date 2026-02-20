@@ -98,6 +98,7 @@ type Action =
   | { type: "LOG_FOOD"; payload: Omit<FoodLogEntry, "id" | "timestamp"> }
   | { type: "LOG_WORKOUT"; payload: Omit<WorkoutLogEntry, "id" | "timestamp"> }
   | { type: "SYNC_STEPS"; payload: { steps: number } }
+  | { type: "SET_STEPS"; payload: { steps: number } }
   | { type: "SYNC_HEALTH_DATA"; payload: { steps: number; caloriesBurned: number; workoutMinutes: number; workoutLogs: Omit<WorkoutLogEntry, "id" | "timestamp">[]; stepsExp: number } }
   | { type: "ADD_RECORD_FOOD"; payload: { name: string; calories: number } }
   | { type: "ADD_RECORD_WORKOUT"; payload: { name: string; duration: number } }
@@ -160,6 +161,13 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
       return {
         ...state,
         todaySteps: state.todaySteps + action.payload.steps,
+      };
+    }
+    case "SET_STEPS": {
+      // Directly set steps to the absolute value from Apple Health / pedometer
+      return {
+        ...state,
+        todaySteps: action.payload.steps,
       };
     }
     case "SYNC_HEALTH_DATA": {
@@ -350,6 +358,7 @@ interface ActivityContextType {
   logFood: (entry: Omit<FoodLogEntry, "id" | "timestamp">) => void;
   logWorkout: (entry: Omit<WorkoutLogEntry, "id" | "timestamp">) => void;
   syncSteps: (steps: number) => void;
+  setSteps: (steps: number) => void;
   syncHealthData: (data: { steps: number; caloriesBurned: number; workoutMinutes: number; workoutLogs: Omit<WorkoutLogEntry, "id" | "timestamp">[]; stepsExp: number }) => void;
   addRecordFood: (name: string, calories: number) => void;
   addRecordWorkout: (name: string, duration: number) => void;
@@ -442,6 +451,10 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
     dispatch({ type: "SYNC_STEPS", payload: { steps } });
   }, []);
 
+  const setSteps = useCallback((steps: number) => {
+    dispatch({ type: "SET_STEPS", payload: { steps } });
+  }, []);
+
   const syncHealthData = useCallback((data: { steps: number; caloriesBurned: number; workoutMinutes: number; workoutLogs: Omit<WorkoutLogEntry, "id" | "timestamp">[]; stepsExp: number }) => {
     dispatch({ type: "SYNC_HEALTH_DATA", payload: data });
   }, []);
@@ -506,7 +519,7 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
 
   return (
     <ActivityContext.Provider value={{
-      state, logFood, logWorkout, syncSteps, syncHealthData, addRecordFood, addRecordWorkout,
+      state, logFood, logWorkout, syncSteps, setSteps, syncHealthData, addRecordFood, addRecordWorkout,
       addMonster, setMonsters, removeMonster, evolveMonster, setActiveMonster, checkEvolution, resetForNewUser, switchUser,
     }}>
       {children}
