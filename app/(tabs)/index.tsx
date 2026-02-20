@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withTiming, withRepeat, Easing } from "react-native-reanimated";
 import {
   ScrollView,
@@ -18,6 +18,9 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
+import { AppState, Platform } from "react-native";
+import { Pedometer } from "expo-sensors";
 import { useAuth } from "@/hooks/use-auth";
 import { useActivity } from "@/lib/activity-context";
 import { useI18n } from "@/lib/i18n-context";
@@ -66,7 +69,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  const { state: activity, addRecordFood, addRecordWorkout, addMonster, setMonsters: setMonstersCtx, removeMonster, evolveMonster, checkEvolution, setActiveMonster } = useActivity();
+  const { state: activity, setSteps, addRecordFood, addRecordWorkout, addMonster, setMonsters: setMonstersCtx, removeMonster, evolveMonster, checkEvolution, setActiveMonster } = useActivity();
+  const isFocused = useIsFocused();
   const { language, setLanguage, t, tr } = useI18n();
 
   const MONSTER_TYPES = [
@@ -93,6 +97,50 @@ export default function HomeScreen() {
       dietExp: 400,
     },
   ];
+
+  // --- Auto Step Sync ---
+  const lastSyncRef = useRef<number>(0);
+  const SYNC_THROTTLE_MS = 30_000; // max once per 30 seconds
+
+  const autoSyncSteps = useCallback(async () => {
+    if (Platform.OS === "web") return;
+    const now = Date.now();
+    if (now - lastSyncRef.current < SYNC_THROTTLE_MS) return;
+    lastSyncRef.current = now;
+    try {
+      const isAvailable = await Pedometer.isAvailableAsync();
+      if (!isAvailable) return;
+      const { granted } = await Pedometer.requestPermissionsAsync();
+      if (!granted) return;
+      const end = new Date();
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const result = await Pedometer.getStepCountAsync(start, end);
+      const realSteps = result?.steps || 0;
+      if (realSteps > 0) {
+        setSteps(realSteps);
+      }
+    } catch {
+      // Silently fail — pedometer may not be available
+    }
+  }, [setSteps]);
+
+  // Auto sync when home screen is focused
+  useEffect(() => {
+    if (isFocused) {
+      autoSyncSteps();
+    }
+  }, [isFocused, autoSyncSteps]);
+
+  // Auto sync when app comes to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active" && isFocused) {
+        autoSyncSteps();
+      }
+    });
+    return () => subscription.remove();
+  }, [isFocused, autoSyncSteps]);
 
   const trainerName = user?.name || "Trainer";
   const todaySteps = activity.todaySteps;

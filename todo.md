@@ -546,3 +546,9 @@
 ## Bug - Round 44: Step sync shows wrong number
 - [x] Fix step sync: App shows 8,254 but Apple Health shows 7,878 — now uses SET_STEPS to directly set absolute value
 - [x] Step count now replaces (not accumulates) with the exact Apple Health value each sync
+
+## Feature - Round 45: Auto Step Sync
+- [x] Auto sync steps from Apple Health when home screen is focused (useIsFocused)
+- [x] Auto sync steps when app comes to foreground via AppState listener
+- [x] Throttle auto sync to max once per 30 seconds (SYNC_THROTTLE_MS)
+- [x] Keep manual sync button as fallback on workout screen
