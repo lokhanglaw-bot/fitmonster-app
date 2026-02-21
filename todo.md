@@ -596,3 +596,10 @@
 - [x] Fix navigation logic so user enters the app after completing profile setup
 - [x] Root cause: AuthGate's profileCompleted state not updated after markProfileCompleted writes to AsyncStorage
 - [x] Fix: Added ProfileGateContext with setProfileDone() callback, called before router.replace
+
+## Bug - Round 48: Profile setup STILL stuck after save (previous fix insufficient)
+- [x] Profile-setup page still does not navigate to home after pressing Calculate & Save then OK
+- [x] Previous fix with ProfileGateContext/setProfileDone was not sufficient
+- [x] Added dismissAll() before router.replace to handle fullScreenModal stack
+- [x] Added AuthGate redirect: when profileCompleted=true and still on profile-setup, auto-redirect to tabs
+- [x] Added setTimeout(100ms) delay to let modal dismiss complete before navigation

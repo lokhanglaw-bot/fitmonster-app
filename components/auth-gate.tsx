@@ -98,6 +98,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     } else if (isAuthenticated && profileChecked && !profileCompleted && !inProfileSetup && !inAuthGroup) {
       // Authenticated, profile not completed, not on profile-setup → redirect to profile setup
       router.replace("/profile-setup");
+    } else if (isAuthenticated && profileChecked && profileCompleted && inProfileSetup) {
+      // Profile just completed while on profile-setup → redirect to home
+      router.replace("/(tabs)");
     }
   }, [isAuthenticated, loading, segments, router, profileChecked, profileCompleted]);
 

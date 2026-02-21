@@ -133,7 +133,23 @@ export default function ProfileSetupScreen() {
       Alert.alert(
         t.profileCompleted,
         `${t.bmrResult} ${bmr} ${t.kcalPerDay}\n${t.dailyCalorieNeed}: ${dailyCalorieGoal} ${t.kcalPerDay}`,
-        [{ text: t.ok, onPress: () => router.replace("/(tabs)") }]
+        [{
+          text: t.ok,
+          onPress: () => {
+            // Use dismissAll first to close any modal stack, then navigate
+            try {
+              if (router.canDismiss()) {
+                router.dismissAll();
+              }
+            } catch {
+              // ignore dismiss errors
+            }
+            // Small delay to let modal dismiss complete, then navigate
+            setTimeout(() => {
+              router.replace("/(tabs)");
+            }, 100);
+          },
+        }]
       );
     } catch (error) {
       Alert.alert(t.error, String(error));
