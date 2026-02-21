@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,13 +17,11 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useI18n } from "@/lib/i18n-context";
 import { useAuth } from "@/hooks/use-auth";
-import { markProfileCompleted, useProfileGate } from "@/components/auth-gate";
 import { PROFILE_DATA_KEY, calculateAgeFromBirthday } from "@/hooks/use-profile-data";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
- * Simple date picker using 3 scroll wheels (year, month, day).
- * Works on both iOS and Android without native DateTimePicker dependency.
+ * Simple date picker using 3 scroll columns (year, month, day).
  */
 function DatePickerModal({
   visible,
@@ -46,7 +44,7 @@ function DatePickerModal({
 
   const [year, setYear] = useState(() => {
     if (initialDate) return parseInt(initialDate.split("-")[0]);
-    return maxYear - 7; // default ~25 years old
+    return maxYear - 7;
   });
   const [month, setMonth] = useState(() => {
     if (initialDate) return parseInt(initialDate.split("-")[1]);
@@ -56,6 +54,15 @@ function DatePickerModal({
     if (initialDate) return parseInt(initialDate.split("-")[2]);
     return 1;
   });
+
+  // Reset when initialDate changes
+  useEffect(() => {
+    if (initialDate) {
+      setYear(parseInt(initialDate.split("-")[0]));
+      setMonth(parseInt(initialDate.split("-")[1]));
+      setDay(parseInt(initialDate.split("-")[2]));
+    }
+  }, [initialDate]);
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const effectiveDay = Math.min(day, daysInMonth);
@@ -81,7 +88,6 @@ function DatePickerModal({
           </View>
 
           <View style={pickerStyles.wheelRow}>
-            {/* Year */}
             <View style={pickerStyles.wheelCol}>
               <Text style={[pickerStyles.wheelLabel, { color: colors.muted }]}>{t.year}</Text>
               <ScrollView style={pickerStyles.wheel} showsVerticalScrollIndicator={false}>
@@ -100,7 +106,6 @@ function DatePickerModal({
               </ScrollView>
             </View>
 
-            {/* Month */}
             <View style={pickerStyles.wheelCol}>
               <Text style={[pickerStyles.wheelLabel, { color: colors.muted }]}>{t.month}</Text>
               <ScrollView style={pickerStyles.wheel} showsVerticalScrollIndicator={false}>
@@ -119,7 +124,6 @@ function DatePickerModal({
               </ScrollView>
             </View>
 
-            {/* Day */}
             <View style={pickerStyles.wheelCol}>
               <Text style={[pickerStyles.wheelLabel, { color: colors.muted }]}>{t.day}</Text>
               <ScrollView style={pickerStyles.wheel} showsVerticalScrollIndicator={false}>
@@ -153,12 +157,11 @@ function DatePickerModal({
   );
 }
 
-export default function ProfileSetupScreen() {
+export default function EditProfileScreen() {
   const colors = useColors();
   const { t } = useI18n();
   const router = useRouter();
   const { user } = useAuth();
-  const { setProfileDone } = useProfileGate();
 
   const [birthday, setBirthday] = useState("");
   const [gender, setGender] = useState<"male" | "female" | null>(null);
@@ -167,8 +170,9 @@ export default function ProfileSetupScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
-  // Load existing profile data if user already completed setup
+  // Load existing profile data
   useEffect(() => {
     if (!user) return;
     const loadExisting = async () => {
@@ -182,8 +186,9 @@ export default function ProfileSetupScreen() {
           if (data.height) setHeight(String(data.height));
           if (data.weight) setWeight(String(data.weight));
         }
+        setLoaded(true);
       } catch {
-        // ignore
+        setLoaded(true);
       }
     };
     loadExisting();
@@ -198,11 +203,8 @@ export default function ProfileSetupScreen() {
       newErrors.birthday = t.pleaseSelectBirthday;
     } else {
       const age = calculateAgeFromBirthday(birthday);
-      if (age < 18) {
-        newErrors.birthday = t.ageMustBe18;
-      } else if (age > 99) {
-        newErrors.birthday = t.ageMustBeUnder100;
-      }
+      if (age < 18) newErrors.birthday = t.ageMustBe18;
+      else if (age > 99) newErrors.birthday = t.ageMustBeUnder100;
     }
 
     if (!gender) {
@@ -245,7 +247,6 @@ export default function ProfileSetupScreen() {
     const dailyCalorieGoal = Math.round(bmr * 1.2);
 
     try {
-      // Save to local storage (works for both local and OAuth users)
       const userKey = user ? (user.openId || String(user.id)) : "unknown";
       const profileData = {
         age,
@@ -263,29 +264,13 @@ export default function ProfileSetupScreen() {
         JSON.stringify(profileData)
       );
 
-      // Mark profile as completed in auth gate (persist to AsyncStorage)
-      await markProfileCompleted(userKey);
-      // Signal AuthGate immediately so it won't redirect back
-      setProfileDone();
-
       Alert.alert(
-        t.profileCompleted,
-        `${t.bmrResult} ${bmr} ${t.kcalPerDay}\n${t.dailyCalorieNeed}: ${dailyCalorieGoal} ${t.kcalPerDay}`,
+        t.profileUpdated,
+        `BMR: ${bmr} ${t.kcalPerDay}\n${t.dailyCalorieNeed}: ${dailyCalorieGoal} ${t.kcalPerDay}`,
         [{
           text: t.ok,
           onPress: () => {
-            // Use dismissAll first to close any modal stack, then navigate
-            try {
-              if (router.canDismiss()) {
-                router.dismissAll();
-              }
-            } catch {
-              // ignore dismiss errors
-            }
-            // Small delay to let modal dismiss complete, then navigate
-            setTimeout(() => {
-              router.replace("/(tabs)");
-            }, 100);
+            router.back();
           },
         }]
       );
@@ -298,6 +283,16 @@ export default function ProfileSetupScreen() {
 
   const displayAge = birthday ? calculateAgeFromBirthday(birthday) : null;
 
+  if (!loaded) {
+    return (
+      <ScreenContainer edges={["top", "bottom", "left", "right"]}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer edges={["top", "bottom", "left", "right"]}>
       <KeyboardAvoidingView
@@ -308,18 +303,23 @@ export default function ProfileSetupScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Monster illustration */}
+          {/* Header with back button */}
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} style={styles.backButton}>
+              <Text style={[styles.backText, { color: colors.primary }]}>← {t.back}</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.illustrationContainer}>
-            <Text style={styles.monsterEmoji}>🐾</Text>
+            <Text style={styles.monsterEmoji}>✏️</Text>
             <Text style={[styles.title, { color: colors.foreground }]}>
-              {t.profileSetup}
+              {t.editProfileTitle}
             </Text>
             <Text style={[styles.subtitle, { color: colors.muted }]}>
-              {t.profileSetupSubtitle}
+              {t.editProfileSubtitle}
             </Text>
           </View>
 
-          {/* Form */}
           <View style={styles.formContainer}>
             {/* Birthday */}
             <View style={styles.fieldContainer}>
@@ -371,14 +371,8 @@ export default function ProfileSetupScreen() {
                   style={[
                     styles.genderButton,
                     {
-                      backgroundColor:
-                        gender === "male" ? colors.primary : colors.surface,
-                      borderColor:
-                        gender === "male"
-                          ? colors.primary
-                          : errors.gender
-                          ? colors.error
-                          : colors.border,
+                      backgroundColor: gender === "male" ? colors.primary : colors.surface,
+                      borderColor: gender === "male" ? colors.primary : errors.gender ? colors.error : colors.border,
                     },
                   ]}
                   onPress={() => {
@@ -388,15 +382,7 @@ export default function ProfileSetupScreen() {
                   activeOpacity={0.7}
                 >
                   <Text style={styles.genderIcon}>♂</Text>
-                  <Text
-                    style={[
-                      styles.genderText,
-                      {
-                        color:
-                          gender === "male" ? "#fff" : colors.foreground,
-                      },
-                    ]}
-                  >
+                  <Text style={[styles.genderText, { color: gender === "male" ? "#fff" : colors.foreground }]}>
                     {t.male}
                   </Text>
                 </TouchableOpacity>
@@ -404,14 +390,8 @@ export default function ProfileSetupScreen() {
                   style={[
                     styles.genderButton,
                     {
-                      backgroundColor:
-                        gender === "female" ? "#E91E63" : colors.surface,
-                      borderColor:
-                        gender === "female"
-                          ? "#E91E63"
-                          : errors.gender
-                          ? colors.error
-                          : colors.border,
+                      backgroundColor: gender === "female" ? "#E91E63" : colors.surface,
+                      borderColor: gender === "female" ? "#E91E63" : errors.gender ? colors.error : colors.border,
                     },
                   ]}
                   onPress={() => {
@@ -421,15 +401,7 @@ export default function ProfileSetupScreen() {
                   activeOpacity={0.7}
                 >
                   <Text style={styles.genderIcon}>♀</Text>
-                  <Text
-                    style={[
-                      styles.genderText,
-                      {
-                        color:
-                          gender === "female" ? "#fff" : colors.foreground,
-                      },
-                    ]}
-                  >
+                  <Text style={[styles.genderText, { color: gender === "female" ? "#fff" : colors.foreground }]}>
                     {t.female}
                   </Text>
                 </TouchableOpacity>
@@ -505,6 +477,16 @@ export default function ProfileSetupScreen() {
               ) : null}
             </View>
 
+            {/* Current BMR Preview */}
+            {birthday && gender && height && weight && (
+              <View style={[styles.bmrPreview, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
+                <Text style={[styles.bmrPreviewLabel, { color: colors.muted }]}>BMR</Text>
+                <Text style={[styles.bmrPreviewValue, { color: colors.primary }]}>
+                  {calculateBMR(gender, parseFloat(weight) || 0, parseFloat(height) || 0, calculateAgeFromBirthday(birthday))} {t.kcalPerDay}
+                </Text>
+              </View>
+            )}
+
             {/* Save Button */}
             <TouchableOpacity
               style={[
@@ -519,7 +501,7 @@ export default function ProfileSetupScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.saveButtonText}>
-                  {t.calculateAndSave}
+                  {t.updateProfile}
                 </Text>
               )}
             </TouchableOpacity>
@@ -547,28 +529,40 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
   },
-  illustrationContainer: {
+  headerRow: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 32,
-    marginTop: 20,
-  },
-  monsterEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "800",
     marginBottom: 8,
   },
+  backButton: {
+    paddingVertical: 8,
+    paddingRight: 16,
+  },
+  backText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  illustrationContainer: {
+    alignItems: "center",
+    marginBottom: 28,
+  },
+  monsterEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "800",
+    marginBottom: 6,
+  },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 20,
     paddingHorizontal: 20,
   },
   formContainer: {
-    gap: 20,
+    gap: 18,
   },
   fieldContainer: {
     gap: 8,
@@ -626,12 +620,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  bmrPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  bmrPreviewLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  bmrPreviewValue: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
   saveButton: {
     height: 56,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 12,
+    marginTop: 8,
   },
   saveButtonText: {
     color: "#fff",

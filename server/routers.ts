@@ -52,19 +52,28 @@ export const appRouter = router({
     setupProfile: protectedProcedure
       .input(
         z.object({
-          age: z.number().min(18).max(99),
+          birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
           gender: z.enum(["male", "female"]),
           height: z.number().min(100).max(250),
           weight: z.number().min(30).max(200),
         })
       )
       .mutation(async ({ ctx, input }) => {
+        // Calculate age from birthday
+        const birthDate = new Date(input.birthday);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        
         // Calculate BMR using Harris-Benedict formula
         let bmr: number;
         if (input.gender === "male") {
-          bmr = 88.362 + (13.397 * input.weight) + (4.799 * input.height) - (5.677 * input.age);
+          bmr = 88.362 + (13.397 * input.weight) + (4.799 * input.height) - (5.677 * age);
         } else {
-          bmr = 447.593 + (9.247 * input.weight) + (3.098 * input.height) - (4.330 * input.age);
+          bmr = 447.593 + (9.247 * input.weight) + (3.098 * input.height) - (4.330 * age);
         }
         bmr = Math.round(bmr);
         
@@ -72,7 +81,8 @@ export const appRouter = router({
         const dailyCalorieGoal = Math.round(bmr * 1.2);
         
         await db.updateProfile(ctx.user.id, {
-          age: input.age,
+          age,
+          birthday: input.birthday,
           gender: input.gender,
           height: input.height,
           weight: input.weight,
@@ -80,7 +90,58 @@ export const appRouter = router({
           dailyCalorieGoal,
           profileCompleted: true,
         });
-        return { success: true, bmr, dailyCalorieGoal };
+        return { success: true, bmr, dailyCalorieGoal, age };
+      }),
+    updateProfileData: protectedProcedure
+      .input(
+        z.object({
+          birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+          gender: z.enum(["male", "female"]).optional(),
+          height: z.number().min(100).max(250).optional(),
+          weight: z.number().min(30).max(200).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        // Get current profile to merge with updates
+        const currentProfile = await db.getUserProfile(ctx.user.id);
+        if (!currentProfile) throw new Error("Profile not found");
+        
+        const birthday = input.birthday || currentProfile.birthday;
+        const gender = input.gender || currentProfile.gender;
+        const height = input.height || currentProfile.height;
+        const weight = input.weight || currentProfile.weight;
+        
+        if (!birthday || !gender || !height || !weight) {
+          throw new Error("Missing required profile fields");
+        }
+        
+        // Recalculate age from birthday
+        const birthDate = new Date(birthday);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        
+        // Recalculate BMR
+        let bmr: number;
+        if (gender === "male") {
+          bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
+        } else {
+          bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age);
+        }
+        bmr = Math.round(bmr);
+        const dailyCalorieGoal = Math.round(bmr * 1.2);
+        
+        const updateData: Record<string, any> = { age, bmr, dailyCalorieGoal };
+        if (input.birthday) updateData.birthday = input.birthday;
+        if (input.gender) updateData.gender = input.gender;
+        if (input.height) updateData.height = input.height;
+        if (input.weight) updateData.weight = input.weight;
+        
+        await db.updateProfile(ctx.user.id, updateData);
+        return { success: true, bmr, dailyCalorieGoal, age };
       }),
     updateMatchPreference: protectedProcedure
       .input(z.object({ matchGenderPreference: z.enum(["all", "male", "female"]) }))

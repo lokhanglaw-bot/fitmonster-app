@@ -51,6 +51,7 @@ export const profiles = mysqlTable("profiles", {
   dailyProteinGoal: int("dailyProteinGoal").default(100).notNull(),
   dailyStepsGoal: int("dailyStepsGoal").default(10000).notNull(),
   age: int("age"),
+  birthday: varchar("birthday", { length: 10 }),
   gender: mysqlEnum("gender", ["male", "female"]),
   height: float("height"),
   weight: float("weight"),

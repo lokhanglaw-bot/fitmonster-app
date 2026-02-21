@@ -603,3 +603,14 @@
 - [x] Added dismissAll() before router.replace to handle fullScreenModal stack
 - [x] Added AuthGate redirect: when profileCompleted=true and still on profile-setup, auto-redirect to tabs
 - [x] Added setTimeout(100ms) delay to let modal dismiss complete before navigation
+
+## Feature - Round 49: Profile improvements
+- [x] Change age input to birthday date picker (auto-calculate age)
+- [x] Store birthday in backend (added birthday field to profiles table + migration)
+- [x] Add "Edit Profile" button in Dashboard page (nutrition card header)
+- [x] Create edit-profile screen for updating birthday, gender, height, weight
+- [x] BMR recalculates automatically when profile is updated
+- [x] Add i18n translations for new strings (EN + ZH)
+- [x] DatePickerModal with year/month/day scroll wheels
+- [x] Age badge shows calculated age from birthday
+- [x] useProfileData hook updated with birthday support and reload capability

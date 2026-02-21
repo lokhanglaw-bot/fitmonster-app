@@ -1,7 +1,8 @@
-import { ScrollView, Text, View, StyleSheet } from "react-native";
+import { ScrollView, Text, View, StyleSheet, TouchableOpacity } from "react-native";
 import { useMemo } from "react";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useI18n } from "@/lib/i18n-context";
@@ -84,6 +85,7 @@ function WeeklyWorkoutStatsCard() {
 export default function DashboardScreen() {
   const colors = useColors();
   const { t } = useI18n();
+  const router = useRouter();
   const { state: activity } = useActivity();
 
   // Read from shared activity context — no hardcoded values
@@ -91,7 +93,7 @@ export default function DashboardScreen() {
   const stepsGoal = 10000;
   const caloriesBurned = activity.todayCaloriesBurned;
   const caloriesIntake = activity.todayCaloriesIn;
-  const profileData = useProfileData();
+  const { data: profileData } = useProfileData();
   const dailyCalorieNeed = profileData?.dailyCalorieGoal || 1800;
   const proteinIntake = activity.todayProtein;
 
@@ -217,7 +219,16 @@ export default function DashboardScreen() {
 
           {/* Nutrition Card */}
           <View style={[styles.nutritionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t.totalNutrition}</Text>
+            <View style={styles.cardTitleRow}>
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t.totalNutrition}</Text>
+              <TouchableOpacity
+                style={[styles.editProfileBtn, { backgroundColor: colors.primary + "15" }]}
+                onPress={() => router.push("/edit-profile" as any)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.editProfileBtnText, { color: colors.primary }]}>{t.editProfile}</Text>
+              </TouchableOpacity>
+            </View>
             {profileData?.bmr ? (
               <View style={[styles.bmrBadge, { backgroundColor: colors.primary + "15" }]}>
                 <Text style={[styles.bmrBadgeText, { color: colors.primary }]}>
@@ -592,6 +603,21 @@ const styles = StyleSheet.create({
   questItemProgress: {
     fontSize: 12,
     textAlign: "right" as const,
+  },
+  cardTitleRow: {
+    flexDirection: "row" as const,
+    justifyContent: "space-between" as const,
+    alignItems: "center" as const,
+    marginBottom: 4,
+  },
+  editProfileBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  editProfileBtnText: {
+    fontSize: 13,
+    fontWeight: "600" as const,
   },
 });
 

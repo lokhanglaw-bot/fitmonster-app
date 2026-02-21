@@ -659,6 +659,15 @@ const en = {
   profileSetup: "Profile Setup",
   profileSetupSubtitle: "Let's get to know you better to calculate your nutrition needs!",
   age: "Age",
+  birthday: "Birthday",
+  selectBirthday: "Select your birthday",
+  pleaseSelectBirthday: "Please select your birthday",
+  yearsOld: "years old",
+  year: "Year",
+  month: "Month",
+  day: "Day",
+  editProfile: "Edit Profile",
+  profileUpdated: "Profile updated!",
   gender: "Gender",
   male: "Male",
   female: "Female",
@@ -690,6 +699,9 @@ const en = {
   refreshNow: "Refresh Now",
   basedOnProfile: "based on your profile",
   caloriesConsumed: "Calories Consumed",
+  updateProfile: "Update",
+  editProfileTitle: "Edit Profile",
+  editProfileSubtitle: "Update your body measurements to recalculate nutrition needs",
 };
 
 const zh: Translations = {
@@ -1343,6 +1355,15 @@ const zh: Translations = {
   profileSetup: "個人資料設定",
   profileSetupSubtitle: "讓我們更了解你，計算你的營養需求！",
   age: "年齡",
+  birthday: "生日",
+  selectBirthday: "選擇你的生日",
+  pleaseSelectBirthday: "請選擇你的生日",
+  yearsOld: "歲",
+  year: "年",
+  month: "月",
+  day: "日",
+  editProfile: "編輯個人資料",
+  profileUpdated: "個人資料已更新！",
   gender: "性別",
   male: "男",
   female: "女",
@@ -1374,6 +1395,9 @@ const zh: Translations = {
   refreshNow: "立即刷新",
   basedOnProfile: "基於你的個人資料",
   caloriesConsumed: "已攝取熱量",
+  updateProfile: "更新",
+  editProfileTitle: "編輯個人資料",
+  editProfileSubtitle: "更新你的身體數據以重新計算營養需求",
 };
 
 const translations: Record<Language, Translations> = { en, zh };
