@@ -264,16 +264,8 @@ export default function EditProfileScreen() {
         JSON.stringify(profileData)
       );
 
-      Alert.alert(
-        t.profileUpdated,
-        `BMR: ${bmr} ${t.kcalPerDay}\n${t.dailyCalorieNeed}: ${dailyCalorieGoal} ${t.kcalPerDay}`,
-        [{
-          text: t.ok,
-          onPress: () => {
-            router.back();
-          },
-        }]
-      );
+      // Auto-navigate back to dashboard immediately after save
+      router.back();
     } catch (error) {
       Alert.alert(t.error, String(error));
     } finally {

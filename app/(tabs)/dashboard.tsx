@@ -1,8 +1,8 @@
 import { ScrollView, Text, View, StyleSheet, TouchableOpacity } from "react-native";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useI18n } from "@/lib/i18n-context";
@@ -93,8 +93,15 @@ export default function DashboardScreen() {
   const stepsGoal = 10000;
   const caloriesBurned = activity.todayCaloriesBurned;
   const caloriesIntake = activity.todayCaloriesIn;
-  const { data: profileData } = useProfileData();
+  const { data: profileData, reload: reloadProfile } = useProfileData();
   const dailyCalorieNeed = profileData?.dailyCalorieGoal || 1800;
+
+  // Reload profile data every time this screen gains focus (e.g. returning from edit-profile)
+  useFocusEffect(
+    useCallback(() => {
+      reloadProfile();
+    }, [reloadProfile])
+  );
   const proteinIntake = activity.todayProtein;
 
   // Active monster from context (use activeMonsterIndex)

@@ -614,3 +614,7 @@
 - [x] DatePickerModal with year/month/day scroll wheels
 - [x] Age badge shows calculated age from birthday
 - [x] useProfileData hook updated with birthday support and reload capability
+
+## Bug - Round 50: Edit profile UX improvements
+- [x] After pressing "更新" button, auto-navigate back to dashboard (removed Alert, direct router.back())
+- [x] After update, BMR syncs to dashboard via useFocusEffect reloading profile data on screen focus
