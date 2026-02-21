@@ -16,7 +16,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useI18n } from "@/lib/i18n-context";
 import { useAuth } from "@/hooks/use-auth";
-import { markProfileCompleted } from "@/components/auth-gate";
+import { markProfileCompleted, useProfileGate } from "@/components/auth-gate";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PROFILE_DATA_KEY = "@fitmonster_profile_data";
@@ -26,6 +26,7 @@ export default function ProfileSetupScreen() {
   const { t } = useI18n();
   const router = useRouter();
   const { user } = useAuth();
+  const { setProfileDone } = useProfileGate();
 
   const [age, setAge] = useState("");
   const [gender, setGender] = useState<"male" | "female" | null>(null);
@@ -124,8 +125,10 @@ export default function ProfileSetupScreen() {
         JSON.stringify(profileData)
       );
 
-      // Mark profile as completed in auth gate
+      // Mark profile as completed in auth gate (persist to AsyncStorage)
       await markProfileCompleted(userKey);
+      // Signal AuthGate immediately so it won't redirect back
+      setProfileDone();
 
       Alert.alert(
         t.profileCompleted,

@@ -1,11 +1,27 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter, useSegments } from "expo-router";
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PROFILE_COMPLETED_KEY = "@fitmonster_profile_completed";
+
+type ProfileGateContextValue = {
+  profileCompleted: boolean | null;
+  /** Call after profile-setup saves successfully to let AuthGate know immediately */
+  setProfileDone: () => void;
+};
+
+const ProfileGateContext = createContext<ProfileGateContextValue>({
+  profileCompleted: null,
+  setProfileDone: () => {},
+});
+
+/** Hook for profile-setup screen to signal completion */
+export function useProfileGate() {
+  return useContext(ProfileGateContext);
+}
 
 /**
  * AuthGate monitors authentication state and redirects:
@@ -40,7 +56,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           setProfileChecked(true);
           return;
         }
-        // If not cached as completed, we don't know yet - let the profile-setup page handle it
         // Default to not completed for new users
         setProfileCompleted(false);
         setProfileChecked(true);
@@ -52,6 +67,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
     checkProfile();
   }, [isAuthenticated, user]);
+
+  // Callback that profile-setup calls after successful save
+  const setProfileDone = useCallback(() => {
+    setProfileCompleted(true);
+  }, []);
 
   useEffect(() => {
     if (loading) return; // Wait for auth state to resolve
@@ -89,7 +109,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <ProfileGateContext.Provider value={{ profileCompleted, setProfileDone }}>
+      {children}
+    </ProfileGateContext.Provider>
+  );
 }
 
 /**

@@ -590,3 +590,9 @@
 - [ ] Save preference to backend (match_gender_preference field already in schema)
 - [ ] Filter nearby/battle matches based on gender preference
 - [x] Add i18n translations for all new features (EN + ZH)
+
+## Bug - Round 47: Profile setup page stuck after save
+- [x] After pressing "確定" on success alert, page stays on profile-setup instead of navigating to home
+- [x] Fix navigation logic so user enters the app after completing profile setup
+- [x] Root cause: AuthGate's profileCompleted state not updated after markProfileCompleted writes to AsyncStorage
+- [x] Fix: Added ProfileGateContext with setProfileDone() callback, called before router.replace
