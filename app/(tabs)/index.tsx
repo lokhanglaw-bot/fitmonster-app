@@ -262,7 +262,7 @@ export default function HomeScreen() {
 
   const quests = [
     { id: 1, icon: "🥩", title: t.questProteinChampion, description: t.questProteinDescFull, progress: activity.todayProtein, target: 100, reward: 50, bgColor: "#22C55E" },
-    { id: 2, icon: "🚶", title: t.questWalkingMaster, description: t.questWalkingDescFull, progress: activity.todaySteps, target: 5000, reward: 50, bgColor: "#3B82F6" },
+    { id: 2, icon: "🚶", title: t.questWalkingMaster, description: t.questWalkingDescFull, progress: activity.todaySteps, target: 20000, reward: 50, bgColor: "#3B82F6" },
     { id: 3, icon: "💪", title: t.questStrengthTraining, description: t.questStrengthDescFull, progress: activity.todayWorkoutMinutes, target: 30, reward: 100, bgColor: "#F59E0B" },
   ];
 

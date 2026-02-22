@@ -655,3 +655,6 @@
 - [x] Make food name and Edit button layout responsive (name truncates, Edit always visible)
 - [x] Fix workout timer display — time wraps to second line (01:00:5\n8)
 - [x] Reduce timer font size so HH:MM:SS fits on one line within the circle
+
+## Change - Round 55: Walking Master quest step count
+- [x] Change Walking Master daily step requirement from 5000 to 20000

@@ -509,7 +509,7 @@ const en = {
 
   // Quest Descriptions (full)
   questProteinDescFull: "Consume 100g protein today",
-  questWalkingDescFull: "Walk 5,000 steps today",
+  questWalkingDescFull: "Walk 20,000 steps today",
   questStrengthDescFull: "Complete a 30-min workout",
 
   // Monster Modal
@@ -1215,7 +1215,7 @@ const zh: Translations = {
 
   // Quest Descriptions (full)
   questProteinDescFull: "今天攝取100g蛋白質",
-  questWalkingDescFull: "今天走倀5,000步",
+  questWalkingDescFull: "今天走滿20,000步",
   questStrengthDescFull: "完成30分鐘運動",
 
   // Monster Modal
