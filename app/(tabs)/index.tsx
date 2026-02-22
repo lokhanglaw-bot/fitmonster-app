@@ -157,7 +157,7 @@ export default function HomeScreen() {
     const dow = ((todayDow - daysAgo) % 7 + 7) % 7;
     return allDayLabels[dow];
   });
-  const [coins, setCoins] = useState(350);
+
   const [activeTab, setActiveTab] = useState<"home" | "daily" | "history">("home");
 
   // Monsters are stored in the per-user activity context
@@ -623,7 +623,7 @@ export default function HomeScreen() {
               <Text style={styles.questTitle}>{quest.title}</Text>
               <Text style={styles.questDesc}>{quest.description}</Text>
             </View>
-            <View style={styles.questReward}><Text style={styles.rewardText}>+{quest.reward} 🪙</Text></View>
+            <View style={styles.questReward}><Text style={styles.rewardText}>+{quest.reward} EXP</Text></View>
           </View>
           <View style={[styles.questBarTrack, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
             <View style={[styles.questBarFill, { width: `${quest.target > 0 ? Math.min((quest.progress / quest.target) * 100, 100) : 0}%` }]} />

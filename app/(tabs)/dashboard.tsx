@@ -321,7 +321,7 @@ export default function DashboardScreen() {
                     <Text style={[styles.questItemTitle, { color: colors.foreground }]}>{quest.title}</Text>
                     <Text style={[styles.questItemDesc, { color: colors.muted }]}>{quest.desc}</Text>
                   </View>
-                  <Text style={[styles.questItemReward, { color: "#F59E0B" }]}>+{quest.reward} 🪙</Text>
+                  <Text style={[styles.questItemReward, { color: "#F59E0B" }]}>+{quest.reward} EXP</Text>
                 </View>
                 <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
                   <View

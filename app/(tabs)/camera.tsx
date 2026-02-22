@@ -286,18 +286,16 @@ export default function CameraScreen() {
   const renderFoodItem = ({ item, index }: { item: FoodItem; index: number }) => (
     <View style={[styles.foodItemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.foodItemHeader}>
-        <Text style={[styles.foodItemName, { color: colors.foreground }]}>{item.name}</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Text style={[styles.foodItemPortion, { color: colors.muted }]}>{item.portion}</Text>
-          <TouchableOpacity
-            onPress={() => handleEditFoodItem(index)}
-            activeOpacity={0.7}
-            style={[styles.editItemBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "40" }]}
-          >
-            <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "600" }}>✏️ {t.editFood}</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={[styles.foodItemName, { color: colors.foreground }]} numberOfLines={2}>{item.name}</Text>
+        <TouchableOpacity
+          onPress={() => handleEditFoodItem(index)}
+          activeOpacity={0.7}
+          style={[styles.editItemBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "40" }]}
+        >
+          <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "600" }}>✏️ {t.editFood}</Text>
+        </TouchableOpacity>
       </View>
+      <Text style={[styles.foodItemPortion, { color: colors.muted }]}>{item.portion}</Text>
       <View style={styles.foodItemNutrients}>
         <View style={styles.nutrientPill}>
           <Text style={styles.nutrientEmoji}>🔥</Text>
@@ -747,9 +745,9 @@ const styles = StyleSheet.create({
 
   sectionTitle: { fontSize: 16, fontWeight: "700" },
   foodItemCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
-  foodItemHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  foodItemName: { fontSize: 15, fontWeight: "700", flex: 1 },
-  foodItemPortion: { fontSize: 13 },
+  foodItemHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
+  foodItemName: { fontSize: 15, fontWeight: "700", flex: 1, lineHeight: 22 },
+  foodItemPortion: { fontSize: 13, marginTop: -4 },
   foodItemNutrients: { flexDirection: "row", gap: 6 },
   nutrientPill: { flex: 1, alignItems: "center", gap: 2 },
   nutrientEmoji: { fontSize: 14 },

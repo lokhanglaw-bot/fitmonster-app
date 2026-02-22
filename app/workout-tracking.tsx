@@ -555,7 +555,7 @@ export default function WorkoutTrackingScreen() {
           {/* Timer circle — open-ended, no target */}
           <Animated.View style={[styles.timerCircleOuter, pulseStyle]}>
             <View style={[styles.timerCircle, { borderColor: isRunning ? colors.primary : colors.muted }]}>
-              <Text style={[styles.timerText, { color: colors.foreground }]}>
+              <Text style={[styles.timerText, { color: colors.foreground }]} numberOfLines={1} adjustsFontSizeToFit>
                 {formatTime(elapsedSeconds)}
               </Text>
               {!isRunning && activeWorkout && (
@@ -682,17 +682,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   timerCircle: {
-    width: SCREEN_WIDTH * 0.5,
-    height: SCREEN_WIDTH * 0.5,
-    borderRadius: SCREEN_WIDTH * 0.25,
+    width: SCREEN_WIDTH * 0.55,
+    height: SCREEN_WIDTH * 0.55,
+    borderRadius: SCREEN_WIDTH * 0.275,
     borderWidth: 6,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 12,
   },
   timerText: {
-    fontSize: 42,
+    fontSize: 36,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
+    textAlign: "center",
   },
   pausedLabel: {
     fontSize: 14,

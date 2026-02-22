@@ -646,3 +646,12 @@
 - [x] Add battle/chat quick action buttons when tapping friend pins on map
 - [x] Tapping a friend pin shows popup with "Battle" and "Chat" buttons
 - [x] Add i18n translations for any new strings
+
+## Bug Fix - Round 54: UI Issues
+- [x] Remove Super Like button and coins system from battle page
+- [x] Remove Super Like from matching info explanation
+- [x] Remove coins display and references throughout the app
+- [x] Fix food item card layout — long food names push Edit button off screen
+- [x] Make food name and Edit button layout responsive (name truncates, Edit always visible)
+- [x] Fix workout timer display — time wraps to second line (01:00:5\n8)
+- [x] Reduce timer font size so HH:MM:SS fits on one line within the circle

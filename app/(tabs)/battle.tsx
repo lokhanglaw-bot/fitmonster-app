@@ -308,45 +308,29 @@ export default function BattleScreen() {
 
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    if (direction === "star") {
-      // Super like = instant mutual match (both agree)
-      Alert.alert(
-        t.itsAMatchTitle,
-        tr("itsAMatchMsg", { name: opp.name }),
-      );
-      setFriends((prev) => [
-        ...prev,
-        {
-          id: opp.id, name: opp.name, level: opp.level,
-          monsterType: opp.monsterType, monsterImage: opp.monsterImage,
-          online: opp.online, gradient: opp.gradient, addedAt: new Date(),
-        },
-      ]);
-    } else {
-      // Regular like = send friend request (needs acceptance)
-      Alert.alert(
-        t.friendRequestSentEmoji,
-        tr("friendRequestSentMsg", { name: opp.name }),
-      );
-      setFriendRequests((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          from: opp,
-          status: "pending",
-          sentByMe: true,
-          timestamp: new Date(),
-        },
-      ]);
+    // Like = send friend request (needs acceptance)
+    Alert.alert(
+      t.friendRequestSentEmoji,
+      tr("friendRequestSentMsg", { name: opp.name }),
+    );
+    setFriendRequests((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        from: opp,
+        status: "pending",
+        sentByMe: true,
+        timestamp: new Date(),
+      },
+    ]);
 
-      // Send real friend request to backend
-      sendRequestMutation.mutate({ targetUserId: opp.id }, {
-        onSuccess: () => {
-          friendsQuery.refetch();
-          pendingQuery.refetch();
-        },
-      });
-    }
+    // Send real friend request to backend
+    sendRequestMutation.mutate({ targetUserId: opp.id }, {
+      onSuccess: () => {
+        friendsQuery.refetch();
+        pendingQuery.refetch();
+      },
+    });
 
     setCurrentOpponent((prev) => prev + 1);
   }, [currentOpponent, friendRequests, friends, nearbyOpponents]);
@@ -581,7 +565,6 @@ export default function BattleScreen() {
                   <Text style={[styles.infoTitle, { color: colors.foreground }]}>{t.howMatchingWorks}</Text>
                   <Text style={[styles.infoDesc, { color: colors.muted }]}>
                     {t.matchInfoLike}{"\n"}
-                    {t.matchInfoSuperLike}{"\n"}
                     {t.matchInfoSkip}
                   </Text>
                 </View>
@@ -636,10 +619,6 @@ export default function BattleScreen() {
                   <View style={styles.swipeButtons}>
                     <TouchableOpacity style={[styles.swipeBtn, styles.rejectBtn, { borderColor: "#EF4444" }]} onPress={() => handleSwipe("left")}>
                       <IconSymbol name="xmark" size={28} color="#EF4444" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.swipeBtn, styles.starBtn, { backgroundColor: "#F59E0B" }]} onPress={() => handleSwipe("star")}>
-                      <Text style={styles.starIcon}>⭐</Text>
-                      <Text style={styles.starCost}>10 🪙</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.swipeBtn, styles.likeBtn, { borderColor: "#22C55E" }]} onPress={() => handleSwipe("right")}>
                       <Text style={styles.heartEmoji}>❤️</Text>
@@ -898,7 +877,7 @@ export default function BattleScreen() {
                 </Text>
                 <Text style={[styles.resultSub, { color: colors.muted }]}>
                   {battle.result === "win"
-                    ? `${t.victoryMessage}\n+50 EXP  +25 🪙`
+                    ? `${t.victoryMessage}\n+50 EXP`
                     : t.defeatMessage}
                 </Text>
                 <TouchableOpacity
@@ -975,9 +954,7 @@ const styles = StyleSheet.create({
   swipeButtons: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 20 },
   swipeBtn: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
   rejectBtn: { borderWidth: 2 },
-  starBtn: { width: 70, height: 70, borderRadius: 35 },
-  starIcon: { fontSize: 24 },
-  starCost: { color: "#fff", fontSize: 10, fontWeight: "600" },
+
   likeBtn: { borderWidth: 2 },
   heartEmoji: { fontSize: 24 },
   wildBattleBtn: { borderRadius: 16, paddingVertical: 18, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
