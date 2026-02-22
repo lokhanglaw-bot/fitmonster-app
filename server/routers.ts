@@ -371,6 +371,9 @@ export const appRouter = router({
         };
       });
     }),
+    locations: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getFriendsLocations(ctx.user.id);
+    }),
     sendRequest: protectedProcedure
       .input(z.object({ targetUserId: z.number() }))
       .mutation(async ({ ctx, input }) => {

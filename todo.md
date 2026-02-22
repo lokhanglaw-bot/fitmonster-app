@@ -618,3 +618,14 @@
 ## Bug - Round 50: Edit profile UX improvements
 - [x] After pressing "更新" button, auto-navigate back to dashboard (removed Alert, direct router.back())
 - [x] After update, BMR syncs to dashboard via useFocusEffect reloading profile data on screen focus
+
+## Bug - Round 51: CRITICAL - Location sharing rewrite (3rd attempt)
+- [x] Rewrote nearby-map.tsx with real MapView (react-native-maps)
+- [x] Added friends.locations API endpoint to show friends on map
+- [x] Friends show as green pins, nearby non-friends as blue pins on real map
+- [x] Improved error handling: retry logic, no blocking alerts on API failure
+- [x] Location sharing toggle doesn't revert on temporary failure
+- [x] Periodic location updates continue even if one fails
+- [x] Non-friends still visible via location.nearby query
+- [x] Added getFriendsLocations function to server/db.ts
+- [x] Friend badge and distance display in user list below map

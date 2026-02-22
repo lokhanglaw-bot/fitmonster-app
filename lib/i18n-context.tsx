@@ -702,6 +702,9 @@ const en = {
   updateProfile: "Update",
   editProfileTitle: "Edit Profile",
   editProfileSubtitle: "Update your body measurements to recalculate nutrition needs",
+  locationShareRetry: "Location sharing may be delayed. Will retry automatically.",
+  friendsOnMap: "friends on map",
+  enableSharingTitle: "Enable Location Sharing",
 };
 
 const zh: Translations = {
@@ -1398,6 +1401,9 @@ const zh: Translations = {
   updateProfile: "更新",
   editProfileTitle: "編輯個人資料",
   editProfileSubtitle: "更新你的身體數據以重新計算營養需求",
+  locationShareRetry: "位置分享可能延遲，將自動重試。",
+  friendsOnMap: "位好友在地圖上",
+  enableSharingTitle: "開啟位置分享",
 };
 
 const translations: Record<Language, Translations> = { en, zh };

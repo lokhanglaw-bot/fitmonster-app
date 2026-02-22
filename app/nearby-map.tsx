@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   AppState,
 } from "react-native";
+import MapView, { Marker, Region } from "react-native-maps";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -23,7 +24,7 @@ import { useI18n } from "@/lib/i18n-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { trpc } from "@/lib/trpc";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // Monster image mapping by type and stage
 const MONSTER_IMAGES: Record<string, Record<number, any>> = {
@@ -56,6 +57,19 @@ const EMOJI_BY_TYPE: Record<string, string> = {
   powerlifter: "💪",
 };
 
+interface FriendLocation {
+  userId: number;
+  name: string;
+  monsterType: string;
+  monsterLevel: number;
+  monsterStage: number;
+  monsterImageUrl: string | null;
+  latitude: number;
+  longitude: number;
+  lastUpdated: Date | string;
+  monsterName: string | null;
+}
+
 interface NearbyUser {
   userId: number;
   name: string;
@@ -87,23 +101,25 @@ function getMonsterImage(type: string, stage: number) {
   return typeImages[stage] || typeImages[1];
 }
 
-const REFRESH_INTERVAL_MS = 15_000; // Refresh nearby list every 15 seconds
-const LOCATION_UPDATE_INTERVAL_MS = 30_000; // Update own location every 30 seconds
+const REFRESH_INTERVAL_MS = 15_000;
+const LOCATION_UPDATE_INTERVAL_MS = 30_000;
 
 export default function NearbyMapScreen() {
   const router = useRouter();
   const colors = useColors();
   const { t, tr } = useI18n();
   const insets = useSafeAreaInsets();
+  const mapRef = useRef<MapView>(null);
   const [locationGranted, setLocationGranted] = useState(false);
   const [sharingLocation, setSharingLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
-  const [selectedUser, setSelectedUser] = useState<NearbyUser | null>(null);
+  const [friendLocations, setFriendLocations] = useState<FriendLocation[]>([]);
+  const [selectedUser, setSelectedUser] = useState<FriendLocation | NearbyUser | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
-  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const locationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const userLocationRef = useRef<{ lat: number; lng: number } | null>(null);
   const sharingRef = useRef(false);
@@ -111,10 +127,18 @@ export default function NearbyMapScreen() {
   // tRPC mutations & queries
   const locationUpdateMutation = trpc.location.update.useMutation();
   const sendFriendRequestMutation = trpc.friends.sendRequest.useMutation();
+
+  // Query nearby users (non-friends)
   const nearbyQuery = trpc.location.nearby.useQuery(
-    { latitude: userLocation?.lat ?? 0, longitude: userLocation?.lng ?? 0, radiusKm: 10 },
+    { latitude: userLocation?.lat ?? 0, longitude: userLocation?.lng ?? 0, radiusKm: 50 },
     { enabled: !!userLocation && sharingLocation, refetchInterval: REFRESH_INTERVAL_MS }
   );
+
+  // Query friends' locations
+  const friendsLocQuery = trpc.friends.locations.useQuery(undefined, {
+    enabled: sharingLocation,
+    refetchInterval: REFRESH_INTERVAL_MS,
+  });
 
   // Keep refs in sync
   useEffect(() => { userLocationRef.current = userLocation; }, [userLocation]);
@@ -124,19 +148,21 @@ export default function NearbyMapScreen() {
   useEffect(() => {
     if (nearbyQuery.data) {
       setNearbyUsers(nearbyQuery.data as NearbyUser[]);
+    }
+  }, [nearbyQuery.data]);
+
+  // Update friend locations when query data changes
+  useEffect(() => {
+    if (friendsLocQuery.data) {
+      setFriendLocations(friendsLocQuery.data as FriendLocation[]);
       setLastError(null);
     }
-    if (nearbyQuery.isError) {
-      setLastError("Failed to fetch nearby trainers");
-    }
-  }, [nearbyQuery.data, nearbyQuery.isError]);
+  }, [friendsLocQuery.data]);
 
-  // On mount: request location, auto-share, and start periodic updates
+  // On mount: request location
   useEffect(() => {
-    initLocationAndShare();
+    initLocation();
     return () => {
-      // Cleanup timers on unmount
-      if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
       if (locationTimerRef.current) clearInterval(locationTimerRef.current);
     };
   }, []);
@@ -144,7 +170,6 @@ export default function NearbyMapScreen() {
   // Periodically update own location to server while sharing
   useEffect(() => {
     if (sharingLocation && userLocation) {
-      // Start periodic location update
       locationTimerRef.current = setInterval(async () => {
         try {
           const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -156,7 +181,7 @@ export default function NearbyMapScreen() {
             isSharing: true,
           });
         } catch {
-          // Silently continue
+          // Silently continue - don't block the user
         }
       }, LOCATION_UPDATE_INTERVAL_MS);
 
@@ -169,14 +194,15 @@ export default function NearbyMapScreen() {
   // When app comes to foreground, refresh
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active" && sharingRef.current && userLocationRef.current) {
-        nearbyQuery.refetch();
+      if (state === "active" && sharingRef.current) {
+        friendsLocQuery.refetch();
+        if (userLocationRef.current) nearbyQuery.refetch();
       }
     });
     return () => sub.remove();
   }, []);
 
-  const initLocationAndShare = async () => {
+  const initLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
@@ -186,22 +212,8 @@ export default function NearbyMapScreen() {
         });
         const coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
         setUserLocation(coords);
-
-        // Auto-share location on open
-        setSharingLocation(true);
-        try {
-          await locationUpdateMutation.mutateAsync({
-            latitude: coords.lat,
-            longitude: coords.lng,
-            isSharing: true,
-          });
-          setLastError(null);
-        } catch (err: any) {
-          console.warn("Failed to share location:", err);
-          setLastError("Failed to share location to server");
-        }
       } else {
-        // No permission — use default but don't auto-share
+        // Default to Hong Kong area
         setUserLocation({ lat: 22.3193, lng: 114.1694 });
         Alert.alert(
           t.locationPermissionRequired || "Location Permission Required",
@@ -216,41 +228,51 @@ export default function NearbyMapScreen() {
     setLoading(false);
   };
 
+  const shareLocationToServer = async (lat: number, lng: number, sharing: boolean): Promise<boolean> => {
+    try {
+      await locationUpdateMutation.mutateAsync({
+        latitude: lat,
+        longitude: lng,
+        isSharing: sharing,
+      });
+      setLastError(null);
+      setRetryCount(0);
+      return true;
+    } catch (err: any) {
+      console.warn("Failed to update location sharing:", err?.message || err);
+      return false;
+    }
+  };
+
   const handleToggleSharing = useCallback(async (value: boolean) => {
     if (value && !locationGranted) {
       Alert.alert(
         t.locationPermissionRequired || "Location Permission Required",
-        t.locationPermissionMessage || "Please enable location access in your device settings to share your location with nearby trainers.",
+        t.locationPermissionMessage || "Please enable location access in your device settings.",
         [{ text: t.ok }]
       );
       return;
     }
+
+    // Optimistically set the toggle
     setSharingLocation(value);
 
     if (userLocation) {
-      try {
-        await locationUpdateMutation.mutateAsync({
-          latitude: userLocation.lat,
-          longitude: userLocation.lng,
-          isSharing: value,
-        });
-        setLastError(null);
-      } catch (err: any) {
-        console.warn("Failed to update sharing:", err);
-        setLastError("Failed to update sharing status");
-        // Revert toggle on failure
-        setSharingLocation(!value);
-        Alert.alert(
-          "Error",
-          "Failed to update location sharing. Please try again.",
-          [{ text: t.ok }]
-        );
-        return;
+      const success = await shareLocationToServer(userLocation.lat, userLocation.lng, value);
+      if (!success) {
+        // Retry once
+        const retrySuccess = await shareLocationToServer(userLocation.lat, userLocation.lng, value);
+        if (!retrySuccess) {
+          // Still keep sharing on locally - don't revert the toggle
+          // The periodic update will retry later
+          setLastError(t.locationShareRetry || "Location sharing may be delayed. Will retry automatically.");
+          setRetryCount(prev => prev + 1);
+        }
       }
     }
 
     if (value) {
-      // Immediately refresh nearby list
+      friendsLocQuery.refetch();
       nearbyQuery.refetch();
     }
   }, [locationGranted, userLocation]);
@@ -259,7 +281,6 @@ export default function NearbyMapScreen() {
     if (!userLocation) return;
     setRefreshing(true);
 
-    // Re-fetch current location
     try {
       if (locationGranted) {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -267,22 +288,21 @@ export default function NearbyMapScreen() {
         setUserLocation(newLoc);
 
         if (sharingLocation) {
-          await locationUpdateMutation.mutateAsync({
-            latitude: newLoc.lat,
-            longitude: newLoc.lng,
-            isSharing: true,
-          });
+          await shareLocationToServer(newLoc.lat, newLoc.lng, true);
         }
       }
     } catch {
       // Continue with existing location
     }
 
-    await nearbyQuery.refetch();
+    await Promise.all([
+      friendsLocQuery.refetch(),
+      nearbyQuery.refetch(),
+    ]);
     setRefreshing(false);
   }, [userLocation, locationGranted, sharingLocation]);
 
-  const handleSendRequest = useCallback(async (user: NearbyUser) => {
+  const handleSendRequest = useCallback(async (user: NearbyUser | FriendLocation) => {
     try {
       const result = await sendFriendRequestMutation.mutateAsync({
         targetUserId: user.userId,
@@ -309,46 +329,29 @@ export default function NearbyMapScreen() {
     }
   }, []);
 
-  const renderNearbyUser = ({ item }: { item: NearbyUser }) => {
-    const timeInfo = getTimeAgo(item.lastUpdated, t);
-    const gradient = GRADIENT_BY_TYPE[item.monsterType] || GRADIENT_BY_TYPE.bodybuilder;
-    const monsterImage = getMonsterImage(item.monsterType, item.monsterStage);
+  const centerOnUser = useCallback(() => {
+    if (userLocation && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: userLocation.lat,
+        longitude: userLocation.lng,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }, 500);
+    }
+  }, [userLocation]);
 
-    return (
-      <TouchableOpacity
-        style={[styles.userCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-        onPress={() => setSelectedUser(selectedUser?.userId === item.userId ? null : item)}
-        activeOpacity={0.7}
-      >
-        <LinearGradient colors={[gradient[0], gradient[1]]} style={styles.userAvatar}>
-          <Image source={monsterImage} style={styles.userMonster} contentFit="contain" />
-        </LinearGradient>
-        <View style={styles.userInfo}>
-          <View style={styles.userNameRow}>
-            <Text style={[styles.userName, { color: colors.foreground }]}>{item.name}</Text>
-            {timeInfo.isOnline && <View style={styles.onlineDot} />}
-          </View>
-          <Text style={[styles.userLevel, { color: colors.muted }]}>
-            {tr(`monsterType_${item.monsterType}`) || item.monsterType} Lv.{item.monsterLevel}
-          </Text>
-          <Text style={[styles.userDistance, { color: colors.primary }]}>
-            📍 {item.distanceKm} km · {timeInfo.text}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: colors.primary }]}
-          onPress={() => handleSendRequest(item)}
-        >
-          <IconSymbol name="person.badge.plus" size={18} color="#fff" />
-        </TouchableOpacity>
-      </TouchableOpacity>
-    );
-  };
+  const initialRegion: Region | undefined = userLocation ? {
+    latitude: userLocation.lat,
+    longitude: userLocation.lng,
+    latitudeDelta: 0.1,
+    longitudeDelta: 0.1,
+  } : undefined;
 
-  const onlineCount = nearbyUsers.filter(u => {
-    const info = getTimeAgo(u.lastUpdated, t);
-    return info.isOnline;
-  }).length;
+  // Combine friends and nearby for the list
+  const allPeople = [
+    ...friendLocations.map(f => ({ ...f, isFriend: true, distanceKm: 0 })),
+    ...nearbyUsers.filter(n => !friendLocations.some(f => f.userId === n.userId)).map(n => ({ ...n, isFriend: false })),
+  ];
 
   return (
     <ScreenContainer edges={["bottom", "left", "right"]}>
@@ -357,12 +360,8 @@ export default function NearbyMapScreen() {
         <View style={[styles.header, { paddingTop: Math.max(insets.top, 44) + 8 }]}>
           <TouchableOpacity
             onPress={() => {
-              // Keep sharing active when leaving - so friends can still find us
-              if (router.canDismiss()) {
-                router.dismiss();
-              } else {
-                router.back();
-              }
+              if (router.canDismiss()) router.dismiss();
+              else router.back();
             }}
             style={[styles.backBtn, { backgroundColor: colors.surface }]}
             activeOpacity={0.7}
@@ -370,7 +369,6 @@ export default function NearbyMapScreen() {
             <IconSymbol name="arrow.left" size={20} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t.nearbyTrainers}</Text>
-          {/* Refresh button */}
           <TouchableOpacity
             onPress={handleManualRefresh}
             style={[styles.backBtn, { backgroundColor: colors.surface }]}
@@ -393,71 +391,74 @@ export default function NearbyMapScreen() {
           </View>
         ) : (
           <>
-            {/* Map placeholder (visual representation) */}
-            <View style={[styles.mapContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <LinearGradient
-                colors={["#DCFCE7", "#DBEAFE", "#EDE9FE"]}
-                style={styles.mapGradient}
-              >
-                {/* Grid lines for map feel */}
-                {[...Array(6)].map((_, i) => (
-                  <View key={`h-${i}`} style={[styles.gridLineH, { top: `${(i + 1) * 14}%`, backgroundColor: "rgba(0,0,0,0.05)" }]} />
-                ))}
-                {[...Array(6)].map((_, i) => (
-                  <View key={`v-${i}`} style={[styles.gridLineV, { left: `${(i + 1) * 14}%`, backgroundColor: "rgba(0,0,0,0.05)" }]} />
-                ))}
+            {/* Real Map */}
+            <View style={[styles.mapContainer, { borderColor: colors.border }]}>
+              {initialRegion ? (
+                <MapView
+                  ref={mapRef}
+                  style={styles.map}
+                  initialRegion={initialRegion}
+                  showsUserLocation={true}
+                  showsMyLocationButton={false}
+                  showsCompass={false}
+                >
+                  {/* Friend markers */}
+                  {friendLocations.map((friend) => {
+                    const emoji = EMOJI_BY_TYPE[friend.monsterType] || "🏋️";
+                    const timeInfo = getTimeAgo(friend.lastUpdated, t);
+                    return (
+                      <Marker
+                        key={`friend-${friend.userId}`}
+                        coordinate={{ latitude: friend.latitude, longitude: friend.longitude }}
+                        title={`${friend.name} (${t.friend || "Friend"})`}
+                        description={`${tr(`monsterType_${friend.monsterType}`) || friend.monsterType} Lv.${friend.monsterLevel} · ${timeInfo.text}`}
+                        pinColor="#22C55E"
+                      />
+                    );
+                  })}
 
-                {/* User's location (center) */}
-                <View style={[styles.mapPin, styles.myPin, { left: "48%", top: "45%" }]}>
-                  <View style={[styles.myPinInner, { backgroundColor: colors.primary }]}>
-                    <Text style={{ fontSize: 16 }}>📍</Text>
-                  </View>
-                  <Text style={[styles.pinLabel, { color: colors.primary }]}>{t.you || "You"}</Text>
-                  {sharingLocation && (
-                    <View style={styles.pulseRing} />
-                  )}
+                  {/* Nearby non-friend markers */}
+                  {nearbyUsers
+                    .filter(n => !friendLocations.some(f => f.userId === n.userId))
+                    .map((user) => {
+                      const timeInfo = getTimeAgo(user.lastUpdated, t);
+                      return (
+                        <Marker
+                          key={`nearby-${user.userId}`}
+                          coordinate={{ latitude: user.latitude, longitude: user.longitude }}
+                          title={user.name}
+                          description={`${tr(`monsterType_${user.monsterType}`) || user.monsterType} Lv.${user.monsterLevel} · ${user.distanceKm}km · ${timeInfo.text}`}
+                          pinColor="#3B82F6"
+                        />
+                      );
+                    })}
+                </MapView>
+              ) : (
+                <View style={styles.mapPlaceholder}>
+                  <Text style={{ color: colors.muted }}>Loading map...</Text>
                 </View>
+              )}
 
-                {/* Nearby users on map */}
-                {nearbyUsers.slice(0, 5).map((user, idx) => {
-                  const positions = [
-                    { left: "20%", top: "25%" },
-                    { left: "70%", top: "30%" },
-                    { left: "30%", top: "65%" },
-                    { left: "75%", top: "70%" },
-                    { left: "55%", top: "20%" },
-                  ];
-                  const pos = positions[idx % positions.length];
-                  const timeInfo = getTimeAgo(user.lastUpdated, t);
-                  const emoji = EMOJI_BY_TYPE[user.monsterType] || "🏋️";
-                  return (
-                    <TouchableOpacity
-                      key={user.userId}
-                      style={[styles.mapPin, pos as any]}
-                      onPress={() => setSelectedUser(selectedUser?.userId === user.userId ? null : user)}
-                    >
-                      <View style={[
-                        styles.mapUserPin,
-                        { backgroundColor: timeInfo.isOnline ? "#22C55E" : "#9CA3AF" },
-                        selectedUser?.userId === user.userId && { borderColor: colors.primary, borderWidth: 3 },
-                      ]}>
-                        <Text style={{ fontSize: 12 }}>{emoji}</Text>
-                      </View>
-                      <Text style={[styles.mapPinName, { color: colors.foreground }]}>{user.name}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </LinearGradient>
+              {/* Center on me button */}
+              <TouchableOpacity
+                style={[styles.centerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={centerOnUser}
+                activeOpacity={0.7}
+              >
+                <IconSymbol name="location.fill" size={20} color={colors.primary} />
+              </TouchableOpacity>
             </View>
 
             {/* Location sharing toggle */}
             <View style={[styles.sharingRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.sharingInfo}>
                 <IconSymbol name="location.fill" size={20} color={sharingLocation ? colors.primary : colors.muted} />
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={[styles.sharingTitle, { color: colors.foreground }]}>{t.shareLocation}</Text>
                   <Text style={[styles.sharingDesc, { color: colors.muted }]}>
-                    {sharingLocation ? (t.visibleToNearby || "Visible to nearby trainers") : (t.notVisibleOnMap || "Others can't see you on the map")}
+                    {sharingLocation
+                      ? (t.visibleToNearby || "Visible to nearby trainers & friends")
+                      : (t.notVisibleOnMap || "Others can't see you on the map")}
                   </Text>
                 </View>
               </View>
@@ -469,84 +470,131 @@ export default function NearbyMapScreen() {
               />
             </View>
 
-            {/* Error banner */}
+            {/* Status banner */}
             {lastError && (
-              <View style={[styles.errorBanner, { backgroundColor: "#FEE2E2" }]}>
-                <Text style={{ color: "#DC2626", fontSize: 13 }}>⚠️ {lastError}</Text>
+              <View style={[styles.errorBanner, { backgroundColor: "#FEF3C7" }]}>
+                <Text style={{ color: "#92400E", fontSize: 13, flex: 1 }}>⚠️ {lastError}</Text>
                 <TouchableOpacity onPress={handleManualRefresh}>
-                  <Text style={{ color: "#DC2626", fontWeight: "700", fontSize: 13 }}>Retry</Text>
+                  <Text style={{ color: "#92400E", fontWeight: "700", fontSize: 13 }}>{t.refreshNow || "Retry"}</Text>
                 </TouchableOpacity>
               </View>
             )}
 
             {/* Auto-refresh indicator */}
-            {sharingLocation && nearbyQuery.isFetching && !refreshing && (
+            {sharingLocation && (friendsLocQuery.isFetching || nearbyQuery.isFetching) && !refreshing && (
               <View style={styles.autoRefreshBar}>
                 <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={[{ color: colors.muted, fontSize: 12, marginLeft: 8 }]}>
-                  {t.refreshingNearby || "Refreshing nearby trainers..."}
+                  {t.refreshingNearby || "Refreshing..."}
                 </Text>
               </View>
             )}
 
-            {/* Selected user detail */}
-            {selectedUser && (
-              <View style={[styles.selectedCard, { backgroundColor: colors.surface, borderColor: colors.primary }]}>
-                <LinearGradient
-                  colors={[
-                    (GRADIENT_BY_TYPE[selectedUser.monsterType] || GRADIENT_BY_TYPE.bodybuilder)[0],
-                    (GRADIENT_BY_TYPE[selectedUser.monsterType] || GRADIENT_BY_TYPE.bodybuilder)[1],
-                  ]}
-                  style={styles.selectedAvatar}
-                >
-                  <Image source={getMonsterImage(selectedUser.monsterType, selectedUser.monsterStage)} style={styles.selectedMonster} contentFit="contain" />
-                </LinearGradient>
-                <View style={styles.selectedInfo}>
-                  <Text style={[styles.selectedName, { color: colors.foreground }]}>{selectedUser.name}</Text>
-                  <Text style={[styles.selectedLevel, { color: colors.muted }]}>
-                    {tr(`monsterType_${selectedUser.monsterType}`) || selectedUser.monsterType} Lv.{selectedUser.monsterLevel} · {selectedUser.distanceKm} km
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.challengeBtn, { backgroundColor: "#7C3AED" }]}
-                  onPress={() => handleSendRequest(selectedUser)}
-                >
-                  <Text style={styles.challengeBtnText}>{t.addFriend}</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            {/* People list */}
+            <View style={styles.listHeader}>
+              {friendLocations.length > 0 && (
+                <Text style={[styles.listTitle, { color: colors.primary }]}>
+                  👥 {friendLocations.length} {t.friendsOnMap || "friends on map"}
+                </Text>
+              )}
+              {nearbyUsers.filter(n => !friendLocations.some(f => f.userId === n.userId)).length > 0 && (
+                <Text style={[styles.listTitle, { color: colors.foreground }]}>
+                  🏃 {nearbyUsers.filter(n => !friendLocations.some(f => f.userId === n.userId)).length} {t.trainersActiveNearby || "trainers nearby"}
+                </Text>
+              )}
+            </View>
 
-            {/* Nearby users list */}
-            <Text style={[styles.listTitle, { color: colors.foreground }]}>
-              🏃 {nearbyUsers.length} {t.trainersActiveNearby || "trainers active nearby"}
-            </Text>
-            {nearbyUsers.length === 0 ? (
+            {!sharingLocation ? (
+              <View style={styles.emptyNearby}>
+                <Text style={{ fontSize: 40 }}>📍</Text>
+                <Text style={[styles.emptyNearbyTitle, { color: colors.foreground }]}>
+                  {t.enableSharingTitle || "Enable Location Sharing"}
+                </Text>
+                <Text style={[styles.emptyNearbyDesc, { color: colors.muted }]}>
+                  {t.enableSharingHint || "Turn on location sharing to see friends on the map and discover nearby trainers!"}
+                </Text>
+              </View>
+            ) : allPeople.length === 0 ? (
               <View style={styles.emptyNearby}>
                 <Text style={{ fontSize: 40 }}>🔍</Text>
                 <Text style={[styles.emptyNearbyTitle, { color: colors.foreground }]}>
                   {t.noNearbyTrainers || "No trainers nearby yet"}
                 </Text>
                 <Text style={[styles.emptyNearbyDesc, { color: colors.muted }]}>
-                  {sharingLocation
-                    ? (t.nearbyHint || "Make sure your friends also have the app open with location sharing enabled!")
-                    : (t.enableSharingHint || "Enable location sharing and invite friends to see them here!")}
+                  {t.nearbyHint || "Make sure your friends also have the app open with location sharing enabled!"}
                 </Text>
-                {sharingLocation && (
-                  <TouchableOpacity
-                    style={[styles.retryBtn, { backgroundColor: colors.primary }]}
-                    onPress={handleManualRefresh}
-                  >
-                    <Text style={{ color: "#fff", fontWeight: "600" }}>
-                      {refreshing ? "Refreshing..." : (t.refreshNow || "Refresh Now")}
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                  style={[styles.retryBtn, { backgroundColor: colors.primary }]}
+                  onPress={handleManualRefresh}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "600" }}>
+                    {refreshing ? "..." : (t.refreshNow || "Refresh Now")}
+                  </Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <FlatList
-                data={nearbyUsers}
-                keyExtractor={(item) => item.userId.toString()}
-                renderItem={renderNearbyUser}
+                data={allPeople}
+                keyExtractor={(item) => `${item.userId}`}
+                renderItem={({ item }) => {
+                  const timeInfo = getTimeAgo(item.lastUpdated, t);
+                  const gradient = GRADIENT_BY_TYPE[item.monsterType] || GRADIENT_BY_TYPE.bodybuilder;
+                  const monsterImage = getMonsterImage(item.monsterType, item.monsterStage);
+                  const isFriend = "isFriend" in item && item.isFriend;
+
+                  return (
+                    <TouchableOpacity
+                      style={[styles.userCard, {
+                        backgroundColor: colors.surface,
+                        borderColor: isFriend ? colors.primary : colors.border,
+                        borderWidth: isFriend ? 1.5 : 1,
+                      }]}
+                      onPress={() => {
+                        // Center map on this user
+                        if (mapRef.current && item.latitude && item.longitude) {
+                          mapRef.current.animateToRegion({
+                            latitude: item.latitude,
+                            longitude: item.longitude,
+                            latitudeDelta: 0.02,
+                            longitudeDelta: 0.02,
+                          }, 500);
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <LinearGradient colors={[gradient[0], gradient[1]]} style={styles.userAvatar}>
+                        <Image source={monsterImage} style={styles.userMonster} contentFit="contain" />
+                      </LinearGradient>
+                      <View style={styles.userInfo}>
+                        <View style={styles.userNameRow}>
+                          <Text style={[styles.userName, { color: colors.foreground }]}>{item.name}</Text>
+                          {isFriend && (
+                            <View style={[styles.friendBadge, { backgroundColor: colors.primary + "20" }]}>
+                              <Text style={[styles.friendBadgeText, { color: colors.primary }]}>
+                                {t.friend || "Friend"}
+                              </Text>
+                            </View>
+                          )}
+                          {timeInfo.isOnline && <View style={styles.onlineDot} />}
+                        </View>
+                        <Text style={[styles.userLevel, { color: colors.muted }]}>
+                          {tr(`monsterType_${item.monsterType}`) || item.monsterType} Lv.{item.monsterLevel}
+                        </Text>
+                        <Text style={[styles.userDistance, { color: colors.primary }]}>
+                          📍 {"distanceKm" in item && item.distanceKm > 0 ? `${item.distanceKm} km · ` : ""}{timeInfo.text}
+                        </Text>
+                      </View>
+                      {!isFriend && (
+                        <TouchableOpacity
+                          style={[styles.addBtn, { backgroundColor: colors.primary }]}
+                          onPress={() => handleSendRequest(item)}
+                        >
+                          <IconSymbol name="person.badge.plus" size={18} color="#fff" />
+                        </TouchableOpacity>
+                      )}
+                    </TouchableOpacity>
+                  );
+                }}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
               />
@@ -578,51 +626,36 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
   mapContainer: {
     marginHorizontal: 16,
-    height: 220,
+    height: SCREEN_HEIGHT * 0.35,
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
   },
-  mapGradient: { flex: 1, position: "relative" },
-  gridLineH: { position: "absolute", left: 0, right: 0, height: 1 },
-  gridLineV: { position: "absolute", top: 0, bottom: 0, width: 1 },
-  mapPin: { position: "absolute", alignItems: "center" },
-  myPin: { zIndex: 10 },
-  myPinInner: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  map: {
+    flex: 1,
+  },
+  mapPlaceholder: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.8)",
+    backgroundColor: "#f0f0f0",
+  },
+  centerBtn: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 3,
   },
-  pinLabel: { fontSize: 10, fontWeight: "700", marginTop: 2 },
-  pulseRing: {
-    position: "absolute",
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: "rgba(34,197,94,0.3)",
-    top: -12,
-    left: -12,
-  },
-  mapUserPin: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  mapPinName: { fontSize: 9, fontWeight: "600", marginTop: 1 },
   sharingRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -652,29 +685,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 6,
   },
-  selectedCard: {
+  listHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    justifyContent: "space-between",
     marginHorizontal: 16,
     marginTop: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 2,
+    marginBottom: 4,
+    gap: 12,
   },
-  selectedAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  selectedMonster: { width: 32, height: 32 },
-  selectedInfo: { flex: 1, marginLeft: 12 },
-  selectedName: { fontSize: 16, fontWeight: "700" },
-  selectedLevel: { fontSize: 13, marginTop: 2 },
-  challengeBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
-  challengeBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  listTitle: { fontSize: 15, fontWeight: "600", marginHorizontal: 16, marginTop: 16, marginBottom: 8 },
+  listTitle: { fontSize: 14, fontWeight: "600" },
   listContent: { paddingHorizontal: 16, paddingBottom: 100 },
   userCard: {
     flexDirection: "row",
@@ -682,7 +701,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,
-    borderWidth: 1,
   },
   userAvatar: {
     width: 48,
@@ -695,6 +713,12 @@ const styles = StyleSheet.create({
   userInfo: { flex: 1, marginLeft: 12 },
   userNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   userName: { fontSize: 15, fontWeight: "600" },
+  friendBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  friendBadgeText: { fontSize: 10, fontWeight: "700" },
   onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" },
   userLevel: { fontSize: 13, marginTop: 2 },
   userDistance: { fontSize: 12, marginTop: 2, fontWeight: "500" },
@@ -705,7 +729,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  emptyNearby: { alignItems: "center", paddingTop: 40, paddingHorizontal: 32 },
+  emptyNearby: { alignItems: "center", paddingTop: 30, paddingHorizontal: 32 },
   emptyNearbyTitle: { fontSize: 17, fontWeight: "700", marginTop: 12 },
   emptyNearbyDesc: { fontSize: 14, textAlign: "center", marginTop: 8, lineHeight: 20 },
   retryBtn: {

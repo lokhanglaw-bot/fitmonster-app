@@ -1,0 +1,13 @@
+{
+  "query": "SELECT CONCAT(id, '|', userId, '|', latitude, '|', longitude, '|', isSharing, '|', lastUpdated) as info FROM userLocations;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT CONCAT(id, '|', userId, '|', latitude, '|', longitude, '|', isSharing, '|', lastUpdated) as info FROM userLocations;",
+  "rows": [
+    {
+      "info": "1|90001|22.383505|114.18784|1|2026-02-22 01:41:59"
+    }
+  ],
+  "messages": [],
+  "stdout": "info\n1|90001|22.383505|114.18784|1|2026-02-22 01:41:59\n",
+  "stderr": "",
+  "execution_time_ms": 1492
+}

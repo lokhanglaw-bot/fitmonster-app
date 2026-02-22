@@ -409,6 +409,55 @@ export async function checkFriendship(userId: number, friendId: number) {
   return result[0] || null;
 }
 
+// Get friends' locations (only those who are sharing)
+export async function getFriendsLocations(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Get accepted friendships
+  const acceptedFriendships = await db.select().from(friendships).where(and(
+    sql`${friendships.userId} = ${userId} OR ${friendships.friendId} = ${userId}`,
+    eq(friendships.status, "accepted")
+  ));
+  
+  const friendIds = acceptedFriendships.map(f => 
+    f.userId === userId ? f.friendId : f.userId
+  );
+  
+  if (friendIds.length === 0) return [];
+  
+  // Get locations for friends who are sharing
+  const results = [];
+  for (const fid of friendIds) {
+    const locResult = await db.select().from(userLocations).where(
+      and(eq(userLocations.userId, fid), eq(userLocations.isSharing, true))
+    ).limit(1);
+    if (locResult[0]) {
+      results.push(locResult[0]);
+    }
+  }
+  
+  // Enrich with user info
+  const locUserIds = results.map(r => r.userId);
+  const usersInfo = await getUserInfoForNearby(locUserIds);
+  
+  return results.map(loc => {
+    const info = usersInfo.find(u => u.user.id === loc.userId);
+    return {
+      userId: loc.userId,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      lastUpdated: loc.lastUpdated,
+      name: info?.profile?.trainerName || info?.user.name || 'Trainer',
+      monsterType: info?.activeMonster?.monsterType || 'bodybuilder',
+      monsterName: info?.activeMonster?.name || null,
+      monsterLevel: info?.activeMonster?.level || 1,
+      monsterStage: info?.activeMonster?.evolutionStage || 1,
+      monsterImageUrl: info?.activeMonster?.imageUrl || null,
+    };
+  });
+}
+
 // Get friends with their profile and monster info
 export async function getFriendsWithInfo(userId: number) {
   const db = await getDb();
