@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   AppState,
 } from "react-native";
-import MapView, { Marker, Region } from "react-native-maps";
+import { MapViewWrapper, animateMapToRegion, type MapRegion } from "@/components/map-view-wrapper";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -109,7 +109,7 @@ export default function NearbyMapScreen() {
   const colors = useColors();
   const { t, tr } = useI18n();
   const insets = useSafeAreaInsets();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const [locationGranted, setLocationGranted] = useState(false);
   const [sharingLocation, setSharingLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -330,8 +330,8 @@ export default function NearbyMapScreen() {
   }, []);
 
   const centerOnUser = useCallback(() => {
-    if (userLocation && mapRef.current) {
-      mapRef.current.animateToRegion({
+    if (userLocation) {
+      animateMapToRegion(mapRef, {
         latitude: userLocation.lat,
         longitude: userLocation.lng,
         latitudeDelta: 0.05,
@@ -340,7 +340,7 @@ export default function NearbyMapScreen() {
     }
   }, [userLocation]);
 
-  const initialRegion: Region | undefined = userLocation ? {
+  const initialRegion: MapRegion | undefined = userLocation ? {
     latitude: userLocation.lat,
     longitude: userLocation.lng,
     latitudeDelta: 0.1,
@@ -394,45 +394,36 @@ export default function NearbyMapScreen() {
             {/* Real Map */}
             <View style={[styles.mapContainer, { borderColor: colors.border }]}>
               {initialRegion ? (
-                <MapView
-                  ref={mapRef}
+                <MapViewWrapper
+                  mapRef={mapRef}
                   style={styles.map}
                   initialRegion={initialRegion}
                   showsUserLocation={true}
                   showsMyLocationButton={false}
                   showsCompass={false}
-                >
-                  {/* Friend markers */}
-                  {friendLocations.map((friend) => {
-                    const emoji = EMOJI_BY_TYPE[friend.monsterType] || "🏋️";
-                    const timeInfo = getTimeAgo(friend.lastUpdated, t);
-                    return (
-                      <Marker
-                        key={`friend-${friend.userId}`}
-                        coordinate={{ latitude: friend.latitude, longitude: friend.longitude }}
-                        title={`${friend.name} (${t.friend || "Friend"})`}
-                        description={`${tr(`monsterType_${friend.monsterType}`) || friend.monsterType} Lv.${friend.monsterLevel} · ${timeInfo.text}`}
-                        pinColor="#22C55E"
-                      />
-                    );
-                  })}
-
-                  {/* Nearby non-friend markers */}
-                  {nearbyUsers
-                    .filter(n => !friendLocations.some(f => f.userId === n.userId))
-                    .map((user) => {
-                      const timeInfo = getTimeAgo(user.lastUpdated, t);
-                      return (
-                        <Marker
-                          key={`nearby-${user.userId}`}
-                          coordinate={{ latitude: user.latitude, longitude: user.longitude }}
-                          title={user.name}
-                          description={`${tr(`monsterType_${user.monsterType}`) || user.monsterType} Lv.${user.monsterLevel} · ${user.distanceKm}km · ${timeInfo.text}`}
-                          pinColor="#3B82F6"
-                        />
-                      );
-                    })}
-                </MapView>
+                  markers={[
+                    ...friendLocations.map((friend) => {
+                      const timeInfo = getTimeAgo(friend.lastUpdated, t);
+                      return {
+                        coordinate: { latitude: friend.latitude, longitude: friend.longitude },
+                        title: `${friend.name} (${t.friend || "Friend"})`,
+                        description: `${tr(`monsterType_${friend.monsterType}`) || friend.monsterType} Lv.${friend.monsterLevel} · ${timeInfo.text}`,
+                        pinColor: "#22C55E",
+                      };
+                    }),
+                    ...nearbyUsers
+                      .filter(n => !friendLocations.some(f => f.userId === n.userId))
+                      .map((user) => {
+                        const timeInfo = getTimeAgo(user.lastUpdated, t);
+                        return {
+                          coordinate: { latitude: user.latitude, longitude: user.longitude },
+                          title: user.name,
+                          description: `${tr(`monsterType_${user.monsterType}`) || user.monsterType} Lv.${user.monsterLevel} · ${user.distanceKm}km · ${timeInfo.text}`,
+                          pinColor: "#3B82F6",
+                        };
+                      }),
+                  ]}
+                />
               ) : (
                 <View style={styles.mapPlaceholder}>
                   <Text style={{ color: colors.muted }}>Loading map...</Text>
@@ -551,8 +542,8 @@ export default function NearbyMapScreen() {
                       }]}
                       onPress={() => {
                         // Center map on this user
-                        if (mapRef.current && item.latitude && item.longitude) {
-                          mapRef.current.animateToRegion({
+                        if (item.latitude && item.longitude) {
+                          animateMapToRegion(mapRef, {
                             latitude: item.latitude,
                             longitude: item.longitude,
                             latitudeDelta: 0.02,

@@ -629,3 +629,5 @@
 - [x] Non-friends still visible via location.nearby query
 - [x] Added getFriendsLocations function to server/db.ts
 - [x] Friend badge and distance display in user list below map
+- [x] Created platform-specific MapViewWrapper (.native.tsx / .web.tsx) to avoid web crash
+- [x] Web shows placeholder map, native shows real react-native-maps MapView
