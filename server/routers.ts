@@ -327,7 +327,7 @@ export const appRouter = router({
       .input(z.object({
         latitude: z.number(),
         longitude: z.number(),
-        radiusKm: z.number().default(10),
+        radiusKm: z.number().default(50),
       }))
       .query(async ({ ctx, input }) => {
         const nearbyLocations = await db.getNearbyUsers(ctx.user.id, input.latitude, input.longitude, input.radiusKm);

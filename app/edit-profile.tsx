@@ -19,6 +19,7 @@ import { useI18n } from "@/lib/i18n-context";
 import { useAuth } from "@/hooks/use-auth";
 import { PROFILE_DATA_KEY, calculateAgeFromBirthday } from "@/hooks/use-profile-data";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { trpc } from "@/lib/trpc";
 
 /**
  * Simple date picker using 3 scroll columns (year, month, day).
@@ -171,6 +172,7 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [matchPref, setMatchPref] = useState<"all" | "male" | "female">("all");
 
   // Load existing profile data
   useEffect(() => {
@@ -185,6 +187,7 @@ export default function EditProfileScreen() {
           if (data.gender) setGender(data.gender);
           if (data.height) setHeight(String(data.height));
           if (data.weight) setWeight(String(data.weight));
+          if (data.matchGenderPreference) setMatchPref(data.matchGenderPreference);
         }
         setLoaded(true);
       } catch {
@@ -261,8 +264,15 @@ export default function EditProfileScreen() {
       };
       await AsyncStorage.setItem(
         `${PROFILE_DATA_KEY}_${userKey}`,
-        JSON.stringify(profileData)
+        JSON.stringify({ ...profileData, matchGenderPreference: matchPref })
       );
+
+      // Also save match preference to backend
+      try {
+        await trpcUtils.client.profile.updateMatchPreference.mutate({ matchGenderPreference: matchPref });
+      } catch {
+        // Non-critical, saved locally
+      }
 
       // Auto-navigate back to dashboard immediately after save
       router.back();
@@ -273,6 +283,7 @@ export default function EditProfileScreen() {
     }
   };
 
+  const trpcUtils = trpc.useUtils();
   const displayAge = birthday ? calculateAgeFromBirthday(birthday) : null;
 
   if (!loaded) {
@@ -479,6 +490,42 @@ export default function EditProfileScreen() {
               </View>
             )}
 
+            {/* Match Gender Preference */}
+            <View style={styles.fieldContainer}>
+              <Text style={[styles.label, { color: colors.foreground }]}>
+                {t.matchPreference || "配對偏好"}
+              </Text>
+              <Text style={[styles.prefSubtitle, { color: colors.muted }]}>
+                {t.matchPreferenceDesc || "選擇你希望配對的性別"}
+              </Text>
+              <View style={styles.prefRow}>
+                {(["all", "male", "female"] as const).map((option) => {
+                  const isActive = matchPref === option;
+                  const label = option === "all" ? (t.matchAll || "全部") : option === "male" ? (t.matchMaleOnly || "僅男") : (t.matchFemaleOnly || "僅女");
+                  const icon = option === "all" ? "👥" : option === "male" ? "♂" : "♀";
+                  return (
+                    <TouchableOpacity
+                      key={option}
+                      style={[
+                        styles.prefButton,
+                        {
+                          backgroundColor: isActive ? colors.primary : colors.surface,
+                          borderColor: isActive ? colors.primary : colors.border,
+                        },
+                      ]}
+                      onPress={() => setMatchPref(option)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.prefIcon}>{icon}</Text>
+                      <Text style={[styles.prefText, { color: isActive ? "#fff" : colors.foreground }]}>
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
             {/* Save Button */}
             <TouchableOpacity
               style={[
@@ -639,6 +686,31 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "700",
+  },
+  prefSubtitle: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  prefRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  prefButton: {
+    flex: 1,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  prefIcon: {
+    fontSize: 18,
+  },
+  prefText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
 });
 

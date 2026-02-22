@@ -586,9 +586,9 @@
 - [x] Display gender (♂/♀) in friend profiles and nearby trainer cards
 - [x] Added gender field to Opponent and Friend types in battle.tsx
 - [x] Gender icon displayed next to names in opponent cards and friend list
-- [ ] Add matching preference setting: All / Only Male / Only Female (UI toggle)
-- [ ] Save preference to backend (match_gender_preference field already in schema)
-- [ ] Filter nearby/battle matches based on gender preference
+- [x] Add matching preference setting: All / Only Male / Only Female (UI toggle in edit-profile)
+- [x] Save preference to backend (match_gender_preference field already in schema)
+- [ ] Filter nearby/battle matches based on gender preference (server-side filtering)
 - [x] Add i18n translations for all new features (EN + ZH)
 
 ## Bug - Round 47: Profile setup page stuck after save
@@ -631,3 +631,11 @@
 - [x] Friend badge and distance display in user list below map
 - [x] Created platform-specific MapViewWrapper (.native.tsx / .web.tsx) to avoid web crash
 - [x] Web shows placeholder map, native shows real react-native-maps MapView
+
+## Feature - Round 52: Matching radius and gender preference
+- [x] Change nearby matching radius to 50km (client + server)
+- [x] Add gender matching preference setting UI (All / Male Only / Female Only) in edit-profile
+- [x] Save gender preference to backend via profile.updateMatchPreference API
+- [x] Also saved locally in AsyncStorage for offline access
+- [ ] Filter nearby/battle matches based on gender preference (server-side filtering)
+- [x] Add i18n translations for preference strings (EN + ZH)

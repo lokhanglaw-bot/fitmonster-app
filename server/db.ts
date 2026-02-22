@@ -322,7 +322,7 @@ export async function upsertUserLocation(userId: number, latitude: number, longi
   }
 }
 
-export async function getNearbyUsers(userId: number, latitude: number, longitude: number, radiusKm: number = 10) {
+export async function getNearbyUsers(userId: number, latitude: number, longitude: number, radiusKm: number = 50) {
   const db = await getDb();
   if (!db) return [];
   // Get all users sharing their location (except current user)
