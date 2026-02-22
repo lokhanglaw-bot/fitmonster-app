@@ -330,15 +330,19 @@ export const appRouter = router({
         radiusKm: z.number().default(50),
       }))
       .query(async ({ ctx, input }) => {
+        // Get the caller's gender preference
+        const genderPref = await db.getUserGenderPreference(ctx.user.id);
         const nearbyLocations = await db.getNearbyUsers(ctx.user.id, input.latitude, input.longitude, input.radiusKm);
         const userIds = nearbyLocations.map(l => l.userId);
         const usersInfo = await db.getUserInfoForNearby(userIds);
         
-        return nearbyLocations.map(loc => {
+        // Map and filter by gender preference
+        const results = nearbyLocations.map(loc => {
           const info = usersInfo.find(u => u.user.id === loc.userId);
           return {
             ...loc,
             name: info?.profile?.trainerName || info?.user.name || 'Trainer',
+            gender: info?.profile?.gender || null,
             monsterType: info?.activeMonster?.monsterType || 'bodybuilder',
             monsterName: info?.activeMonster?.name || null,
             monsterLevel: info?.activeMonster?.level || 1,
@@ -346,6 +350,13 @@ export const appRouter = router({
             monsterImageUrl: info?.activeMonster?.imageUrl || null,
             totalExp: info?.profile?.totalExp || 0,
           };
+        });
+        
+        // Apply gender preference filter
+        if (genderPref === 'all') return results;
+        return results.filter(u => {
+          if (!u.gender) return true; // Show users without gender set
+          return u.gender === genderPref;
         });
       }),
   }),

@@ -7,11 +7,21 @@ export type MapRegion = {
   longitudeDelta: number;
 };
 
-interface MapMarkerProps {
+export interface CalloutAction {
+  label: string;
+  emoji: string;
+  onPress: () => void;
+  color?: string;
+}
+
+export interface MapMarkerProps {
   coordinate: { latitude: number; longitude: number };
   title?: string;
   description?: string;
   pinColor?: string;
+  id?: string | number;
+  showActions?: boolean;
+  actions?: CalloutAction[];
 }
 
 interface MapViewWrapperProps {

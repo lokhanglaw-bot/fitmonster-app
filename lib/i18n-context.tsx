@@ -709,6 +709,9 @@ const en = {
   locationShareRetry: "Location sharing may be delayed. Will retry automatically.",
   friendsOnMap: "friends on map",
   enableSharingTitle: "Enable Location Sharing",
+  mapBattle: "Battle",
+  mapChat: "Chat",
+  tapPinForActions: "Tap a friend pin for actions",
 };
 
 const zh: Translations = {
@@ -1412,6 +1415,9 @@ const zh: Translations = {
   locationShareRetry: "位置分享可能延遲，將自動重試。",
   friendsOnMap: "位好友在地圖上",
   enableSharingTitle: "開啟位置分享",
+  mapBattle: "對戰",
+  mapChat: "聊天",
+  tapPinForActions: "點擊好友圖釘查看操作",
 };
 
 const translations: Record<Language, Translations> = { en, zh };

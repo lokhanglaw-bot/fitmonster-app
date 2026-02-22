@@ -588,7 +588,7 @@
 - [x] Gender icon displayed next to names in opponent cards and friend list
 - [x] Add matching preference setting: All / Only Male / Only Female (UI toggle in edit-profile)
 - [x] Save preference to backend (match_gender_preference field already in schema)
-- [ ] Filter nearby/battle matches based on gender preference (server-side filtering)
+- [x] Filter nearby/battle matches based on gender preference (server-side filtering)
 - [x] Add i18n translations for all new features (EN + ZH)
 
 ## Bug - Round 47: Profile setup page stuck after save
@@ -637,5 +637,12 @@
 - [x] Add gender matching preference setting UI (All / Male Only / Female Only) in edit-profile
 - [x] Save gender preference to backend via profile.updateMatchPreference API
 - [x] Also saved locally in AsyncStorage for offline access
-- [ ] Filter nearby/battle matches based on gender preference (server-side filtering)
+- [x] Filter nearby/battle matches based on gender preference (server-side filtering)
 - [x] Add i18n translations for preference strings (EN + ZH)
+
+## Feature - Round 53: Gender filtering and map quick actions
+- [x] Add server-side gender preference filtering to getNearbyUsers query
+- [x] Filter nearby users based on caller's matchGenderPreference from profile
+- [x] Add battle/chat quick action buttons when tapping friend pins on map
+- [x] Tapping a friend pin shows popup with "Battle" and "Chat" buttons
+- [x] Add i18n translations for any new strings

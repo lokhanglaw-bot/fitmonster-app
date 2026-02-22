@@ -322,11 +322,10 @@ export async function upsertUserLocation(userId: number, latitude: number, longi
   }
 }
 
-export async function getNearbyUsers(userId: number, latitude: number, longitude: number, radiusKm: number = 50) {
+export async function getNearbyUsers(userId: number, latitude: number, longitude: number, radiusKm: number = 50, genderPreference: "all" | "male" | "female" = "all") {
   const db = await getDb();
   if (!db) return [];
   // Get all users sharing their location (except current user)
-  // Include users who shared location within the last 24 hours (even if isSharing toggled off briefly)
   const allLocations = await db.select({
     locationId: userLocations.id,
     userId: userLocations.userId,
@@ -338,7 +337,7 @@ export async function getNearbyUsers(userId: number, latitude: number, longitude
     sql`${userLocations.userId} != ${userId}`,
     eq(userLocations.isSharing, true)
   ));
-  console.log(`[Nearby] User ${userId} querying at (${latitude}, ${longitude}), radius ${radiusKm}km. Found ${allLocations.length} sharing users in DB.`);
+  console.log(`[Nearby] User ${userId} querying at (${latitude}, ${longitude}), radius ${radiusKm}km, genderPref: ${genderPreference}. Found ${allLocations.length} sharing users in DB.`);
 
   // Calculate distance using Haversine formula and filter by radius
   const nearbyUsers = allLocations.filter(loc => {
@@ -364,6 +363,14 @@ export async function getNearbyUsers(userId: number, latitude: number, longitude
   });
 
   return nearbyUsers;
+}
+
+// Get user's gender preference from profile
+export async function getUserGenderPreference(userId: number): Promise<"all" | "male" | "female"> {
+  const db = await getDb();
+  if (!db) return "all";
+  const result = await db.select({ matchGenderPreference: profiles.matchGenderPreference }).from(profiles).where(eq(profiles.userId, userId)).limit(1);
+  return (result[0]?.matchGenderPreference as "all" | "male" | "female") || "all";
 }
 
 // Get user info with profile and active monster for nearby display

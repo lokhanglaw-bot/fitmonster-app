@@ -405,10 +405,43 @@ export default function NearbyMapScreen() {
                     ...friendLocations.map((friend) => {
                       const timeInfo = getTimeAgo(friend.lastUpdated, t);
                       return {
+                        id: `friend-${friend.userId}`,
                         coordinate: { latitude: friend.latitude, longitude: friend.longitude },
                         title: `${friend.name} (${t.friend || "Friend"})`,
                         description: `${tr(`monsterType_${friend.monsterType}`) || friend.monsterType} Lv.${friend.monsterLevel} · ${timeInfo.text}`,
                         pinColor: "#22C55E",
+                        showActions: true,
+                        actions: [
+                          {
+                            label: t.mapBattle || "Battle",
+                            emoji: "⚔️",
+                            color: colors.primary,
+                            onPress: () => {
+                              router.push({
+                                pathname: "/chat",
+                                params: {
+                                  friendId: friend.userId,
+                                  friendName: friend.name,
+                                  challenge: "true",
+                                },
+                              } as any);
+                            },
+                          },
+                          {
+                            label: t.mapChat || "Chat",
+                            emoji: "💬",
+                            color: colors.success,
+                            onPress: () => {
+                              router.push({
+                                pathname: "/chat",
+                                params: {
+                                  friendId: friend.userId,
+                                  friendName: friend.name,
+                                },
+                              } as any);
+                            },
+                          },
+                        ],
                       };
                     }),
                     ...nearbyUsers
@@ -416,6 +449,7 @@ export default function NearbyMapScreen() {
                       .map((user) => {
                         const timeInfo = getTimeAgo(user.lastUpdated, t);
                         return {
+                          id: `nearby-${user.userId}`,
                           coordinate: { latitude: user.latitude, longitude: user.longitude },
                           title: user.name,
                           description: `${tr(`monsterType_${user.monsterType}`) || user.monsterType} Lv.${user.monsterLevel} · ${user.distanceKm}km · ${timeInfo.text}`,
@@ -575,7 +609,39 @@ export default function NearbyMapScreen() {
                           📍 {"distanceKm" in item && item.distanceKm > 0 ? `${item.distanceKm} km · ` : ""}{timeInfo.text}
                         </Text>
                       </View>
-                      {!isFriend && (
+                      {isFriend ? (
+                        <View style={styles.friendActions}>
+                          <TouchableOpacity
+                            style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+                            onPress={() => {
+                              router.push({
+                                pathname: "/chat",
+                                params: {
+                                  friendId: item.userId,
+                                  friendName: item.name,
+                                  challenge: "true",
+                                },
+                              } as any);
+                            }}
+                          >
+                            <Text style={styles.actionBtnText}>⚔️</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.actionBtn, { backgroundColor: colors.success }]}
+                            onPress={() => {
+                              router.push({
+                                pathname: "/chat",
+                                params: {
+                                  friendId: item.userId,
+                                  friendName: item.name,
+                                },
+                              } as any);
+                            }}
+                          >
+                            <Text style={styles.actionBtnText}>💬</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
                         <TouchableOpacity
                           style={[styles.addBtn, { backgroundColor: colors.primary }]}
                           onPress={() => handleSendRequest(item)}
@@ -713,6 +779,21 @@ const styles = StyleSheet.create({
   onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" },
   userLevel: { fontSize: 13, marginTop: 2 },
   userDistance: { fontSize: 12, marginTop: 2, fontWeight: "500" },
+  friendActions: {
+    flexDirection: "column",
+    gap: 6,
+    alignItems: "center",
+  },
+  actionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionBtnText: {
+    fontSize: 16,
+  },
   addBtn: {
     width: 36,
     height: 36,
