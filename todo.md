@@ -676,3 +676,11 @@
 - [x] Anonymous display: show "Fit Monster (gender)" + distance, no name/level/image
 - [x] Add /location.test API for 100 fake users (insert + query + delete)
 - [x] Add i18n translations for all new strings (EN + ZH)
+
+## Bug Fix - Round 57: Find Others critical bugs
+- [x] Fake user test API not working — added "Seed 100 Test Users" button to battle page and map page
+- [x] "Open Map" button doesn't show map — web shows placeholder (native shows real map)
+- [x] Random Wild Battle button not responding — fixed: removed playerMonster requirement, always creates wild opponent
+- [x] Verify fake users are inserted and queryable via location.nearby — added UI buttons to trigger insert/delete
+- [x] Added "Delete Test Users" button to clean up fake data after testing
+- [x] Fix wild battle handler — works even without any monsters in team
