@@ -322,10 +322,11 @@ export async function upsertUserLocation(userId: number, latitude: number, longi
   }
 }
 
-export async function getNearbyUsers(userId: number, latitude: number, longitude: number, radiusKm: number = 50, genderPreference: "all" | "male" | "female" = "all") {
+export async function getNearbyUsers(userId: number, latitude: number, longitude: number, radiusKm: number = 5) {
   const db = await getDb();
   if (!db) return [];
-  // Get all users sharing their location (except current user)
+  // Get all users sharing their location (except current user), filter out locations older than 1 hour
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   const allLocations = await db.select({
     locationId: userLocations.id,
     userId: userLocations.userId,
@@ -335,12 +336,13 @@ export async function getNearbyUsers(userId: number, latitude: number, longitude
     isSharing: userLocations.isSharing,
   }).from(userLocations).where(and(
     sql`${userLocations.userId} != ${userId}`,
-    eq(userLocations.isSharing, true)
+    eq(userLocations.isSharing, true),
+    sql`${userLocations.lastUpdated} > ${oneHourAgo}`
   ));
-  console.log(`[Nearby] User ${userId} querying at (${latitude}, ${longitude}), radius ${radiusKm}km, genderPref: ${genderPreference}. Found ${allLocations.length} sharing users in DB.`);
+  console.log(`[Nearby] Radius: ${radiusKm} km, found: ${allLocations.length} sharing users (within 1h) in DB for user ${userId} at (${latitude}, ${longitude})`);
 
-  // Calculate distance using Haversine formula and filter by radius
-  const nearbyUsers = allLocations.filter(loc => {
+  // Calculate distance using Haversine formula, exclude self (distance > 0.0001km), filter by radius
+  const nearbyUsers = allLocations.map(loc => {
     const R = 6371; // Earth radius in km
     const dLat = (loc.latitude - latitude) * Math.PI / 180;
     const dLon = (loc.longitude - longitude) * Math.PI / 180;
@@ -349,19 +351,13 @@ export async function getNearbyUsers(userId: number, latitude: number, longitude
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c;
-    console.log(`[Nearby] User ${loc.userId} at (${loc.latitude}, ${loc.longitude}), distance: ${distance.toFixed(2)}km, within radius: ${distance <= radiusKm}`);
-    return distance <= radiusKm;
-  }).map(loc => {
-    const R = 6371;
-    const dLat = (loc.latitude - latitude) * Math.PI / 180;
-    const dLon = (loc.longitude - longitude) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(latitude * Math.PI / 180) * Math.cos(loc.latitude * Math.PI / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return { ...loc, distanceKm: Math.round(R * c * 10) / 10 };
-  });
+    return { ...loc, distanceKm: Math.round(distance * 10) / 10, rawDistance: distance };
+  }).filter(loc => {
+    // Exclude self (distance < 0.0001 km ≈ 0.1m) and filter by radius
+    return loc.rawDistance > 0.0001 && loc.rawDistance <= radiusKm;
+  }).map(({ rawDistance, ...rest }) => rest);
 
+  console.log(`[Nearby] Radius: ${radiusKm} km, found: ${nearbyUsers.length} users within range`);
   return nearbyUsers;
 }
 
@@ -371,6 +367,21 @@ export async function getUserGenderPreference(userId: number): Promise<"all" | "
   if (!db) return "all";
   const result = await db.select({ matchGenderPreference: profiles.matchGenderPreference }).from(profiles).where(eq(profiles.userId, userId)).limit(1);
   return (result[0]?.matchGenderPreference as "all" | "male" | "female") || "all";
+}
+
+// Get user's match radius from profile
+export async function getUserMatchRadius(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 5;
+  const result = await db.select({ matchRadius: profiles.matchRadius }).from(profiles).where(eq(profiles.userId, userId)).limit(1);
+  return result[0]?.matchRadius ?? 5;
+}
+
+// Update user's match radius
+export async function updateMatchRadius(userId: number, radiusKm: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(profiles).set({ matchRadius: radiusKm }).where(eq(profiles.userId, userId));
 }
 
 // Get user info with profile and active monster for nearby display
@@ -416,15 +427,16 @@ export async function checkFriendship(userId: number, friendId: number) {
   return result[0] || null;
 }
 
-// Get friends' locations (only those who are sharing)
+// Get friends' locations (only those who are sharing, respecting hideLocation)
 export async function getFriendsLocations(userId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  // Get accepted friendships
+  // Get accepted friendships (exclude those where hideLocation is true)
   const acceptedFriendships = await db.select().from(friendships).where(and(
     sql`${friendships.userId} = ${userId} OR ${friendships.friendId} = ${userId}`,
-    eq(friendships.status, "accepted")
+    eq(friendships.status, "accepted"),
+    eq(friendships.hideLocation, false)
   ));
   
   const friendIds = acceptedFriendships.map(f => 
@@ -463,6 +475,100 @@ export async function getFriendsLocations(userId: number) {
       monsterImageUrl: info?.activeMonster?.imageUrl || null,
     };
   });
+}
+
+// Toggle hideLocation for a specific friendship
+export async function toggleFriendHideLocation(userId: number, friendId: number, hide: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // Find the friendship row (could be in either direction)
+  const result = await db.select().from(friendships).where(
+    sql`(${friendships.userId} = ${userId} AND ${friendships.friendId} = ${friendId}) OR (${friendships.userId} = ${friendId} AND ${friendships.friendId} = ${userId})`
+  ).limit(1);
+  if (result[0]) {
+    await db.update(friendships).set({ hideLocation: hide }).where(eq(friendships.id, result[0].id));
+  }
+}
+
+// Get hideLocation status for all friends
+export async function getFriendsHideStatus(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const all = await db.select().from(friendships).where(and(
+    sql`${friendships.userId} = ${userId} OR ${friendships.friendId} = ${userId}`,
+    eq(friendships.status, "accepted")
+  ));
+  return all.map(f => ({
+    friendshipId: f.id,
+    friendId: f.userId === userId ? f.friendId : f.userId,
+    hideLocation: f.hideLocation,
+  }));
+}
+
+// ============================================
+// Test Fake Users
+// ============================================
+
+export async function insertFakeUsers(centerLat: number, centerLng: number, count: number = 100) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const fakeUserIds: number[] = [];
+  for (let i = 0; i < count; i++) {
+    // Random position within ~5km radius
+    const angle = Math.random() * 2 * Math.PI;
+    const radiusKm = Math.random() * 5;
+    const dLat = (radiusKm / 111.32) * Math.cos(angle);
+    const dLng = (radiusKm / (111.32 * Math.cos(centerLat * Math.PI / 180))) * Math.sin(angle);
+    const lat = centerLat + dLat;
+    const lng = centerLng + dLng;
+    const gender = Math.random() > 0.5 ? "male" : "female";
+    const openId = `fake_test_user_${Date.now()}_${i}`;
+    
+    // Create user
+    const userResult = await db.insert(users).values({ openId, name: `FakeTrainer${i + 1}` }) as any;
+    const uid = Number(userResult.insertId);
+    fakeUserIds.push(uid);
+    
+    // Create profile
+    await db.insert(profiles).values({
+      userId: uid,
+      trainerName: `FakeTrainer${i + 1}`,
+      gender,
+      profileCompleted: true,
+    });
+    
+    // Create monster
+    const types = ["bodybuilder", "physique", "powerlifter"] as const;
+    await db.insert(monsters).values({
+      userId: uid,
+      name: `Monster${i + 1}`,
+      monsterType: types[Math.floor(Math.random() * types.length)],
+      level: Math.floor(Math.random() * 20) + 1,
+      isActive: true,
+    });
+    
+    // Create location (sharing, fresh timestamp)
+    await db.insert(userLocations).values({
+      userId: uid,
+      latitude: lat,
+      longitude: lng,
+      isSharing: true,
+    });
+  }
+  
+  return fakeUserIds;
+}
+
+export async function deleteFakeUsers(userIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  for (const uid of userIds) {
+    await db.delete(userLocations).where(eq(userLocations.userId, uid));
+    await db.delete(monsters).where(eq(monsters.userId, uid));
+    await db.delete(profiles).where(eq(profiles.userId, uid));
+    await db.delete(users).where(eq(users.id, uid));
+  }
 }
 
 // Get friends with their profile and monster info

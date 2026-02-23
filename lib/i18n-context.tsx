@@ -697,8 +697,8 @@ const en = {
   matchWithFemale: "Only Female",
   profileCompleted: "Profile setup complete!",
   gettingLocation: "Getting your location...",
-  refreshingNearby: "Refreshing nearby trainers...",
-  nearbyHint: "Make sure your friends also have the app open with location sharing enabled!",
+  refreshingNearby: "Refreshing...",
+  nearbyHint: "Try increasing your match radius or check back later!",
   enableSharingHint: "Enable location sharing and invite friends to see them here!",
   refreshNow: "Refresh Now",
   basedOnProfile: "based on your profile",
@@ -712,6 +712,14 @@ const en = {
   mapBattle: "Battle",
   mapChat: "Chat",
   tapPinForActions: "Tap a friend pin for actions",
+  matchRadiusLabel: "Match Radius",
+  hideFriendLocation: "Hide Location",
+  hideFriendLocationDesc: "Don't show this friend's location on map",
+  unknown: "Unknown",
+  now: "Now",
+  minutesAgoShort: "m ago",
+  hoursAgoShort: "h ago",
+  daysAgoShort: "d ago",
 };
 
 const zh: Translations = {
@@ -1403,8 +1411,8 @@ const zh: Translations = {
   matchWithFemale: "只配對女性",
   profileCompleted: "個人資料設定完成！",
   gettingLocation: "正在取得你的位置...",
-  refreshingNearby: "正在刷新附近的訓練師...",
-  nearbyHint: "確保你的朋友也打開了應用程式並啟用了位置分享！",
+  refreshingNearby: "重新整理中...",
+  nearbyHint: "試試增加配對半徑或稍後再來！",
   enableSharingHint: "啟用位置分享並邀請朋友，就能在這裡看到他們！",
   refreshNow: "立即刷新",
   basedOnProfile: "基於你的個人資料",
@@ -1418,6 +1426,14 @@ const zh: Translations = {
   mapBattle: "對戰",
   mapChat: "聊天",
   tapPinForActions: "點擊好友圖釘查看操作",
+  matchRadiusLabel: "配對半徑",
+  hideFriendLocation: "隱藏位置",
+  hideFriendLocationDesc: "不在地圖上顯示此好友的位置",
+  unknown: "未知",
+  now: "現在",
+  minutesAgoShort: "分前",
+  hoursAgoShort: "小時前",
+  daysAgoShort: "天前",
 };
 
 const translations: Record<Language, Translations> = { en, zh };

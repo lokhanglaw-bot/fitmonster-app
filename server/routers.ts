@@ -327,12 +327,15 @@ export const appRouter = router({
       .input(z.object({
         latitude: z.number(),
         longitude: z.number(),
-        radiusKm: z.number().default(50),
+        radiusKm: z.number().optional(),
       }))
       .query(async ({ ctx, input }) => {
+        // Use provided radius or fetch user's saved match radius
+        const radiusKm = input.radiusKm ?? await db.getUserMatchRadius(ctx.user.id);
+        console.log(`[Nearby] Radius: ${radiusKm} km, user: ${ctx.user.id}`);
         // Get the caller's gender preference
         const genderPref = await db.getUserGenderPreference(ctx.user.id);
-        const nearbyLocations = await db.getNearbyUsers(ctx.user.id, input.latitude, input.longitude, input.radiusKm);
+        const nearbyLocations = await db.getNearbyUsers(ctx.user.id, input.latitude, input.longitude, radiusKm);
         const userIds = nearbyLocations.map(l => l.userId);
         const usersInfo = await db.getUserInfoForNearby(userIds);
         
@@ -410,6 +413,50 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         await db.updateFriendship(input.friendshipId, 'blocked');
         return { success: true };
+      }),
+    toggleHideLocation: protectedProcedure
+      .input(z.object({ friendId: z.number(), hide: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.toggleFriendHideLocation(ctx.user.id, input.friendId, input.hide);
+        return { success: true };
+      }),
+    hideStatus: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getFriendsHideStatus(ctx.user.id);
+    }),
+  }),
+
+  // Match radius management
+  matchRadius: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      return { radiusKm: await db.getUserMatchRadius(ctx.user.id) };
+    }),
+    update: protectedProcedure
+      .input(z.object({ radiusKm: z.number().min(0.1).max(50) }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateMatchRadius(ctx.user.id, input.radiusKm);
+        return { success: true };
+      }),
+  }),
+
+  // Test fake users (for development/testing only)
+  testLocation: router({
+    insertFakeUsers: protectedProcedure
+      .input(z.object({
+        centerLat: z.number(),
+        centerLng: z.number(),
+        count: z.number().default(100),
+      }))
+      .mutation(async ({ input }) => {
+        const ids = await db.insertFakeUsers(input.centerLat, input.centerLng, input.count);
+        console.log(`[Test] Inserted ${ids.length} fake users around (${input.centerLat}, ${input.centerLng})`);
+        return { count: ids.length, userIds: ids };
+      }),
+    deleteFakeUsers: protectedProcedure
+      .input(z.object({ userIds: z.array(z.number()) }))
+      .mutation(async ({ input }) => {
+        await db.deleteFakeUsers(input.userIds);
+        console.log(`[Test] Deleted ${input.userIds.length} fake users`);
+        return { success: true, deleted: input.userIds.length };
       }),
   }),
 

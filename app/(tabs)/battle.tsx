@@ -83,6 +83,7 @@ type Friend = {
   gradient: readonly [string, string];
   addedAt: Date;
   gender?: "male" | "female";
+  hideLocation?: boolean;
 };
 
 // Helper to get monster image by type and stage
@@ -149,6 +150,7 @@ export default function BattleScreen() {
   const acceptMutation = trpc.friends.acceptRequest.useMutation();
   const rejectMutation = trpc.friends.rejectRequest.useMutation();
   const sendRequestMutation = trpc.friends.sendRequest.useMutation();
+  const hideLocationMutation = trpc.friends.toggleHideLocation.useMutation();
 
   // Sync real friends data from backend
   useEffect(() => {
@@ -163,6 +165,7 @@ export default function BattleScreen() {
         gradient: getGradientForType(f.monsterType || 'bodybuilder'),
         addedAt: new Date(f.createdAt || Date.now()),
         gender: f.gender || undefined,
+        hideLocation: f.hideLocation || false,
       }));
       setFriends(realFriends);
     }
@@ -237,7 +240,7 @@ export default function BattleScreen() {
 
   // Fetch nearby users from backend for match cards
   const nearbyQuery = trpc.location.nearby.useQuery(
-    { latitude: userLoc?.lat ?? 0, longitude: userLoc?.lng ?? 0, radiusKm: 50 },
+    { latitude: userLoc?.lat ?? 0, longitude: userLoc?.lng ?? 0 },
     { retry: 1, enabled: !!userLoc }
   );
   const nearbyOpponents: Opponent[] = useMemo(() => {
@@ -500,6 +503,19 @@ export default function BattleScreen() {
       router.push({ pathname: "/chat" as any, params: { friendId: String(friend.id), friendName: friend.name } });
     }
   }, [startBattle, router]);
+
+  const handleToggleHideLocation = useCallback(async (friend: Friend) => {
+    const newValue = !friend.hideLocation;
+    // Optimistic update
+    setFriends((prev) => prev.map((f) => f.id === friend.id ? { ...f, hideLocation: newValue } : f));
+    try {
+      await hideLocationMutation.mutateAsync({ friendId: friend.id, hide: newValue });
+      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      // Revert on error
+      setFriends((prev) => prev.map((f) => f.id === friend.id ? { ...f, hideLocation: !newValue } : f));
+    }
+  }, [hideLocationMutation]);
 
   return (
     <ScreenContainer>
@@ -776,6 +792,14 @@ export default function BattleScreen() {
                         >
                           <IconSymbol name="message.fill" size={18} color="#fff" />
                         </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.hideLocBtn, { backgroundColor: friend.hideLocation ? colors.error : colors.border }]}
+                          onPress={() => handleToggleHideLocation(friend)}
+                        >
+                          <Text style={{ fontSize: 12, color: friend.hideLocation ? "#fff" : colors.muted }}>
+                            {friend.hideLocation ? "📍" : "👁"}
+                          </Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
                   ))}
@@ -994,6 +1018,7 @@ const styles = StyleSheet.create({
   friendActions: { flexDirection: "row", gap: 8 },
   friendActionBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   friendActionText: { fontSize: 18 },
+  hideLocBtn: { width: 28, height: 28, borderRadius: 14, alignItems: "center" as const, justifyContent: "center" as const, marginTop: 4 },
 
   // Battle modal
   battleOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center", padding: 20 },

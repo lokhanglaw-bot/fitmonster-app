@@ -57,6 +57,7 @@ export const profiles = mysqlTable("profiles", {
   weight: float("weight"),
   bmr: float("bmr"),
   matchGenderPreference: mysqlEnum("matchGenderPreference", ["all", "male", "female"]).default("all"),
+  matchRadius: float("matchRadius").default(5).notNull(),
   profileCompleted: boolean("profileCompleted").default(false).notNull(),
   currentStreak: int("currentStreak").default(0).notNull(),
   longestStreak: int("longestStreak").default(0).notNull(),
@@ -195,6 +196,7 @@ export const friendships = mysqlTable("friendships", {
   userId: int("userId").notNull(),
   friendId: int("friendId").notNull(),
   status: mysqlEnum("status", ["pending", "accepted", "blocked"]).default("pending").notNull(),
+  hideLocation: boolean("hideLocation").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

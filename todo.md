@@ -658,3 +658,21 @@
 
 ## Change - Round 55: Walking Master quest step count
 - [x] Change Walking Master daily step requirement from 5000 to 20000
+
+## Feature - Round 56: Find Others Major Overhaul
+- [x] Fix radius bug: unify to km (nearby-map default 5km, battle default 5km)
+- [x] Add frontend log: console.log("Radius: " + radius + " km")
+- [x] Add backend log: console.log("[Nearby] Radius: " + radiusKm + " km, found: " + results.length)
+- [x] Backend Haversine: filter distance > 0.0001 km to exclude self
+- [x] Add match_radius field to profiles table (decimal, default 5)
+- [x] Add radius slider UI (0.1-50km, step 0.5, default 5km) to nearby-map and battle
+- [x] Save match_radius to backend on slider change
+- [x] Add background location update every 15 min via expo-task-manager
+- [x] Configure app.config.ts for background location plugins
+- [x] Backend: filter locations older than 1 hour in getNearbyUsers
+- [x] Exclude friends from map markers (no friend pins)
+- [x] Add "Hide Friend Location" switch per friend in friends list
+- [x] Add hide_location field to friendships table
+- [x] Anonymous display: show "Fit Monster (gender)" + distance, no name/level/image
+- [x] Add /location.test API for 100 fake users (insert + query + delete)
+- [x] Add i18n translations for all new strings (EN + ZH)

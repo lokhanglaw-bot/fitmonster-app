@@ -36,6 +36,13 @@
       "when": 1771642503150,
       "tag": "0004_slow_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1771816347549,
+      "tag": "0005_rare_mongu",
+      "breakpoints": true
     }
   ]
 }
