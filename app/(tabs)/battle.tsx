@@ -154,6 +154,7 @@ export default function BattleScreen() {
   const rejectMutation = trpc.friends.rejectRequest.useMutation();
   const sendRequestMutation = trpc.friends.sendRequest.useMutation();
   const hideLocationMutation = trpc.friends.toggleHideLocation.useMutation();
+  const conversationsQuery = trpc.chat.conversations.useQuery(undefined, { retry: 1, refetchInterval: 15000 });
 
 
   // Sync real friends data from backend
@@ -849,6 +850,16 @@ export default function BattleScreen() {
                           onPress={() => handleFriendAction(friend, "chat")}
                         >
                           <IconSymbol name="message.fill" size={18} color="#fff" />
+                          {(() => {
+                            const conv = conversationsQuery.data?.find((c: any) => c.partnerId === friend.id);
+                            const unread = conv?.unreadCount || 0;
+                            if (unread > 0) return (
+                              <View style={styles.unreadBadge}>
+                                <Text style={styles.unreadBadgeText}>{unread > 99 ? '99+' : unread}</Text>
+                              </View>
+                            );
+                            return null;
+                          })()}
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={[styles.hideLocBtn, { backgroundColor: friend.hideLocation ? colors.error : colors.border }]}
@@ -1114,4 +1125,21 @@ const styles = StyleSheet.create({
   mapLinkBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, marginTop: 8 },
   mapLinkText: { color: "#fff", fontSize: 14, fontWeight: "700" },
   genderIcon: { fontSize: 16, marginLeft: 4 },
+  unreadBadge: {
+    position: "absolute" as const,
+    top: -6,
+    right: -6,
+    backgroundColor: "#EF4444",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    paddingHorizontal: 4,
+  },
+  unreadBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700" as const,
+  },
 });

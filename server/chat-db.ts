@@ -17,7 +17,7 @@ export async function saveMessage(input: SaveMessageInput) {
     senderId: input.senderId,
     receiverId: input.receiverId,
     message: input.message,
-    messageType: (input.messageType || "text") as "text" | "image" | "system",
+    messageType: (input.messageType || "text") as "text" | "image" | "audio" | "system",
   }) as any;
 
   const id = Number(result.insertId ?? result[0]?.insertId);

@@ -48,6 +48,10 @@ const MAPPING = {
   "arrow.clockwise": "refresh",
   "face.smiling": "emoji-emotions",
   "photo.on.rectangle": "photo-library",
+  "mic.fill": "mic",
+  "stop.fill": "stop",
+  "camera": "camera-alt",
+  "waveform": "graphic-eq",
 } as IconMapping;
 
 /**

@@ -219,7 +219,7 @@ export const chatMessages = mysqlTable("chatMessages", {
   senderId: int("senderId").notNull(),
   receiverId: int("receiverId").notNull(),
   message: text("message").notNull(),
-  messageType: mysqlEnum("messageType", ["text", "image", "system"]).default("text").notNull(),
+  messageType: mysqlEnum("messageType", ["text", "image", "audio", "system"]).default("text").notNull(),
   isRead: boolean("isRead").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

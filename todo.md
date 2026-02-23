@@ -710,3 +710,8 @@
 - [x] Feature 2: Send image in chat (pick from gallery, upload to server, display as image bubble)
 - [x] Feature 3: Update WebSocket and chat DB to support image message type
 - [x] Feature 4: Image preview/zoom when tapping sent images in chat
+
+## Feature - Round 62: Chat Enhancements II
+- [x] Feature 1: Unread message badge on friend list in Battle page (show count per friend)
+- [x] Feature 2: Take photo and send directly in chat (camera capture + upload)
+- [x] Feature 3: Voice messages in chat (long-press record, send audio, playback with waveform)

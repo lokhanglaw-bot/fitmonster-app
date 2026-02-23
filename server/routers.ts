@@ -581,6 +581,17 @@ export const appRouter = router({
         const { url } = await storagePut(key, buffer, mimeType);
         return { url };
       }),
+    uploadAudio: protectedProcedure
+      .input(z.object({
+        base64: z.string(),
+        duration: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const key = `chat-audio/${ctx.user.id}/${Date.now()}.m4a`;
+        const buffer = Buffer.from(input.base64, "base64");
+        const { url } = await storagePut(key, buffer, "audio/mp4");
+        return { url, duration: input.duration || 0 };
+      }),
   }),
 
   dailyStats: router({

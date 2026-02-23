@@ -11,9 +11,12 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
+  ActionSheetIOS,
+  Animated as RNAnimated,
 } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -52,13 +55,22 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [playingAudioId, setPlayingAudioId] = useState<number | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
+  const recorderRef = useRef<any>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioPlayerRef = useRef<any>(null);
+  const pulseAnim = useRef(new RNAnimated.Value(1)).current;
 
   const { status, send, on } = useWebSocket(myId);
   const uploadImageMutation = trpc.chat.uploadImage.useMutation();
+  const uploadAudioMutation = trpc.chat.uploadAudio.useMutation();
 
   // Request chat history on connect
   useEffect(() => {
@@ -132,6 +144,32 @@ export default function ChatScreen() {
     return () => sub.remove();
   }, []);
 
+  // Cleanup recording and audio player on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (audioPlayerRef.current) {
+        try { audioPlayerRef.current.remove?.(); } catch {}
+      }
+    };
+  }, []);
+
+  // Pulse animation for recording indicator
+  useEffect(() => {
+    if (isRecording) {
+      const anim = RNAnimated.loop(
+        RNAnimated.sequence([
+          RNAnimated.timing(pulseAnim, { toValue: 1.3, duration: 600, useNativeDriver: true }),
+          RNAnimated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
+      );
+      anim.start();
+      return () => anim.stop();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [isRecording, pulseAnim]);
+
   const handleSend = useCallback(() => {
     const text = inputText.trim();
     if (!text || !friendIdNum) return;
@@ -167,6 +205,49 @@ export default function ChatScreen() {
     }
   }, [showEmojiPicker]);
 
+  // Upload and send image helper
+  const uploadAndSendImage = useCallback(async (asset: ImagePicker.ImagePickerAsset) => {
+    if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+      Alert.alert(
+        (t as any).error || "Error",
+        (t as any).chatImageTooLarge || "Image too large (max 5MB)"
+      );
+      return;
+    }
+
+    if (!asset.base64) {
+      Alert.alert((t as any).error || "Error", (t as any).chatImageFailed || "Failed to send image");
+      return;
+    }
+
+    setUploadingImage(true);
+    setShowEmojiPicker(false);
+
+    try {
+      const mimeType = asset.mimeType || "image/jpeg";
+      const { url } = await uploadImageMutation.mutateAsync({
+        base64: asset.base64,
+        mimeType,
+      });
+
+      send({
+        type: "send_message",
+        receiverId: friendIdNum,
+        message: url,
+        messageType: "image",
+      });
+    } catch (err: any) {
+      console.error("[Chat] Image upload failed:", err);
+      Alert.alert(
+        (t as any).error || "Error",
+        (t as any).chatImageFailed || "Failed to send image"
+      );
+    } finally {
+      setUploadingImage(false);
+    }
+  }, [friendIdNum, send, t, uploadImageMutation]);
+
+  // Pick image from gallery
   const handlePickImage = useCallback(async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -177,51 +258,247 @@ export default function ChatScreen() {
       });
 
       if (result.canceled || !result.assets[0]) return;
+      await uploadAndSendImage(result.assets[0]);
+    } catch (err: any) {
+      console.error("[Chat] Image pick failed:", err);
+    }
+  }, [uploadAndSendImage]);
 
-      const asset = result.assets[0];
-
-      // Check file size (max 5MB)
-      if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+  // Take photo with camera
+  const handleTakePhoto = useCallback(async () => {
+    try {
+      const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
+      if (camStatus !== "granted") {
         Alert.alert(
           (t as any).error || "Error",
-          (t as any).chatImageTooLarge || "Image too large (max 5MB)"
+          (t as any).chatCameraPermission || "Camera permission required"
         );
         return;
       }
 
-      if (!asset.base64) {
-        Alert.alert((t as any).error || "Error", (t as any).chatImageFailed || "Failed to send image");
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: false,
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (result.canceled || !result.assets[0]) return;
+      await uploadAndSendImage(result.assets[0]);
+    } catch (err: any) {
+      console.error("[Chat] Camera failed:", err);
+    }
+  }, [uploadAndSendImage, t]);
+
+  // Show attachment action sheet (camera or gallery)
+  const handleAttachment = useCallback(() => {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [
+            (t as any).cancel || "Cancel",
+            (t as any).chatAttachCamera || "Take Photo",
+            (t as any).chatAttachGallery || "Choose from Gallery",
+          ],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) handleTakePhoto();
+          if (buttonIndex === 2) handlePickImage();
+        }
+      );
+    } else {
+      // Android / Web: use Alert as action sheet
+      Alert.alert(
+        (t as any).chatAttachTitle || "Send attachment",
+        undefined,
+        [
+          { text: (t as any).cancel || "Cancel", style: "cancel" },
+          { text: (t as any).chatAttachCamera || "Take Photo", onPress: handleTakePhoto },
+          { text: (t as any).chatAttachGallery || "Choose from Gallery", onPress: handlePickImage },
+        ]
+      );
+    }
+  }, [handleTakePhoto, handlePickImage, t]);
+
+  // Voice recording
+  const startRecording = useCallback(async () => {
+    if (Platform.OS === "web") {
+      Alert.alert("Info", "Voice messages are not supported on web");
+      return;
+    }
+
+    try {
+      const ExpoAudio = await import("expo-audio");
+
+      const permResult = await ExpoAudio.requestRecordingPermissionsAsync();
+      if (!permResult.granted) {
+        Alert.alert(
+          (t as any).error || "Error",
+          (t as any).chatVoicePermission || "Microphone permission required"
+        );
         return;
       }
 
-      setUploadingImage(true);
-      setShowEmojiPicker(false);
-
-      // Upload to server
-      const mimeType = asset.mimeType || "image/jpeg";
-      const { url } = await uploadImageMutation.mutateAsync({
-        base64: asset.base64,
-        mimeType,
+      await ExpoAudio.setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
       });
 
-      // Send image message via WebSocket
+      // Access AudioRecorder class from AudioModule native module
+      const AudioRecorderClass = (ExpoAudio.AudioModule as any).AudioRecorder;
+      const recorder = new AudioRecorderClass(ExpoAudio.RecordingPresets.HIGH_QUALITY);
+      recorderRef.current = recorder;
+
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+
+      setIsRecording(true);
+      setRecordingDuration(0);
+      setShowEmojiPicker(false);
+      Keyboard.dismiss();
+
+      // Start duration timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
+    } catch (err: any) {
+      console.error("[Chat] Recording start failed:", err);
+      Alert.alert((t as any).error || "Error", "Failed to start recording");
+    }
+  }, [t]);
+
+  const stopRecording = useCallback(async () => {
+    if (!recorderRef.current) return;
+
+    try {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+
+      const recorder = recorderRef.current;
+      await recorder.stop();
+      const uri = recorder.uri;
+      const duration = recordingDuration;
+
+      setIsRecording(false);
+      setRecordingDuration(0);
+
+      // Minimum 1 second
+      if (duration < 1) {
+        Alert.alert("", (t as any).chatVoiceTooShort || "Too short, hold longer");
+        try { recorder.remove?.(); } catch {}
+        recorderRef.current = null;
+        return;
+      }
+
+      setUploadingAudio(true);
+
+      // Read file as base64
+      if (!uri) {
+        setUploadingAudio(false);
+        return;
+      }
+
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Upload to server
+      const { url } = await uploadAudioMutation.mutateAsync({
+        base64,
+        duration,
+      });
+
+      // Send audio message via WebSocket
+      // Format: url|duration
       send({
         type: "send_message",
         receiverId: friendIdNum,
-        message: url,
-        messageType: "image",
+        message: `${url}|${duration}`,
+        messageType: "audio",
       });
 
-      setUploadingImage(false);
+      try { recorder.remove?.(); } catch {}
+      recorderRef.current = null;
+      setUploadingAudio(false);
     } catch (err: any) {
-      console.error("[Chat] Image upload failed:", err);
-      setUploadingImage(false);
+      console.error("[Chat] Recording stop/upload failed:", err);
+      setIsRecording(false);
+      setUploadingAudio(false);
+      setRecordingDuration(0);
       Alert.alert(
         (t as any).error || "Error",
-        (t as any).chatImageFailed || "Failed to send image"
+        (t as any).chatVoiceFailed || "Failed to send voice"
       );
     }
-  }, [friendIdNum, send, t, uploadImageMutation]);
+  }, [recordingDuration, friendIdNum, send, t, uploadAudioMutation]);
+
+  const cancelRecording = useCallback(async () => {
+    if (!recorderRef.current) return;
+    try {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      await recorderRef.current.stop();
+      try { recorderRef.current.remove?.(); } catch {}
+      recorderRef.current = null;
+    } catch {}
+    setIsRecording(false);
+    setRecordingDuration(0);
+  }, []);
+
+  // Play audio message
+  const handlePlayAudio = useCallback(async (msgId: number, audioUrl: string) => {
+    if (Platform.OS === "web") return;
+
+    try {
+      // Stop currently playing audio
+      if (audioPlayerRef.current) {
+        try {
+          audioPlayerRef.current.pause();
+          audioPlayerRef.current.remove?.();
+        } catch {}
+        audioPlayerRef.current = null;
+      }
+
+      if (playingAudioId === msgId) {
+        setPlayingAudioId(null);
+        return;
+      }
+
+      const ExpoAudioPlay = await import("expo-audio");
+      await ExpoAudioPlay.setAudioModeAsync({ playsInSilentMode: true });
+
+      const player = ExpoAudioPlay.createAudioPlayer({ uri: audioUrl });
+      audioPlayerRef.current = player;
+      setPlayingAudioId(msgId);
+
+      player.play();
+
+      // Listen for completion
+      const checkInterval = setInterval(() => {
+        if (!player.playing) {
+          clearInterval(checkInterval);
+          setPlayingAudioId(null);
+          try { player.remove?.(); } catch {}
+          audioPlayerRef.current = null;
+        }
+      }, 500);
+
+      // Safety timeout (max 5 min)
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        setPlayingAudioId(null);
+        try { player.pause(); player.remove?.(); } catch {}
+        audioPlayerRef.current = null;
+      }, 300000);
+    } catch (err: any) {
+      console.error("[Chat] Audio playback failed:", err);
+      setPlayingAudioId(null);
+    }
+  }, [playingAudioId]);
 
   const formatTime = useCallback((dateStr: string) => {
     const date = new Date(dateStr);
@@ -243,9 +520,25 @@ export default function ChatScreen() {
     return `${date.getMonth() + 1}/${date.getDate()} ${timeStr}`;
   }, [t]);
 
+  const formatDuration = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  }, []);
+
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
     const isMe = item.senderId === myId;
     const isImage = item.messageType === "image";
+    const isAudio = item.messageType === "audio";
+
+    // Parse audio message: "url|duration"
+    let audioUrl = "";
+    let audioDuration = 0;
+    if (isAudio) {
+      const parts = item.message.split("|");
+      audioUrl = parts[0] || item.message;
+      audioDuration = parseInt(parts[1] || "0", 10);
+    }
 
     return (
       <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
@@ -253,6 +546,7 @@ export default function ChatScreen() {
           style={[
             styles.msgBubble,
             isImage && styles.msgBubbleImage,
+            isAudio && styles.msgBubbleAudio,
             isMe
               ? { backgroundColor: colors.primary }
               : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
@@ -269,6 +563,42 @@ export default function ChatScreen() {
                 contentFit="cover"
                 transition={200}
               />
+            </TouchableOpacity>
+          ) : isAudio ? (
+            <TouchableOpacity
+              onPress={() => handlePlayAudio(item.id, audioUrl)}
+              activeOpacity={0.7}
+              style={styles.audioRow}
+            >
+              <View style={[styles.audioPlayBtn, { backgroundColor: isMe ? "rgba(255,255,255,0.2)" : colors.primary + "20" }]}>
+                <IconSymbol
+                  name={playingAudioId === item.id ? "pause.fill" : "play.fill"}
+                  size={20}
+                  color={isMe ? "#fff" : colors.primary}
+                />
+              </View>
+              <View style={styles.audioWaveContainer}>
+                {/* Simple waveform visualization */}
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const height = 8 + Math.sin(i * 0.8 + item.id) * 8;
+                  return (
+                    <View
+                      key={i}
+                      style={[
+                        styles.audioWaveBar,
+                        {
+                          height,
+                          backgroundColor: isMe ? "rgba(255,255,255,0.5)" : colors.primary + "60",
+                          opacity: playingAudioId === item.id ? 1 : 0.6,
+                        },
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+              <Text style={[styles.audioDuration, { color: isMe ? "rgba(255,255,255,0.7)" : colors.muted }]}>
+                {formatDuration(audioDuration)}
+              </Text>
             </TouchableOpacity>
           ) : (
             <Text style={[styles.msgText, { color: isMe ? "#fff" : colors.foreground }]}>
@@ -288,7 +618,7 @@ export default function ChatScreen() {
         </View>
       </View>
     );
-  }, [colors, myId, formatTime]);
+  }, [colors, myId, formatTime, formatDuration, handlePlayAudio, playingAudioId]);
 
   const renderEmpty = useCallback(() => {
     if (loading) {
@@ -372,80 +702,106 @@ export default function ChatScreen() {
         </View>
 
         {/* Uploading indicator */}
-        {uploadingImage && (
+        {(uploadingImage || uploadingAudio) && (
           <View style={[styles.uploadingBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
             <ActivityIndicator size="small" color={colors.primary} />
             <Text style={[styles.uploadingText, { color: colors.muted }]}>
-              {(t as any).chatImageSending || "Sending image..."}
+              {uploadingAudio
+                ? ((t as any).chatVoiceSending || "Sending voice...")
+                : ((t as any).chatImageSending || "Sending image...")}
             </Text>
           </View>
         )}
 
+        {/* Recording overlay */}
+        {isRecording && (
+          <View style={[styles.recordingBar, { backgroundColor: colors.error + "15", borderTopColor: colors.error + "30" }]}>
+            <RNAnimated.View style={[styles.recordingDot, { transform: [{ scale: pulseAnim }] }]} />
+            <Text style={[styles.recordingText, { color: colors.error }]}>
+              {(t as any).chatVoiceRecording || "Recording..."} {formatDuration(recordingDuration)}
+            </Text>
+            <View style={styles.recordingActions}>
+              <TouchableOpacity onPress={cancelRecording} style={[styles.recordingCancelBtn, { backgroundColor: colors.surface }]}>
+                <IconSymbol name="xmark" size={18} color={colors.error} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={stopRecording} style={[styles.recordingSendBtn, { backgroundColor: colors.primary }]}>
+                <IconSymbol name="paperplane.fill" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Input Bar */}
-        <View style={[styles.inputBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
-          {/* Emoji toggle button */}
-          <TouchableOpacity
-            onPress={toggleEmojiPicker}
-            style={styles.iconBtn}
-            activeOpacity={0.6}
-          >
-            <IconSymbol
-              name={showEmojiPicker ? "chevron.left.forwardslash.chevron.right" : "face.smiling"}
-              size={24}
-              color={showEmojiPicker ? colors.primary : colors.muted}
-            />
-          </TouchableOpacity>
+        {!isRecording && (
+          <View style={[styles.inputBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+            {/* Emoji toggle button */}
+            <TouchableOpacity
+              onPress={toggleEmojiPicker}
+              style={styles.iconBtn}
+              activeOpacity={0.6}
+            >
+              <IconSymbol
+                name={showEmojiPicker ? "chevron.left.forwardslash.chevron.right" : "face.smiling"}
+                size={24}
+                color={showEmojiPicker ? colors.primary : colors.muted}
+              />
+            </TouchableOpacity>
 
-          {/* Text input */}
-          <TextInput
-            ref={inputRef}
-            style={[
-              styles.textInput,
-              { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border },
-            ]}
-            placeholder={(t as any).chatPlaceholder || "Type a message..."}
-            placeholderTextColor={colors.muted}
-            value={inputText}
-            onChangeText={handleTyping}
-            returnKeyType="send"
-            onSubmitEditing={handleSend}
-            multiline
-            maxLength={2000}
-            onFocus={() => setShowEmojiPicker(false)}
-          />
-
-          {/* Image picker button */}
-          <TouchableOpacity
-            onPress={handlePickImage}
-            style={styles.iconBtn}
-            activeOpacity={0.6}
-            disabled={uploadingImage}
-          >
-            <IconSymbol
-              name="photo.on.rectangle"
-              size={24}
-              color={uploadingImage ? colors.border : colors.muted}
+            {/* Text input */}
+            <TextInput
+              ref={inputRef}
+              style={[
+                styles.textInput,
+                { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border },
+              ]}
+              placeholder={(t as any).chatPlaceholder || "Type a message..."}
+              placeholderTextColor={colors.muted}
+              value={inputText}
+              onChangeText={handleTyping}
+              returnKeyType="send"
+              onSubmitEditing={handleSend}
+              multiline
+              maxLength={2000}
+              onFocus={() => setShowEmojiPicker(false)}
             />
-          </TouchableOpacity>
 
-          {/* Send button */}
-          <TouchableOpacity
-            onPress={handleSend}
-            style={[
-              styles.sendBtn,
-              {
-                backgroundColor: inputText.trim() ? colors.primary : colors.surface,
-              },
-            ]}
-            disabled={!inputText.trim()}
-          >
-            <IconSymbol
-              name="paperplane.fill"
-              size={20}
-              color={inputText.trim() ? "#fff" : colors.muted}
-            />
-          </TouchableOpacity>
-        </View>
+            {/* Attachment button (camera + gallery) */}
+            <TouchableOpacity
+              onPress={handleAttachment}
+              style={styles.iconBtn}
+              activeOpacity={0.6}
+              disabled={uploadingImage}
+            >
+              <IconSymbol
+                name="camera"
+                size={24}
+                color={uploadingImage ? colors.border : colors.muted}
+              />
+            </TouchableOpacity>
+
+            {/* Mic / Send button */}
+            {inputText.trim() ? (
+              <TouchableOpacity
+                onPress={handleSend}
+                style={[styles.sendBtn, { backgroundColor: colors.primary }]}
+              >
+                <IconSymbol name="paperplane.fill" size={20} color="#fff" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={startRecording}
+                style={[styles.sendBtn, { backgroundColor: colors.surface }]}
+                disabled={uploadingAudio}
+              >
+                <IconSymbol
+                  name="mic.fill"
+                  size={22}
+                  color={uploadingAudio ? colors.border : colors.primary}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {/* Emoji Picker */}
         {showEmojiPicker && (
@@ -489,6 +845,7 @@ const styles = StyleSheet.create({
   msgRowMe: { alignItems: "flex-end" },
   msgBubble: { maxWidth: "80%", borderRadius: 16, padding: 12 },
   msgBubbleImage: { padding: 4, overflow: "hidden" },
+  msgBubbleAudio: { paddingVertical: 8, paddingHorizontal: 10 },
   msgText: { fontSize: 15, lineHeight: 22 },
   msgMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, alignSelf: "flex-end" },
   readIndicator: { fontSize: 11 },
@@ -497,6 +854,75 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 12,
+  },
+  // Audio message styles
+  audioRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    minWidth: 180,
+  },
+  audioPlayBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  audioWaveContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    height: 24,
+  },
+  audioWaveBar: {
+    width: 3,
+    borderRadius: 1.5,
+  },
+  audioDuration: {
+    fontSize: 12,
+    fontWeight: "500",
+    minWidth: 32,
+    textAlign: "right",
+  },
+  // Recording bar
+  recordingBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    gap: 10,
+  },
+  recordingDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#EF4444",
+  },
+  recordingText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  recordingActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  recordingCancelBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recordingSendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   uploadingBar: {
     flexDirection: "row",

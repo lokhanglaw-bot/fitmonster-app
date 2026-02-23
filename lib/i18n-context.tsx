@@ -746,6 +746,17 @@ const en = {
   chatPickImage: "Pick from gallery",
   chatTakePhoto: "Take photo",
   chatImageTooLarge: "Image too large (max 5MB)",
+  chatVoiceRecord: "Hold to record",
+  chatVoiceRecording: "Recording...",
+  chatVoiceRelease: "Release to send",
+  chatVoiceTooShort: "Too short, hold longer",
+  chatVoiceSending: "Sending voice...",
+  chatVoiceFailed: "Failed to send voice",
+  chatVoicePermission: "Microphone permission required",
+  chatCameraPermission: "Camera permission required",
+  chatAttachTitle: "Send attachment",
+  chatAttachCamera: "Take Photo",
+  chatAttachGallery: "Choose from Gallery",
 };
 
 const zh: Translations = {
@@ -1486,6 +1497,17 @@ const zh: Translations = {
   chatPickImage: "從相簿選擇",
   chatTakePhoto: "拍照",
   chatImageTooLarge: "圖片太大（最大 5MB）",
+  chatVoiceRecord: "按住錄音",
+  chatVoiceRecording: "錄音中...",
+  chatVoiceRelease: "鬆開發送",
+  chatVoiceTooShort: "太短了，請按久一點",
+  chatVoiceSending: "正在傳送語音...",
+  chatVoiceFailed: "語音傳送失敗",
+  chatVoicePermission: "需要麥克風權限",
+  chatCameraPermission: "需要相機權限",
+  chatAttachTitle: "傳送附件",
+  chatAttachCamera: "拍照",
+  chatAttachGallery: "從相簿選擇",
 };
 
 const translations: Record<Language, Translations> = { en, zh };
