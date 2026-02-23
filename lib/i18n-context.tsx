@@ -739,6 +739,13 @@ const en = {
   chatConnecting: "Connecting...",
   chatConnected: "Connected",
   chatDisconnected: "Disconnected",
+  chatSendImage: "Send Image",
+  chatImageSending: "Sending image...",
+  chatImageSent: "Image sent",
+  chatImageFailed: "Failed to send image",
+  chatPickImage: "Pick from gallery",
+  chatTakePhoto: "Take photo",
+  chatImageTooLarge: "Image too large (max 5MB)",
 };
 
 const zh: Translations = {
@@ -1472,6 +1479,13 @@ const zh: Translations = {
   chatConnecting: "連接中...",
   chatConnected: "已連接",
   chatDisconnected: "已斷開",
+  chatSendImage: "傳送圖片",
+  chatImageSending: "正在傳送圖片...",
+  chatImageSent: "圖片已傳送",
+  chatImageFailed: "圖片傳送失敗",
+  chatPickImage: "從相簿選擇",
+  chatTakePhoto: "拍照",
+  chatImageTooLarge: "圖片太大（最大 5MB）",
 };
 
 const translations: Record<Language, Translations> = { en, zh };

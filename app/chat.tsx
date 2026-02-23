@@ -9,7 +9,11 @@ import {
   Platform,
   FlatList,
   ActivityIndicator,
+  Alert,
+  Keyboard,
 } from "react-native";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -18,6 +22,9 @@ import { useI18n } from "@/lib/i18n-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthContext } from "@/lib/auth-context";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { EmojiPicker } from "@/components/emoji-picker";
+import { ImagePreviewModal } from "@/components/image-preview-modal";
+import { trpc } from "@/lib/trpc";
 
 type ChatMessage = {
   id: number;
@@ -43,16 +50,20 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<TextInput>(null);
 
   const { status, send, on } = useWebSocket(myId);
+  const uploadImageMutation = trpc.chat.uploadImage.useMutation();
 
   // Request chat history on connect
   useEffect(() => {
     if (status === "connected" && friendIdNum) {
       send({ type: "get_history", friendId: friendIdNum, limit: 50 });
-      // Mark messages as read
       send({ type: "mark_read", senderId: friendIdNum });
     }
   }, [status, friendIdNum, send]);
@@ -63,7 +74,6 @@ export default function ChatScreen() {
 
     unsubs.push(on("chat_history", (msg) => {
       if (msg.friendId === friendIdNum) {
-        // History comes in desc order, reverse for display
         const history = (msg.messages as ChatMessage[]).reverse();
         setMessages(history);
         setLoading(false);
@@ -72,17 +82,14 @@ export default function ChatScreen() {
 
     unsubs.push(on("new_message", (msg) => {
       const newMsg = msg.message as ChatMessage;
-      // Only add if it's for this conversation
       if (
         (newMsg.senderId === friendIdNum && newMsg.receiverId === myId) ||
         (newMsg.senderId === myId && newMsg.receiverId === friendIdNum)
       ) {
         setMessages((prev) => {
-          // Avoid duplicates
           if (prev.some((m) => m.id === newMsg.id)) return prev;
           return [...prev, newMsg];
         });
-        // Mark as read if from friend
         if (newMsg.senderId === friendIdNum) {
           send({ type: "mark_read", senderId: friendIdNum });
         }
@@ -98,7 +105,6 @@ export default function ChatScreen() {
     }));
 
     unsubs.push(on("auth_success", () => {
-      // Re-request history after auth
       send({ type: "get_history", friendId: friendIdNum, limit: 50 });
       send({ type: "mark_read", senderId: friendIdNum });
     }));
@@ -118,6 +124,14 @@ export default function ChatScreen() {
     }
   }, [messages.length]);
 
+  // Close emoji picker when keyboard shows
+  useEffect(() => {
+    const sub = Keyboard.addListener("keyboardDidShow", () => {
+      setShowEmojiPicker(false);
+    });
+    return () => sub.remove();
+  }, []);
+
   const handleSend = useCallback(() => {
     const text = inputText.trim();
     if (!text || !friendIdNum) return;
@@ -129,6 +143,7 @@ export default function ChatScreen() {
       messageType: "text",
     });
     setInputText("");
+    setShowEmojiPicker(false);
   }, [inputText, friendIdNum, send]);
 
   const handleTyping = useCallback((text: string) => {
@@ -137,6 +152,76 @@ export default function ChatScreen() {
       send({ type: "typing", receiverId: friendIdNum });
     }
   }, [friendIdNum, send]);
+
+  const handleEmojiSelect = useCallback((emoji: string) => {
+    setInputText((prev) => prev + emoji);
+  }, []);
+
+  const toggleEmojiPicker = useCallback(() => {
+    if (showEmojiPicker) {
+      setShowEmojiPicker(false);
+      inputRef.current?.focus();
+    } else {
+      Keyboard.dismiss();
+      setTimeout(() => setShowEmojiPicker(true), 100);
+    }
+  }, [showEmojiPicker]);
+
+  const handlePickImage = useCallback(async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: false,
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (result.canceled || !result.assets[0]) return;
+
+      const asset = result.assets[0];
+
+      // Check file size (max 5MB)
+      if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+        Alert.alert(
+          (t as any).error || "Error",
+          (t as any).chatImageTooLarge || "Image too large (max 5MB)"
+        );
+        return;
+      }
+
+      if (!asset.base64) {
+        Alert.alert((t as any).error || "Error", (t as any).chatImageFailed || "Failed to send image");
+        return;
+      }
+
+      setUploadingImage(true);
+      setShowEmojiPicker(false);
+
+      // Upload to server
+      const mimeType = asset.mimeType || "image/jpeg";
+      const { url } = await uploadImageMutation.mutateAsync({
+        base64: asset.base64,
+        mimeType,
+      });
+
+      // Send image message via WebSocket
+      send({
+        type: "send_message",
+        receiverId: friendIdNum,
+        message: url,
+        messageType: "image",
+      });
+
+      setUploadingImage(false);
+    } catch (err: any) {
+      console.error("[Chat] Image upload failed:", err);
+      setUploadingImage(false);
+      Alert.alert(
+        (t as any).error || "Error",
+        (t as any).chatImageFailed || "Failed to send image"
+      );
+    }
+  }, [friendIdNum, send, t, uploadImageMutation]);
 
   const formatTime = useCallback((dateStr: string) => {
     const date = new Date(dateStr);
@@ -160,22 +245,41 @@ export default function ChatScreen() {
 
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
     const isMe = item.senderId === myId;
+    const isImage = item.messageType === "image";
+
     return (
       <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
         <View
           style={[
             styles.msgBubble,
+            isImage && styles.msgBubbleImage,
             isMe
               ? { backgroundColor: colors.primary }
               : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
           ]}
         >
-          <Text style={[styles.msgText, { color: isMe ? "#fff" : colors.foreground }]}>
-            {item.message}
-          </Text>
+          {isImage ? (
+            <TouchableOpacity
+              onPress={() => setPreviewImage(item.message)}
+              activeOpacity={0.85}
+            >
+              <Image
+                source={{ uri: item.message }}
+                style={styles.chatImage}
+                contentFit="cover"
+                transition={200}
+              />
+            </TouchableOpacity>
+          ) : (
+            <Text style={[styles.msgText, { color: isMe ? "#fff" : colors.foreground }]}>
+              {item.message}
+            </Text>
+          )}
           <View style={styles.msgMeta}>
             {isMe && item.isRead && (
-              <Text style={[styles.readIndicator, { color: "rgba(255,255,255,0.6)" }]}>✓✓</Text>
+              <Text style={[styles.readIndicator, { color: isMe ? "rgba(255,255,255,0.6)" : colors.muted }]}>
+                ✓✓
+              </Text>
             )}
             <Text style={[styles.msgTime, { color: isMe ? "rgba(255,255,255,0.6)" : colors.muted }]}>
               {formatTime(item.createdAt)}
@@ -267,9 +371,34 @@ export default function ChatScreen() {
           />
         </View>
 
+        {/* Uploading indicator */}
+        {uploadingImage && (
+          <View style={[styles.uploadingBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[styles.uploadingText, { color: colors.muted }]}>
+              {(t as any).chatImageSending || "Sending image..."}
+            </Text>
+          </View>
+        )}
+
         {/* Input Bar */}
         <View style={[styles.inputBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+          {/* Emoji toggle button */}
+          <TouchableOpacity
+            onPress={toggleEmojiPicker}
+            style={styles.iconBtn}
+            activeOpacity={0.6}
+          >
+            <IconSymbol
+              name={showEmojiPicker ? "chevron.left.forwardslash.chevron.right" : "face.smiling"}
+              size={24}
+              color={showEmojiPicker ? colors.primary : colors.muted}
+            />
+          </TouchableOpacity>
+
+          {/* Text input */}
           <TextInput
+            ref={inputRef}
             style={[
               styles.textInput,
               { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border },
@@ -282,7 +411,24 @@ export default function ChatScreen() {
             onSubmitEditing={handleSend}
             multiline
             maxLength={2000}
+            onFocus={() => setShowEmojiPicker(false)}
           />
+
+          {/* Image picker button */}
+          <TouchableOpacity
+            onPress={handlePickImage}
+            style={styles.iconBtn}
+            activeOpacity={0.6}
+            disabled={uploadingImage}
+          >
+            <IconSymbol
+              name="photo.on.rectangle"
+              size={24}
+              color={uploadingImage ? colors.border : colors.muted}
+            />
+          </TouchableOpacity>
+
+          {/* Send button */}
           <TouchableOpacity
             onPress={handleSend}
             style={[
@@ -300,7 +446,22 @@ export default function ChatScreen() {
             />
           </TouchableOpacity>
         </View>
+
+        {/* Emoji Picker */}
+        {showEmojiPicker && (
+          <EmojiPicker
+            onSelect={handleEmojiSelect}
+            onClose={() => setShowEmojiPicker(false)}
+          />
+        )}
       </KeyboardAvoidingView>
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        visible={!!previewImage}
+        imageUrl={previewImage || ""}
+        onClose={() => setPreviewImage(null)}
+      />
     </ScreenContainer>
   );
 }
@@ -327,21 +488,43 @@ const styles = StyleSheet.create({
   msgRow: { alignItems: "flex-start", marginBottom: 8 },
   msgRowMe: { alignItems: "flex-end" },
   msgBubble: { maxWidth: "80%", borderRadius: 16, padding: 12 },
+  msgBubbleImage: { padding: 4, overflow: "hidden" },
   msgText: { fontSize: 15, lineHeight: 22 },
   msgMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, alignSelf: "flex-end" },
   readIndicator: { fontSize: 11 },
   msgTime: { fontSize: 11 },
-  inputBar: {
+  chatImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 12,
+  },
+  uploadingBar: {
     flexDirection: "row",
-    alignItems: "flex-end",
-    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 8,
     borderTopWidth: 1,
     gap: 8,
   },
+  uploadingText: { fontSize: 13 },
+  inputBar: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    gap: 4,
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+  },
   textInput: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 24,
     borderWidth: 1,

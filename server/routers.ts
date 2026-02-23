@@ -568,6 +568,19 @@ export const appRouter = router({
     unreadCount: protectedProcedure.query(async ({ ctx }) => {
       return { count: await chatDb.getUnreadCount(ctx.user.id) };
     }),
+    uploadImage: protectedProcedure
+      .input(z.object({
+        base64: z.string(),
+        mimeType: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const mimeType = input.mimeType || "image/jpeg";
+        const ext = mimeType.includes("png") ? "png" : "jpg";
+        const key = `chat-images/${ctx.user.id}/${Date.now()}.${ext}`;
+        const buffer = Buffer.from(input.base64, "base64");
+        const { url } = await storagePut(key, buffer, mimeType);
+        return { url };
+      }),
   }),
 
   dailyStats: router({

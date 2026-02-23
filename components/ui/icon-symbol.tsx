@@ -46,6 +46,8 @@ const MAPPING = {
   "checkmark.circle.fill": "check-circle",
   "clock.arrow.circlepath": "history",
   "arrow.clockwise": "refresh",
+  "face.smiling": "emoji-emotions",
+  "photo.on.rectangle": "photo-library",
 } as IconMapping;
 
 /**

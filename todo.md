@@ -704,3 +704,9 @@
 - [x] Feature 1: WebSocket real-time chat between friends with message persistence in database
 - [x] Feature 2: Push notifications when friend request accepted or battle invite received
 - [x] Feature 3: Remove "Seed 100 test users" button from matching page
+
+## Feature - Round 61: Chat Emoji Picker & Image Sending
+- [x] Feature 1: Emoji picker in chat input area (tap emoji icon to open grid, select to insert)
+- [x] Feature 2: Send image in chat (pick from gallery, upload to server, display as image bubble)
+- [x] Feature 3: Update WebSocket and chat DB to support image message type
+- [x] Feature 4: Image preview/zoom when tapping sent images in chat
