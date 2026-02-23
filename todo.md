@@ -684,3 +684,9 @@
 - [x] Verify fake users are inserted and queryable via location.nearby — added UI buttons to trigger insert/delete
 - [x] Added "Delete Test Users" button to clean up fake data after testing
 - [x] Fix wild battle handler — works even without any monsters in team
+
+## Bug Fix - Round 58: Critical Find Others bugs
+- [x] Fix seed test users NaN userId error — added fallback query when insertId is NaN, plus try/catch per user
+- [x] Fix seed test users "Please login (10001)" — changed testLocation to publicProcedure
+- [x] Fix two real users cannot find each other — root cause: users in different cities (HK 22.30,114.17 vs Paris 48.85,2.34 = 9600km apart); relaxed location expiry from 1h to 24h
+- [x] Verify getNearbyUsers query returns correct results — confirmed Haversine, self-exclusion, and radius filtering all work correctly

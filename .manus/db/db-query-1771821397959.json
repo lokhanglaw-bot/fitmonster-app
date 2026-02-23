@@ -1,0 +1,16 @@
+{
+  "query": "SELECT CONCAT(\n  'uid=', ul.userId, \n  ' lat=', ROUND(ul.latitude, 4), \n  ' lng=', ROUND(ul.longitude, 4), \n  ' sharing=', ul.isSharing, \n  ' updated=', ul.lastUpdated, \n  ' minsAgo=', TIMESTAMPDIFF(MINUTE, ul.lastUpdated, NOW()),\n  ' name=', COALESCE(p.trainerName, 'null'),\n  ' gender=', COALESCE(p.gender, 'null'),\n  ' pref=', COALESCE(p.matchGenderPreference, 'null'),\n  ' radius=', COALESCE(p.matchRadius, 5)\n) as info FROM userLocations ul LEFT JOIN profiles p ON p.userId = ul.userId ORDER BY ul.lastUpdated DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT CONCAT(\n  'uid=', ul.userId, \n  ' lat=', ROUND(ul.latitude, 4), \n  ' lng=', ROUND(ul.longitude, 4), \n  ' sharing=', ul.isSharing, \n  ' updated=', ul.lastUpdated, \n  ' minsAgo=', TIMESTAMPDIFF(MINUTE, ul.lastUpdated, NOW()),\n  ' name=', COALESCE(p.trainerName, 'null'),\n  ' gender=', COALESCE(p.gender, 'null'),\n  ' pref=', COALESCE(p.matchGenderPreference, 'null'),\n  ' radius=', COALESCE(p.matchRadius, 5)\n) as info FROM userLocations ul LEFT JOIN profiles p ON p.userId = ul.userId ORDER BY ul.lastUpdated DESC;",
+  "rows": [
+    {
+      "info": "uid=90001 lat=22.2977 lng=114.1716 sharing=1 updated=2026-02-23 04:29:21 minsAgo=7 name=null gender=null pref=null radius=5"
+    },
+    {
+      "info": "uid=300001 lat=48.8532 lng=2.3381 sharing=1 updated=2026-02-23 03:03:17 minsAgo=93 name=null gender=null pref=null radius=5"
+    }
+  ],
+  "messages": [],
+  "stdout": "info\nuid=90001 lat=22.2977 lng=114.1716 sharing=1 updated=2026-02-23 04:29:21 minsAgo=7 name=null gender=null pref=null radius=5\nuid=300001 lat=48.8532 lng=2.3381 sharing=1 updated=2026-02-23 03:03:17 minsAgo=93 name=null gender=null pref=null radius=5\n",
+  "stderr": "",
+  "execution_time_ms": 1805
+}

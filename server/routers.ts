@@ -440,7 +440,7 @@ export const appRouter = router({
 
   // Test fake users (for development/testing only)
   testLocation: router({
-    insertFakeUsers: protectedProcedure
+    insertFakeUsers: publicProcedure
       .input(z.object({
         centerLat: z.number(),
         centerLng: z.number(),
@@ -451,7 +451,7 @@ export const appRouter = router({
         console.log(`[Test] Inserted ${ids.length} fake users around (${input.centerLat}, ${input.centerLng})`);
         return { count: ids.length, userIds: ids };
       }),
-    deleteFakeUsers: protectedProcedure
+    deleteFakeUsers: publicProcedure
       .input(z.object({ userIds: z.array(z.number()) }))
       .mutation(async ({ input }) => {
         await db.deleteFakeUsers(input.userIds);

@@ -1,0 +1,34 @@
+{
+  "query": "SELECT ul.id, ul.userId, ul.latitude, ul.longitude, ul.isSharing, ul.lastUpdated, TIMESTAMPDIFF(MINUTE, ul.lastUpdated, NOW()) as minutesAgo, u.name, p.trainerName, p.gender FROM userLocations ul JOIN users u ON ul.userId = u.id LEFT JOIN profiles p ON p.userId = u.id ORDER BY ul.lastUpdated DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT ul.id, ul.userId, ul.latitude, ul.longitude, ul.isSharing, ul.lastUpdated, TIMESTAMPDIFF(MINUTE, ul.lastUpdated, NOW()) as minutesAgo, u.name, p.trainerName, p.gender FROM userLocations ul JOIN users u ON ul.userId = u.id LEFT JOIN profiles p ON p.userId = u.id ORDER BY ul.lastUpdated DESC;",
+  "rows": [
+    {
+      "id": "30001",
+      "userId": "300001",
+      "latitude": "48.85324",
+      "longitude": "2.3380644",
+      "isSharing": "1",
+      "lastUpdated": "2026-02-23 03:03:17",
+      "minutesAgo": "54",
+      "name": "Stephen NGAI",
+      "trainerName": "NULL",
+      "gender": "NULL"
+    },
+    {
+      "id": "1",
+      "userId": "90001",
+      "latitude": "22.302553",
+      "longitude": "114.16045",
+      "isSharing": "1",
+      "lastUpdated": "2026-02-23 02:28:17",
+      "minutesAgo": "89",
+      "name": "chenghiuching denise",
+      "trainerName": "NULL",
+      "gender": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tlatitude\tlongitude\tisSharing\tlastUpdated\tminutesAgo\tname\ttrainerName\tgender\n30001\t300001\t48.85324\t2.3380644\t1\t2026-02-23 03:03:17\t54\tStephen NGAI\tNULL\tNULL\n1\t90001\t22.302553\t114.16045\t1\t2026-02-23 02:28:17\t89\tchenghiuching denise\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1618
+}

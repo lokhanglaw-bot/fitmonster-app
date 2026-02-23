@@ -325,8 +325,8 @@ export async function upsertUserLocation(userId: number, latitude: number, longi
 export async function getNearbyUsers(userId: number, latitude: number, longitude: number, radiusKm: number = 5) {
   const db = await getDb();
   if (!db) return [];
-  // Get all users sharing their location (except current user), filter out locations older than 1 hour
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  // Get all users sharing their location (except current user), filter out locations older than 24 hours
+  const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const allLocations = await db.select({
     locationId: userLocations.id,
     userId: userLocations.userId,
@@ -337,9 +337,9 @@ export async function getNearbyUsers(userId: number, latitude: number, longitude
   }).from(userLocations).where(and(
     sql`${userLocations.userId} != ${userId}`,
     eq(userLocations.isSharing, true),
-    sql`${userLocations.lastUpdated} > ${oneHourAgo}`
+    sql`${userLocations.lastUpdated} > ${cutoffTime}`
   ));
-  console.log(`[Nearby] Radius: ${radiusKm} km, found: ${allLocations.length} sharing users (within 1h) in DB for user ${userId} at (${latitude}, ${longitude})`);
+  console.log(`[Nearby] Radius: ${radiusKm} km, found: ${allLocations.length} sharing users (within 24h) in DB for user ${userId} at (${latitude}, ${longitude})`);
 
   // Calculate distance using Haversine formula, exclude self (distance > 0.0001km), filter by radius
   const nearbyUsers = allLocations.map(loc => {
@@ -515,48 +515,93 @@ export async function insertFakeUsers(centerLat: number, centerLng: number, coun
   
   const fakeUserIds: number[] = [];
   for (let i = 0; i < count; i++) {
-    // Random position within ~5km radius
-    const angle = Math.random() * 2 * Math.PI;
-    const radiusKm = Math.random() * 5;
-    const dLat = (radiusKm / 111.32) * Math.cos(angle);
-    const dLng = (radiusKm / (111.32 * Math.cos(centerLat * Math.PI / 180))) * Math.sin(angle);
-    const lat = centerLat + dLat;
-    const lng = centerLng + dLng;
-    const gender = Math.random() > 0.5 ? "male" : "female";
-    const openId = `fake_test_user_${Date.now()}_${i}`;
-    
-    // Create user
-    const userResult = await db.insert(users).values({ openId, name: `FakeTrainer${i + 1}` }) as any;
-    const uid = Number(userResult.insertId);
-    fakeUserIds.push(uid);
-    
-    // Create profile
-    await db.insert(profiles).values({
-      userId: uid,
-      trainerName: `FakeTrainer${i + 1}`,
-      gender,
-      profileCompleted: true,
-    });
-    
-    // Create monster
-    const types = ["bodybuilder", "physique", "powerlifter"] as const;
-    await db.insert(monsters).values({
-      userId: uid,
-      name: `Monster${i + 1}`,
-      monsterType: types[Math.floor(Math.random() * types.length)],
-      level: Math.floor(Math.random() * 20) + 1,
-      isActive: true,
-    });
-    
-    // Create location (sharing, fresh timestamp)
-    await db.insert(userLocations).values({
-      userId: uid,
-      latitude: lat,
-      longitude: lng,
-      isSharing: true,
-    });
+    try {
+      // Random position within ~5km radius
+      const angle = Math.random() * 2 * Math.PI;
+      const radiusKm = Math.random() * 5;
+      const dLat = (radiusKm / 111.32) * Math.cos(angle);
+      const dLng = (radiusKm / (111.32 * Math.cos(centerLat * Math.PI / 180))) * Math.sin(angle);
+      const lat = centerLat + dLat;
+      const lng = centerLng + dLng;
+      const gender = Math.random() > 0.5 ? "male" : "female";
+      const openId = `fake_test_user_${Date.now()}_${i}`;
+      
+      // Create user - extract insertId robustly
+      const userResult = await db.insert(users).values({ openId, name: `FakeTrainer${i + 1}` }) as any;
+      // mysql2 may return insertId as result.insertId or result[0]?.insertId
+      const uid = Number(userResult.insertId ?? userResult[0]?.insertId);
+      if (isNaN(uid) || uid <= 0) {
+        console.error(`[Test] Failed to get valid userId for FakeTrainer${i + 1}, insertId:`, userResult.insertId, userResult[0]?.insertId);
+        // Fallback: query the user we just created
+        const created = await db.select({ id: users.id }).from(users).where(eq(users.openId, openId)).limit(1);
+        if (!created[0]) {
+          console.error(`[Test] Could not find user with openId ${openId}, skipping`);
+          continue;
+        }
+        const fallbackId = created[0].id;
+        fakeUserIds.push(fallbackId);
+        
+        await db.insert(profiles).values({
+          userId: fallbackId,
+          trainerName: `FakeTrainer${i + 1}`,
+          gender,
+          profileCompleted: true,
+        });
+        
+        const types = ["bodybuilder", "physique", "powerlifter"] as const;
+        await db.insert(monsters).values({
+          userId: fallbackId,
+          name: `Monster${i + 1}`,
+          monsterType: types[Math.floor(Math.random() * types.length)],
+          level: Math.floor(Math.random() * 20) + 1,
+          isActive: true,
+        });
+        
+        await db.insert(userLocations).values({
+          userId: fallbackId,
+          latitude: lat,
+          longitude: lng,
+          isSharing: true,
+          lastUpdated: new Date(),
+        });
+        continue;
+      }
+      
+      fakeUserIds.push(uid);
+      
+      // Create profile
+      await db.insert(profiles).values({
+        userId: uid,
+        trainerName: `FakeTrainer${i + 1}`,
+        gender,
+        profileCompleted: true,
+      });
+      
+      // Create monster
+      const types = ["bodybuilder", "physique", "powerlifter"] as const;
+      await db.insert(monsters).values({
+        userId: uid,
+        name: `Monster${i + 1}`,
+        monsterType: types[Math.floor(Math.random() * types.length)],
+        level: Math.floor(Math.random() * 20) + 1,
+        isActive: true,
+      });
+      
+      // Create location (sharing, fresh timestamp - explicit lastUpdated)
+      await db.insert(userLocations).values({
+        userId: uid,
+        latitude: lat,
+        longitude: lng,
+        isSharing: true,
+        lastUpdated: new Date(),
+      });
+    } catch (err: any) {
+      console.error(`[Test] Error creating fake user ${i + 1}:`, err?.message || err);
+      // Continue with next user
+    }
   }
   
+  console.log(`[Test] Successfully created ${fakeUserIds.length} fake users`);
   return fakeUserIds;
 }
 

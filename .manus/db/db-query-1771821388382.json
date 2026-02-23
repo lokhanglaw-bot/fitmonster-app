@@ -1,0 +1,36 @@
+{
+  "query": "SELECT ul.userId, ul.latitude, ul.longitude, ul.isSharing, ul.lastUpdated, NOW() as serverNow, TIMESTAMPDIFF(MINUTE, ul.lastUpdated, NOW()) as minutesAgo, p.trainerName, p.gender, p.matchGenderPreference, p.matchRadius FROM userLocations ul LEFT JOIN profiles p ON p.userId = ul.userId ORDER BY ul.lastUpdated DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT ul.userId, ul.latitude, ul.longitude, ul.isSharing, ul.lastUpdated, NOW() as serverNow, TIMESTAMPDIFF(MINUTE, ul.lastUpdated, NOW()) as minutesAgo, p.trainerName, p.gender, p.matchGenderPreference, p.matchRadius FROM userLocations ul LEFT JOIN profiles p ON p.userId = ul.userId ORDER BY ul.lastUpdated DESC;",
+  "rows": [
+    {
+      "userId": "90001",
+      "latitude": "22.297709",
+      "longitude": "114.1716",
+      "isSharing": "1",
+      "lastUpdated": "2026-02-23 04:29:21",
+      "serverNow": "2026-02-23 04:36:28",
+      "minutesAgo": "7",
+      "trainerName": "NULL",
+      "gender": "NULL",
+      "matchGenderPreference": "NULL",
+      "matchRadius": "NULL"
+    },
+    {
+      "userId": "300001",
+      "latitude": "48.85324",
+      "longitude": "2.3380644",
+      "isSharing": "1",
+      "lastUpdated": "2026-02-23 03:03:17",
+      "serverNow": "2026-02-23 04:36:28",
+      "minutesAgo": "93",
+      "trainerName": "NULL",
+      "gender": "NULL",
+      "matchGenderPreference": "NULL",
+      "matchRadius": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "userId\tlatitude\tlongitude\tisSharing\tlastUpdated\tserverNow\tminutesAgo\ttrainerName\tgender\tmatchGenderPreference\tmatchRadius\n90001\t22.297709\t114.1716\t1\t2026-02-23 04:29:21\t2026-02-23 04:36:28\t7\tNULL\tNULL\tNULL\tNULL\n300001\t48.85324\t2.3380644\t1\t2026-02-23 03:03:17\t2026-02-23 04:36:28\t93\tNULL\tNULL\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1531
+}
