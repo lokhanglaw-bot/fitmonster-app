@@ -1,0 +1,55 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "battles"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "chatMessages"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "dailyStats"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "foodLogs"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "friendships"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "matchSwipes"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "monsters"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "profiles"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "pushTokens"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "quests"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "userLocations"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "userQuests"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "users"
+    },
+    {
+      "Tables_in_DZLsNMXz8tKivpZtpPajU7": "workouts"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_DZLsNMXz8tKivpZtpPajU7\n__drizzle_migrations\nbattles\nchatMessages\ndailyStats\nfoodLogs\nfriendships\nmatchSwipes\nmonsters\nprofiles\npushTokens\nquests\nuserLocations\nuserQuests\nusers\nworkouts\n",
+  "stderr": "",
+  "execution_time_ms": 1566
+}

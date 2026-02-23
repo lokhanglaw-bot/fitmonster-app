@@ -176,6 +176,64 @@ export const appRouter = router({
         });
         return { id };
       }),
+    // Sync all monsters from client AsyncStorage to server DB
+    sync: protectedProcedure
+      .input(
+        z.object({
+          monsters: z.array(z.object({
+            name: z.string(),
+            type: z.string(),
+            level: z.number(),
+            currentHp: z.number(),
+            maxHp: z.number(),
+            currentExp: z.number(),
+            expToNextLevel: z.number(),
+            strength: z.number(),
+            defense: z.number(),
+            agility: z.number(),
+            evolutionProgress: z.number(),
+            stage: z.number(),
+            status: z.string().optional(),
+          })),
+          activeIndex: z.number(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const userId = ctx.user.id;
+        // Delete existing monsters for this user, then re-insert
+        const { getDb } = await import('./db');
+        const dbInstance = await getDb();
+        if (!dbInstance) throw new Error('Database not available');
+        const { monsters: monstersTable } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        await dbInstance.delete(monstersTable).where(eq(monstersTable.userId, userId));
+        
+        const results: number[] = [];
+        for (let i = 0; i < input.monsters.length; i++) {
+          const m = input.monsters[i];
+          const monsterType = m.type.toLowerCase() as any;
+          const validTypes = ['bodybuilder', 'physique', 'powerlifter', 'athlete', 'colossus'];
+          const id = await db.createMonster({
+            userId,
+            name: m.name,
+            monsterType: validTypes.includes(monsterType) ? monsterType : 'bodybuilder',
+            level: m.level,
+            currentHp: m.currentHp,
+            maxHp: m.maxHp,
+            currentExp: m.currentExp,
+            expToNextLevel: m.expToNextLevel,
+            strength: m.strength,
+            defense: m.defense,
+            agility: m.agility,
+            evolutionProgress: m.evolutionProgress,
+            evolutionStage: m.stage,
+            isActive: i === input.activeIndex,
+          });
+          results.push(id);
+        }
+        console.log(`[Monsters] Synced ${results.length} monsters for user ${userId}`);
+        return { count: results.length, ids: results };
+      }),
   }),
 
   workouts: router({
@@ -495,6 +553,17 @@ Always return valid JSON.`;
     sendRequest: protectedProcedure
       .input(z.object({ targetUserId: z.number() }))
       .mutation(async ({ ctx, input }) => {
+        // Verify target user exists
+        const { getDb } = await import('./db');
+        const dbInstance = await getDb();
+        if (dbInstance) {
+          const { users: usersTable } = await import('../drizzle/schema');
+          const { eq } = await import('drizzle-orm');
+          const targetUser = await dbInstance.select().from(usersTable).where(eq(usersTable.id, input.targetUserId)).limit(1);
+          if (targetUser.length === 0) {
+            return { success: false, message: 'Target user does not exist' };
+          }
+        }
         // Check if friendship already exists
         const existing = await db.checkFriendship(ctx.user.id, input.targetUserId);
         if (existing) {

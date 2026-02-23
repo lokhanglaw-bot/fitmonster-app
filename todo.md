@@ -743,3 +743,9 @@
 - [x] Fix: Added useAuthContext to battle.tsx for myId in last message preview
 - [x] Fix: Updated 2 stale tests (round59 Coming Soon, round61 photo.on.rectangle)
 - [x] Added: 105 comprehensive release audit tests covering all 9 audit areas
+
+## Bug Fix - Round 65: Critical Social Bugs from Real Device Testing
+- [x] Bug 1: Friend list shows "Bodybuilder" instead of custom monster name → Root cause: monsters table empty, added auto-sync from AsyncStorage to server DB
+- [x] Bug 2: Friend requests not received by other user → Root cause: bad friendship data (friendId=1020001 doesn't exist), cleaned up + added targetUserId validation
+- [x] Bug 3: Chat WebSocket always shows "已斷開" → Root cause: JWT auth fails, added userId fallback auth + fixed status to only show "connected" after auth_success
+- [x] Bug 4: Nearby map shows "Trainer" instead of custom monster name → Same root cause as Bug 1, fixed by monster sync

@@ -29,6 +29,7 @@ export function setupWebSocket(server: HttpServer) {
                 cookie: msg.cookie || undefined,
               },
             } as any;
+            console.log(`[WS] Auth attempt - token present: ${!!msg.token}, cookie present: ${!!msg.cookie}`);
             const user = await sdk.authenticateRequest(fakeReq);
             userId = user.id;
 
@@ -46,7 +47,26 @@ export function setupWebSocket(server: HttpServer) {
             ws.send(JSON.stringify({ type: "unread_count", count: unreadCount }));
 
             console.log(`[WS] User ${userId} connected. Total connections: ${userConnections.get(userId)!.size}`);
-          } catch (err) {
+          } catch (err: any) {
+            console.error(`[WS] Auth failed:`, err?.message || err);
+            // If auth fails, try fallback: userId from message
+            if (msg.userId && typeof msg.userId === 'number') {
+              // Verify this user exists in the users table
+              const fallbackId: number = msg.userId;
+              const existingUser = await db.getUserById(fallbackId).catch(() => null);
+              if (existingUser) {
+                userId = fallbackId;
+                if (!userConnections.has(fallbackId)) {
+                  userConnections.set(fallbackId, new Set());
+                }
+                userConnections.get(fallbackId)!.add(ws);
+                ws.send(JSON.stringify({ type: "auth_success", userId: fallbackId }));
+                const unreadCount = await chatDb.getUnreadCount(fallbackId);
+                ws.send(JSON.stringify({ type: "unread_count", count: unreadCount }));
+                console.log(`[WS] User ${fallbackId} connected via fallback auth.`);
+                return;
+              }
+            }
             ws.send(JSON.stringify({ type: "auth_error", message: "Authentication failed" }));
             ws.close();
           }

@@ -16,6 +16,7 @@ export function useWebSocket(userId: number | null) {
   const [lastMessage, setLastMessage] = useState<WSMessage | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const authFailedRef = useRef(false);
   const listenersRef = useRef<Map<string, Set<(msg: WSMessage) => void>>>(new Map());
 
   const getWsUrl = useCallback(() => {
@@ -28,6 +29,9 @@ export function useWebSocket(userId: number | null) {
 
   const connect = useCallback(async () => {
     if (!userId) return;
+    // Don't reconnect if auth has permanently failed
+    if (authFailedRef.current) return;
+
     const wsUrl = getWsUrl();
     if (!wsUrl) return;
 
@@ -44,22 +48,37 @@ export function useWebSocket(userId: number | null) {
       wsRef.current = ws;
 
       ws.onopen = async () => {
-        console.log("[WS] Connected");
-        setStatus("connected");
-        reconnectAttemptsRef.current = 0;
+        console.log("[WS] TCP connected, sending auth...");
+        // Don't set "connected" yet — wait for auth_success
 
         // Authenticate
         const token = await Auth.getSessionToken();
+        console.log("[WS] Sending auth - token present:", !!token, "userId:", userId);
         ws.send(JSON.stringify({
           type: "auth",
           token: token || undefined,
-          // On web, cookies are sent automatically
+          userId: userId || undefined,
         }));
       };
 
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data) as WSMessage;
+
+          // Handle auth responses
+          if (msg.type === "auth_success") {
+            console.log("[WS] Auth success, userId:", msg.userId);
+            setStatus("connected");
+            reconnectAttemptsRef.current = 0;
+            authFailedRef.current = false;
+          } else if (msg.type === "auth_error") {
+            console.error("[WS] Auth error:", msg.message);
+            // Don't auto-reconnect on auth failure (would loop forever)
+            authFailedRef.current = true;
+            setStatus("disconnected");
+            return;
+          }
+
           setLastMessage(msg);
 
           // Dispatch to listeners
@@ -81,6 +100,12 @@ export function useWebSocket(userId: number | null) {
         console.log("[WS] Disconnected");
         setStatus("disconnected");
         wsRef.current = null;
+
+        // Don't auto-reconnect if auth failed permanently
+        if (authFailedRef.current) {
+          console.log("[WS] Not reconnecting due to auth failure");
+          return;
+        }
 
         // Auto-reconnect with exponential backoff
         const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
@@ -134,6 +159,8 @@ export function useWebSocket(userId: number | null) {
   // Connect when userId is available
   useEffect(() => {
     if (userId) {
+      // Reset auth failure flag when userId changes (e.g., re-login)
+      authFailedRef.current = false;
       connect();
     }
     return () => {
@@ -145,6 +172,8 @@ export function useWebSocket(userId: number | null) {
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
       if (state === "active" && userId && status === "disconnected") {
+        // Reset auth failure on app foreground (user may have re-logged in)
+        authFailedRef.current = false;
         connect();
       }
     });

@@ -1,0 +1,65 @@
+{
+  "query": "SELECT * FROM users;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT * FROM users;",
+  "rows": [
+    {
+      "id": "1",
+      "openId": "k9DvnZSEkoEQuGrqThQvGs",
+      "name": "lok hang Law",
+      "email": "lokhanglaw@gmail.com",
+      "loginMethod": "google",
+      "role": "user",
+      "createdAt": "2026-02-13 07:12:51",
+      "updatedAt": "2026-02-13 07:44:36",
+      "lastSignedIn": "2026-02-13 07:44:37"
+    },
+    {
+      "id": "30029",
+      "openId": "Vi6xfTsFpQfR2ejfe4ZRTK",
+      "name": "Ken Law",
+      "email": "tym2b2nkfw@privaterelay.appleid.com",
+      "loginMethod": "apple",
+      "role": "admin",
+      "createdAt": "2026-02-13 07:52:36",
+      "updatedAt": "2026-02-23 12:27:54",
+      "lastSignedIn": "2026-02-23 12:27:53"
+    },
+    {
+      "id": "90001",
+      "openId": "5zFDAFwv7rpk82Sg8euaQu",
+      "name": "chenghiuching denise",
+      "email": "denise1112cheng@gmail.com",
+      "loginMethod": "google",
+      "role": "user",
+      "createdAt": "2026-02-18 10:16:56",
+      "updatedAt": "2026-02-23 12:18:24",
+      "lastSignedIn": "2026-02-23 12:18:25"
+    },
+    {
+      "id": "300001",
+      "openId": "jRAoJZzE59tkPjpfAY98ow",
+      "name": "Stephen NGAI",
+      "email": "stephen.ngaipl@gmail.com",
+      "loginMethod": "google",
+      "role": "user",
+      "createdAt": "2026-02-19 20:44:11",
+      "updatedAt": "2026-02-23 03:03:17",
+      "lastSignedIn": "2026-02-23 03:03:17"
+    },
+    {
+      "id": "1020101",
+      "openId": "QXsjy7UbK7eXqU7RNMSM2V",
+      "name": "NULL",
+      "email": "cherienharper@gmail.com",
+      "loginMethod": "apple",
+      "role": "user",
+      "createdAt": "2026-02-23 05:47:08",
+      "updatedAt": "2026-02-23 05:47:08",
+      "lastSignedIn": "2026-02-23 05:47:09"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\tloginMethod\trole\tcreatedAt\tupdatedAt\tlastSignedIn\n1\tk9DvnZSEkoEQuGrqThQvGs\tlok hang Law\tlokhanglaw@gmail.com\tgoogle\tuser\t2026-02-13 07:12:51\t2026-02-13 07:44:36\t2026-02-13 07:44:37\n30029\tVi6xfTsFpQfR2ejfe4ZRTK\tKen Law\ttym2b2nkfw@privaterelay.appleid.com\tapple\tadmin\t2026-02-13 07:52:36\t2026-02-23 12:27:54\t2026-02-23 12:27:53\n90001\t5zFDAFwv7rpk82Sg8euaQu\tchenghiuching denise\tdenise1112cheng@gmail.com\tgoogle\tuser\t2026-02-18 10:16:56\t2026-02-23 12:18:24\t2026-02-23 12:18:25\n300001\tjRAoJZzE59tkPjpfAY98ow\tStephen NGAI\tstephen.ngaipl@gmail.com\tgoogle\tuser\t2026-02-19 20:44:11\t2026-02-23 03:03:17\t2026-02-23 03:03:17\n1020101\tQXsjy7UbK7eXqU7RNMSM2V\tNULL\tcherienharper@gmail.com\tapple\tuser\t2026-02-23 05:47:08\t2026-02-23 05:47:08\t2026-02-23 05:47:09\n",
+  "stderr": "",
+  "execution_time_ms": 1610
+}

@@ -1,0 +1,9 @@
+{
+  "query": "SELECT m.id, m.userId, m.name, m.monsterType, m.isActive, m.level, u.name as userName FROM monsters m JOIN users u ON m.userId = u.id ORDER BY m.userId LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT m.id, m.userId, m.name, m.monsterType, m.isActive, m.level, u.name as userName FROM monsters m JOIN users u ON m.userId = u.id ORDER BY m.userId LIMIT 20;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1918
+}

@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useCallback, useEffect, useReducer, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getApiBaseUrl } from "@/constants/oauth";
+import * as Auth from "@/lib/_core/auth";
+import { Platform } from "react-native";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -438,6 +441,63 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
     const key = getStorageKey(currentUserId.current);
     AsyncStorage.setItem(key, JSON.stringify(state)).catch(() => {});
   }, [state]);
+
+  // Sync monsters to server whenever they change (for social features)
+  const lastSyncedMonstersRef = useRef<string>("");
+  useEffect(() => {
+    if (!isHydrated.current || !userId || state.monsters.length === 0) return;
+    // Only sync if monsters actually changed
+    const monstersKey = JSON.stringify(state.monsters.map(m => ({ name: m.name, type: m.type, level: m.level, stage: m.stage })));
+    if (monstersKey === lastSyncedMonstersRef.current) return;
+    lastSyncedMonstersRef.current = monstersKey;
+
+    const syncToServer = async () => {
+      try {
+        const apiBase = getApiBaseUrl();
+        if (!apiBase) return;
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (Platform.OS !== "web") {
+          const token = await Auth.getSessionToken();
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+        }
+        // Use direct fetch to avoid tRPC circular dependency
+        const body = JSON.stringify({
+          "0": {
+            json: {
+              monsters: state.monsters.map(m => ({
+                name: m.name,
+                type: m.type,
+                level: m.level,
+                currentHp: m.currentHp,
+                maxHp: m.maxHp,
+                currentExp: m.currentExp,
+                expToNextLevel: m.expToNextLevel,
+                strength: m.strength,
+                defense: m.defense,
+                agility: m.agility,
+                evolutionProgress: m.evolutionProgress,
+                stage: m.stage,
+                status: m.status || "rookie",
+              })),
+              activeIndex: state.activeMonsterIndex,
+            },
+          },
+        });
+        await fetch(`${apiBase}/api/trpc/monsters.sync`, {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body,
+        });
+        console.log("[Activity] Monsters synced to server");
+      } catch (err) {
+        console.log("[Activity] Monster sync failed (non-critical):", err);
+      }
+    };
+    // Debounce: wait 2 seconds after last change
+    const timer = setTimeout(syncToServer, 2000);
+    return () => clearTimeout(timer);
+  }, [state.monsters, state.activeMonsterIndex, userId]);
 
   const logFood = useCallback((entry: Omit<FoodLogEntry, "id" | "timestamp">) => {
     dispatch({ type: "LOG_FOOD", payload: entry });

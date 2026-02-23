@@ -1,0 +1,32 @@
+{
+  "query": "SELECT f.*, u1.name as senderName, u2.name as receiverName FROM friendships f LEFT JOIN users u1 ON f.userId = u1.id LEFT JOIN users u2 ON f.friendId = u2.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT f.*, u1.name as senderName, u2.name as receiverName FROM friendships f LEFT JOIN users u1 ON f.userId = u1.id LEFT JOIN users u2 ON f.friendId = u2.id;",
+  "rows": [
+    {
+      "id": "30001",
+      "userId": "30029",
+      "friendId": "1020001",
+      "status": "pending",
+      "createdAt": "2026-02-23 07:10:44",
+      "updatedAt": "2026-02-23 07:10:44",
+      "hideLocation": "0",
+      "senderName": "Ken Law",
+      "receiverName": "NULL"
+    },
+    {
+      "id": "1",
+      "userId": "30029",
+      "friendId": "90001",
+      "status": "accepted",
+      "createdAt": "2026-02-23 06:18:23",
+      "updatedAt": "2026-02-23 11:55:35",
+      "hideLocation": "0",
+      "senderName": "Ken Law",
+      "receiverName": "chenghiuching denise"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tfriendId\tstatus\tcreatedAt\tupdatedAt\thideLocation\tsenderName\treceiverName\n30001\t30029\t1020001\tpending\t2026-02-23 07:10:44\t2026-02-23 07:10:44\t0\tKen Law\tNULL\n1\t30029\t90001\taccepted\t2026-02-23 06:18:23\t2026-02-23 11:55:35\t0\tKen Law\tchenghiuching denise\n",
+  "stderr": "",
+  "execution_time_ms": 1606
+}
