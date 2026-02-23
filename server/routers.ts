@@ -8,7 +8,7 @@ import * as chatDb from "./chat-db";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 import { getFoodAnalysisPrompt, getFoodAnalysisUserPrompt } from "./food-prompt";
-import { sendToUser } from "./websocket";
+import { sendToUser, getOnlineStatuses } from "./websocket";
 import { sendPushNotification } from "./push-notifications";
 
 export const appRouter = router({
@@ -444,7 +444,14 @@ Always return valid JSON.`;
 
   friends: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getFriendsWithInfo(ctx.user.id);
+      const friendsInfo = await db.getFriendsWithInfo(ctx.user.id);
+      // Enrich with real-time online status from WebSocket connections
+      const friendIds = friendsInfo.map((f: any) => f.user.id);
+      const onlineMap = getOnlineStatuses(friendIds);
+      return friendsInfo.map((f: any) => ({
+        ...f,
+        isOnline: onlineMap[f.user.id] || false,
+      }));
     }),
     pendingRequests: protectedProcedure.query(async ({ ctx }) => {
       const pending = await db.getPendingFriendRequests(ctx.user.id);
@@ -575,9 +582,9 @@ Always return valid JSON.`;
       }),
   }),
 
-  // Test fake users (for development/testing only)
+  // Test fake users (for development/testing only - requires auth)
   testLocation: router({
-    insertFakeUsers: publicProcedure
+    insertFakeUsers: protectedProcedure
       .input(z.object({
         centerLat: z.number(),
         centerLng: z.number(),
@@ -588,7 +595,7 @@ Always return valid JSON.`;
         console.log(`[Test] Inserted ${ids.length} fake users around (${input.centerLat}, ${input.centerLng})`);
         return { count: ids.length, userIds: ids };
       }),
-    deleteFakeUsers: publicProcedure
+    deleteFakeUsers: protectedProcedure
       .input(z.object({ userIds: z.array(z.number()) }))
       .mutation(async ({ input }) => {
         await db.deleteFakeUsers(input.userIds);

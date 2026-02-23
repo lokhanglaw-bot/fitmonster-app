@@ -74,11 +74,13 @@ describe("Bug Fix Round 59: Privacy - Monster name display", () => {
 describe("Bug Fix Round 59: Chat - No AI auto-replies", () => {
   it("should not have AUTO_REPLIES array in chat module", async () => {
     // Read the chat.tsx file and verify AUTO_REPLIES is removed
+    // Round 60 replaced 'Coming Soon' placeholder with real WebSocket chat
     const fs = await import("fs");
     const chatContent = fs.readFileSync("app/chat.tsx", "utf-8");
     expect(chatContent).not.toContain("AUTO_REPLIES");
     expect(chatContent).not.toContain("Simulate auto-reply");
-    expect(chatContent).toContain("Coming Soon");
+    // Chat now uses real WebSocket messaging
+    expect(chatContent).toContain("useWebSocket");
   });
 });
 

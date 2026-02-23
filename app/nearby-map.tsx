@@ -605,9 +605,13 @@ export default function NearbyMapScreen() {
                       }}
                       activeOpacity={0.7}
                     >
-                      {/* Anonymous avatar */}
-                      <View style={[styles.anonAvatar, { backgroundColor: colors.primary + "20" }]}>
-                        <Text style={styles.anonEmoji}>👤</Text>
+                      {/* Monster avatar */}
+                      <View style={[styles.anonAvatar, { backgroundColor: (GRADIENT_BY_TYPE[item.monsterType] || GRADIENT_BY_TYPE.bodybuilder)[0] + "40" }]}>
+                        <Image
+                          source={getMonsterImage(item.monsterType, item.monsterStage || 1)}
+                          style={{ width: 36, height: 36 }}
+                          contentFit="contain"
+                        />
                       </View>
                       <View style={styles.userInfo}>
                         <View style={styles.userNameRow}>
@@ -616,8 +620,8 @@ export default function NearbyMapScreen() {
                           </Text>
                           {timeInfo.isOnline && <View style={styles.onlineDot} />}
                         </View>
-                        <Text style={[styles.userDistance, { color: colors.primary }]}>
-                          📍 {item.distanceKm} km · {timeInfo.text}
+                        <Text style={[styles.userDistance, { color: colors.muted }]}>
+                          {EMOJI_BY_TYPE[item.monsterType] || '💪'} Lv.{item.monsterLevel} · 📍 {item.distanceKm} km · {timeInfo.text}
                         </Text>
                       </View>
                       <TouchableOpacity

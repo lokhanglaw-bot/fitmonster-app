@@ -2,6 +2,8 @@ import { WebSocketServer, WebSocket } from "ws";
 import type { Server as HttpServer } from "http";
 import { sdk } from "./_core/sdk";
 import * as chatDb from "./chat-db";
+import { sendChatPushNotification } from "./push-notifications";
+import * as db from "./db";
 
 // Map of userId -> Set of WebSocket connections (user can have multiple devices)
 const userConnections = new Map<number, Set<WebSocket>>();
@@ -87,13 +89,26 @@ export function setupWebSocket(server: HttpServer) {
 
           // Send to receiver if online
           const receiverSockets = userConnections.get(Number(receiverId));
+          let receiverOnline = false;
           if (receiverSockets) {
             const payload = JSON.stringify(outgoing);
             receiverSockets.forEach((sock) => {
               if (sock.readyState === WebSocket.OPEN) {
                 sock.send(payload);
+                receiverOnline = true;
               }
             });
+          }
+
+          // Send push notification if receiver is offline
+          if (!receiverOnline) {
+            const senderMonster = await db.getActiveMonster(userId);
+            const senderName = senderMonster?.name || "Someone";
+            const preview = (messageType === "image") ? "📷 Photo"
+              : (messageType === "audio") ? "🎤 Voice message"
+              : message.trim().substring(0, 100);
+            sendChatPushNotification(userId, Number(receiverId), senderName, preview)
+              .catch(err => console.error("[WS] Push notification failed:", err));
           }
         }
 
@@ -203,4 +218,13 @@ export function isUserOnline(userId: number): boolean {
     if (sock.readyState === WebSocket.OPEN) return true;
   }
   return false;
+}
+
+// Get online status for multiple users
+export function getOnlineStatuses(userIds: number[]): Record<number, boolean> {
+  const result: Record<number, boolean> = {};
+  for (const uid of userIds) {
+    result[uid] = isUserOnline(uid);
+  }
+  return result;
 }

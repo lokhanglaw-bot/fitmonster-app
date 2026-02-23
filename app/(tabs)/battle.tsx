@@ -20,6 +20,7 @@ import * as Haptics from "expo-haptics";
 import { useI18n } from "@/lib/i18n-context";
 import { trpc } from "@/lib/trpc";
 import { useActivity } from "@/lib/activity-context";
+import { useAuthContext } from "@/lib/auth-context";
 import * as Location from "expo-location";
 
 // Opponent type used for battle system
@@ -138,6 +139,8 @@ export default function BattleScreen() {
   const router = useRouter();
   const { t, tr } = useI18n();
   const { state: activityState } = useActivity();
+  const { user } = useAuthContext();
+  const myId = user?.id || 0;
   const [activeTab, setActiveTab] = useState<"match" | "requests" | "friends">("match");
   const [swipesLeft, setSwipesLeft] = useState(50);
   const [currentOpponent, setCurrentOpponent] = useState(0);
@@ -169,7 +172,7 @@ export default function BattleScreen() {
         level: f.activeMonster?.level || f.monsterLevel || 1,
         monsterType: f.activeMonster?.monsterType || f.monsterType || 'bodybuilder',
         monsterImage: getMonsterImage(f.activeMonster?.monsterType || f.monsterType || 'bodybuilder', f.activeMonster?.evolutionStage || f.monsterStage || 1),
-        online: Math.random() > 0.5,
+        online: f.isOnline || false,
         gradient: getGradientForType(f.activeMonster?.monsterType || f.monsterType || 'bodybuilder'),
         addedAt: new Date(f.createdAt || Date.now()),
         gender: f.profile?.gender || f.gender || undefined,
@@ -837,6 +840,21 @@ export default function BattleScreen() {
                           {friend.online && <View style={styles.onlineDot} />}
                         </View>
                         <Text style={[styles.friendLevel, { color: colors.muted }]}>{(t as any)[friend.monsterType.toLowerCase()] || friend.monsterType} Lv.{friend.level}</Text>
+                        {(() => {
+                          const conv = conversationsQuery.data?.find((c: any) => c.partnerId === friend.id);
+                          if (conv?.lastMessage) {
+                            const msg = conv.lastMessage;
+                            const preview = msg.messageType === 'image' ? '📷 Photo'
+                              : msg.messageType === 'audio' ? '🎤 Voice'
+                              : (msg.message || '').substring(0, 30) + ((msg.message || '').length > 30 ? '...' : '');
+                            return (
+                              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }} numberOfLines={1}>
+                                {msg.senderId === myId ? `You: ${preview}` : preview}
+                              </Text>
+                            );
+                          }
+                          return null;
+                        })()}
                       </View>
                       <View style={styles.friendActions}>
                         <TouchableOpacity

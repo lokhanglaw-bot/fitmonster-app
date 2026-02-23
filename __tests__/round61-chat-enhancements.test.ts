@@ -104,7 +104,8 @@ describe("Round 61: Chat Enhancements - Emoji Picker & Image Sending", () => {
         "utf-8"
       );
       expect(content).toContain("handlePickImage");
-      expect(content).toContain("photo.on.rectangle");
+      // Round 62 merged camera + gallery into single attachment button using "camera" icon
+      expect(content).toContain("handleAttachment");
     });
 
     it("chat.tsx handles image messages in render", () => {
@@ -175,8 +176,9 @@ describe("Round 61: Chat Enhancements - Emoji Picker & Image Sending", () => {
       );
       expect(content).toContain("face.smiling");
       expect(content).toContain("emoji-emotions");
-      expect(content).toContain("photo.on.rectangle");
-      expect(content).toContain("photo-library");
+      // Round 62 replaced photo.on.rectangle with camera icon
+      expect(content).toContain("camera");
+      expect(content).toContain("camera-alt");
     });
   });
 

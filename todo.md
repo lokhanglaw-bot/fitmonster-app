@@ -722,3 +722,24 @@
 - [x] Feature 2: AI auto-calculates calories and macros from food description using server LLM
 - [x] Feature 3: Show AI-calculated nutrition results before saving
 - [x] Feature 4: One-tap save record and feed monster with EXP reward
+## Release Audit - Round 64: Social Features Full Review
+- [x] Audit 1: Matching system — swipe, like, skip, nearby count, daily limit
+- [x] Audit 2: Friend request system — send, accept, reject, persistence across app restart
+- [x] Audit 3: Friend list — display monster name, unread badge, last message preview
+- [x] Audit 4: Chat system — WebSocket connection, text messages, emoji, image send/receive, voice messages
+- [x] Audit 5: Nearby map — location sharing, nearby trainers display, map markers
+- [x] Audit 6: Push notifications — friend request/accept notifications, chat message offline push
+- [x] Audit 7: Privacy — no real names shown anywhere, only monster names
+- [x] Fix all discovered issues
+
+### Round 64 Fixes Applied:
+- [x] Fix: Friend online status used Math.random() → now uses real WebSocket connection status
+- [x] Fix: Server friends.list enriched with getOnlineStatuses() from WebSocket module
+- [x] Fix: Chat messages now trigger push notifications when receiver is offline
+- [x] Fix: testLocation API endpoints changed from publicProcedure to protectedProcedure
+- [x] Fix: Friend list now shows last message preview (text/photo/voice)
+- [x] Fix: Nearby map user cards show monster avatar instead of anonymous icon
+- [x] Fix: Nearby map user cards show monster level and type with emoji
+- [x] Fix: Added useAuthContext to battle.tsx for myId in last message preview
+- [x] Fix: Updated 2 stale tests (round59 Coming Soon, round61 photo.on.rectangle)
+- [x] Added: 105 comprehensive release audit tests covering all 9 audit areas
