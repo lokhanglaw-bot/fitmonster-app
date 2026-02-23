@@ -20,6 +20,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { markProfileCompleted, useProfileGate } from "@/components/auth-gate";
 import { PROFILE_DATA_KEY, calculateAgeFromBirthday } from "@/hooks/use-profile-data";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getApiBaseUrl } from "@/constants/oauth";
+import * as AuthModule from "@/lib/_core/auth";
 
 /**
  * Simple date picker using 3 scroll wheels (year, month, day).
@@ -262,6 +264,36 @@ export default function ProfileSetupScreen() {
         `${PROFILE_DATA_KEY}_${userKey}`,
         JSON.stringify(profileData)
       );
+
+      // Sync profile to backend DB (for social features)
+      try {
+        const apiBase = getApiBaseUrl();
+        if (apiBase) {
+          const hdrs: Record<string, string> = { "Content-Type": "application/json" };
+          if (Platform.OS !== "web") {
+            const tok = await AuthModule.getSessionToken();
+            if (tok) hdrs["Authorization"] = `Bearer ${tok}`;
+          }
+          await fetch(`${apiBase}/api/trpc/profile.setupProfile?batch=1`, {
+            method: "POST",
+            headers: hdrs,
+            credentials: "include",
+            body: JSON.stringify({
+              "0": {
+                json: {
+                  birthday,
+                  gender: gender!,
+                  height: heightNum,
+                  weight: weightNum,
+                },
+              },
+            }),
+          });
+          console.log("[ProfileSetup] Profile synced to backend");
+        }
+      } catch (syncErr) {
+        console.log("[ProfileSetup] Backend sync failed (non-critical):", syncErr);
+      }
 
       // Mark profile as completed in auth gate (persist to AsyncStorage)
       await markProfileCompleted(userKey);

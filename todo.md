@@ -749,3 +749,21 @@
 - [x] Bug 2: Friend requests not received by other user → Root cause: bad friendship data (friendId=1020001 doesn't exist), cleaned up + added targetUserId validation
 - [x] Bug 3: Chat WebSocket always shows "已斷開" → Root cause: JWT auth fails, added userId fallback auth + fixed status to only show "connected" after auth_success
 - [x] Bug 4: Nearby map shows "Trainer" instead of custom monster name → Same root cause as Bug 1, fixed by monster sync
+
+## Bug Fix - Round 66: Critical bugs still not fixed
+- [x] Bug 1: Alert shows literal "{name}" instead of monster name when sending friend request → Fixed: nearby-map now uses tr() for interpolation instead of raw t. string
+- [x] Bug 2: Friend list still shows "Bodybuilder" instead of custom monster name → Root cause: monsters table empty because sync URL missing ?batch=1. Fixed sync URL + added initial sync on app load
+- [x] Bug 3: Nearby map still shows "Trainer" instead of custom monster name → Same root cause as Bug 2. Monster sync now works correctly
+- [x] Bug 4: Friend request sent but not showing in "已發送請求" list → Root cause: monsters table empty so sentRequests returned null monster data. Fixed by ensuring monster sync works
+- [x] Bug 5: "Seed 100 Test Users" button still visible - must remove → Removed seed button and all related state/mutations from nearby-map.tsx
+- [x] Verify monsters table has data after sync → Verified: sync endpoint works with ?batch=1, tested with curl
+- [x] Verify sendRequest API actually succeeds and persists → Verified: friendship row exists in DB
+
+### Round 66 Root Cause Analysis:
+- [x] Monster sync fetch URL was missing ?batch=1 query parameter, causing tRPC to reject the batch format body
+- [x] WebSocket fallback auth had a subtle bug with Number() type conversion
+- [x] Profile data was only saved to AsyncStorage (local), never synced to backend DB profiles table
+- [x] Added profile auto-sync on app load via use-profile-data hook
+- [x] Added profile sync on profile-setup and edit-profile save
+- [x] Made setupProfile endpoint support upsert (create if not exists)
+- [x] Made updateProfileData endpoint handle missing profile gracefully

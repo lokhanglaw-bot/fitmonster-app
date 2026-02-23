@@ -48,23 +48,29 @@ export function setupWebSocket(server: HttpServer) {
 
             console.log(`[WS] User ${userId} connected. Total connections: ${userConnections.get(userId)!.size}`);
           } catch (err: any) {
-            console.error(`[WS] Auth failed:`, err?.message || err);
+            console.log(`[WS] Primary auth failed:`, err?.message || err);
             // If auth fails, try fallback: userId from message
-            if (msg.userId && typeof msg.userId === 'number') {
-              // Verify this user exists in the users table
-              const fallbackId: number = msg.userId;
-              const existingUser = await db.getUserById(fallbackId).catch(() => null);
-              if (existingUser) {
-                userId = fallbackId;
-                if (!userConnections.has(fallbackId)) {
-                  userConnections.set(fallbackId, new Set());
+            const fallbackId = msg.userId ? Number(msg.userId) : null;
+            console.log(`[WS] Trying fallback auth with userId:`, fallbackId);
+            if (fallbackId && !isNaN(fallbackId) && fallbackId > 0) {
+              try {
+                // Verify this user exists in the users table
+                const existingUser = await db.getUserById(fallbackId);
+                console.log(`[WS] Fallback user lookup result:`, existingUser ? `found (id=${existingUser.id})` : 'not found');
+                if (existingUser) {
+                  userId = fallbackId;
+                  if (!userConnections.has(fallbackId)) {
+                    userConnections.set(fallbackId, new Set());
+                  }
+                  userConnections.get(fallbackId)!.add(ws);
+                  ws.send(JSON.stringify({ type: "auth_success", userId: fallbackId }));
+                  const unreadCount = await chatDb.getUnreadCount(fallbackId);
+                  ws.send(JSON.stringify({ type: "unread_count", count: unreadCount }));
+                  console.log(`[WS] User ${fallbackId} connected via fallback auth.`);
+                  return;
                 }
-                userConnections.get(fallbackId)!.add(ws);
-                ws.send(JSON.stringify({ type: "auth_success", userId: fallbackId }));
-                const unreadCount = await chatDb.getUnreadCount(fallbackId);
-                ws.send(JSON.stringify({ type: "unread_count", count: unreadCount }));
-                console.log(`[WS] User ${fallbackId} connected via fallback auth.`);
-                return;
+              } catch (fallbackErr: any) {
+                console.error(`[WS] Fallback auth error:`, fallbackErr?.message || fallbackErr);
               }
             }
             ws.send(JSON.stringify({ type: "auth_error", message: "Authentication failed" }));

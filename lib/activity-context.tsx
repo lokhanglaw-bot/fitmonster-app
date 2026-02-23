@@ -444,12 +444,14 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
 
   // Sync monsters to server whenever they change (for social features)
   const lastSyncedMonstersRef = useRef<string>("");
+  const hasInitialSyncRef = useRef(false);
   useEffect(() => {
     if (!isHydrated.current || !userId || state.monsters.length === 0) return;
-    // Only sync if monsters actually changed
+    // Only skip sync if monsters haven't changed AND we've already done initial sync
     const monstersKey = JSON.stringify(state.monsters.map(m => ({ name: m.name, type: m.type, level: m.level, stage: m.stage })));
-    if (monstersKey === lastSyncedMonstersRef.current) return;
+    if (monstersKey === lastSyncedMonstersRef.current && hasInitialSyncRef.current) return;
     lastSyncedMonstersRef.current = monstersKey;
+    hasInitialSyncRef.current = true;
 
     const syncToServer = async () => {
       try {
@@ -483,13 +485,18 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
             },
           },
         });
-        await fetch(`${apiBase}/api/trpc/monsters.sync`, {
+        const resp = await fetch(`${apiBase}/api/trpc/monsters.sync?batch=1`, {
           method: "POST",
           headers,
           credentials: "include",
           body,
         });
-        console.log("[Activity] Monsters synced to server");
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => 'unknown');
+          console.error(`[Activity] Monster sync HTTP ${resp.status}:`, errText);
+        } else {
+          console.log("[Activity] Monsters synced to server successfully");
+        }
       } catch (err) {
         console.log("[Activity] Monster sync failed (non-critical):", err);
       }

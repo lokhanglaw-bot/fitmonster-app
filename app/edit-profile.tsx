@@ -20,6 +20,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { PROFILE_DATA_KEY, calculateAgeFromBirthday } from "@/hooks/use-profile-data";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { trpc } from "@/lib/trpc";
+import { getApiBaseUrl } from "@/constants/oauth";
+import * as AuthModule from "@/lib/_core/auth";
 
 /**
  * Simple date picker using 3 scroll columns (year, month, day).
@@ -272,6 +274,36 @@ export default function EditProfileScreen() {
         await trpcUtils.client.profile.updateMatchPreference.mutate({ matchGenderPreference: matchPref });
       } catch {
         // Non-critical, saved locally
+      }
+
+      // Sync profile to backend DB (for social features)
+      try {
+        const apiBase = getApiBaseUrl();
+        if (apiBase) {
+          const hdrs: Record<string, string> = { "Content-Type": "application/json" };
+          if (Platform.OS !== "web") {
+            const tok = await AuthModule.getSessionToken();
+            if (tok) hdrs["Authorization"] = `Bearer ${tok}`;
+          }
+          await fetch(`${apiBase}/api/trpc/profile.updateProfileData?batch=1`, {
+            method: "POST",
+            headers: hdrs,
+            credentials: "include",
+            body: JSON.stringify({
+              "0": {
+                json: {
+                  birthday,
+                  gender: gender!,
+                  height: heightNum,
+                  weight: weightNum,
+                },
+              },
+            }),
+          });
+          console.log("[EditProfile] Profile synced to backend");
+        }
+      } catch (syncErr) {
+        console.log("[EditProfile] Backend sync failed (non-critical):", syncErr);
       }
 
       // Auto-navigate back to dashboard immediately after save

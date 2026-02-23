@@ -1,0 +1,30 @@
+{
+  "query": "SELECT 'users' as tbl, COUNT(*) as cnt FROM users UNION ALL SELECT 'monsters', COUNT(*) FROM monsters UNION ALL SELECT 'profiles', COUNT(*) FROM profiles UNION ALL SELECT 'friendships', COUNT(*) FROM friendships UNION ALL SELECT 'userLocations', COUNT(*) FROM userLocations;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT 'users' as tbl, COUNT(*) as cnt FROM users UNION ALL SELECT 'monsters', COUNT(*) FROM monsters UNION ALL SELECT 'profiles', COUNT(*) FROM profiles UNION ALL SELECT 'friendships', COUNT(*) FROM friendships UNION ALL SELECT 'userLocations', COUNT(*) FROM userLocations;",
+  "rows": [
+    {
+      "tbl": "friendships",
+      "cnt": "1"
+    },
+    {
+      "tbl": "profiles",
+      "cnt": "0"
+    },
+    {
+      "tbl": "monsters",
+      "cnt": "0"
+    },
+    {
+      "tbl": "users",
+      "cnt": "5"
+    },
+    {
+      "tbl": "userLocations",
+      "cnt": "3"
+    }
+  ],
+  "messages": [],
+  "stdout": "tbl\tcnt\nfriendships\t1\nprofiles\t0\nmonsters\t0\nusers\t5\nuserLocations\t3\n",
+  "stderr": "",
+  "execution_time_ms": 1553
+}

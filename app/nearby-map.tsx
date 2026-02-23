@@ -127,10 +127,7 @@ export default function NearbyMapScreen() {
   const sendFriendRequestMutation = trpc.friends.sendRequest.useMutation();
   const matchRadiusQuery = trpc.matchRadius.get.useQuery(undefined, { retry: 1 });
   const matchRadiusMutation = trpc.matchRadius.update.useMutation();
-  const insertFakeUsersMutation = trpc.testLocation.insertFakeUsers.useMutation();
-  const deleteFakeUsersMutation = trpc.testLocation.deleteFakeUsers.useMutation();
-  const [fakeUserIds, setFakeUserIds] = useState<number[]>([]);
-  const [seedingFakes, setSeedingFakes] = useState(false);
+
 
   // Load saved radius from backend
   useEffect(() => {
@@ -323,9 +320,10 @@ export default function NearbyMapScreen() {
           [{ text: t.ok }]
         );
       } else {
+        const displayName = getAnonymousTitle(user.gender, user.distanceKm, t);
         Alert.alert(
-          t.friendRequestSentTitle || "Already Sent",
-          t.friendRequestSentMsg || "A friend request already exists with this user.",
+          t.requestAlreadySentTitle || "Already Sent",
+          tr("requestAlreadySentMsg", { name: displayName }) || "A friend request already exists with this user.",
           [{ text: t.ok }]
         );
       }
@@ -534,48 +532,7 @@ export default function NearbyMapScreen() {
                     {refreshing ? "..." : (t.refreshNow || "Refresh Now")}
                   </Text>
                 </TouchableOpacity>
-                {/* Seed test users button */}
-                <TouchableOpacity
-                  style={[styles.retryBtn, { backgroundColor: "#F59E0B", marginTop: 10 }]}
-                  onPress={async () => {
-                    if (seedingFakes) return;
-                    setSeedingFakes(true);
-                    try {
-                      const lat = userLocation?.lat ?? 22.3193;
-                      const lng = userLocation?.lng ?? 114.1694;
-                      const result = await insertFakeUsersMutation.mutateAsync({ centerLat: lat, centerLng: lng, count: 100 });
-                      setFakeUserIds(result.userIds);
-                      Alert.alert("Test Users", `Inserted ${result.count} fake users. Refresh to see them!`);
-                      nearbyQuery.refetch();
-                    } catch (err: any) {
-                      Alert.alert("Error", err?.message || "Failed to insert fake users");
-                    }
-                    setSeedingFakes(false);
-                  }}
-                >
-                  <Text style={{ color: "#fff", fontWeight: "600" }}>
-                    {seedingFakes ? "Seeding..." : "🧪 Seed 100 Test Users"}
-                  </Text>
-                </TouchableOpacity>
-                {fakeUserIds.length > 0 && (
-                  <TouchableOpacity
-                    style={[styles.retryBtn, { backgroundColor: "#EF4444", marginTop: 6 }]}
-                    onPress={async () => {
-                      try {
-                        await deleteFakeUsersMutation.mutateAsync({ userIds: fakeUserIds });
-                        setFakeUserIds([]);
-                        Alert.alert("Test Users", "Deleted all fake users.");
-                        nearbyQuery.refetch();
-                      } catch (err: any) {
-                        Alert.alert("Error", err?.message || "Failed to delete fake users");
-                      }
-                    }}
-                  >
-                    <Text style={{ color: "#fff", fontWeight: "600" }}>
-                      🗑️ Delete Test Users ({fakeUserIds.length})
-                    </Text>
-                  </TouchableOpacity>
-                )}
+
               </View>
             ) : (
               <FlatList

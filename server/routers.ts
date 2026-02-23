@@ -83,16 +83,32 @@ export const appRouter = router({
         // Calculate daily calorie goal (BMR × 1.2 for sedentary)
         const dailyCalorieGoal = Math.round(bmr * 1.2);
         
-        await db.updateProfile(ctx.user.id, {
-          age,
-          birthday: input.birthday,
-          gender: input.gender,
-          height: input.height,
-          weight: input.weight,
-          bmr,
-          dailyCalorieGoal,
-          profileCompleted: true,
-        });
+        // Upsert: create profile if it doesn't exist, update if it does
+        const existingProfile = await db.getUserProfile(ctx.user.id);
+        if (existingProfile) {
+          await db.updateProfile(ctx.user.id, {
+            age,
+            birthday: input.birthday,
+            gender: input.gender,
+            height: input.height,
+            weight: input.weight,
+            bmr,
+            dailyCalorieGoal,
+            profileCompleted: true,
+          });
+        } else {
+          await db.createProfile({
+            userId: ctx.user.id,
+            age,
+            birthday: input.birthday,
+            gender: input.gender,
+            height: input.height,
+            weight: input.weight,
+            bmr,
+            dailyCalorieGoal,
+            profileCompleted: true,
+          });
+        }
         return { success: true, bmr, dailyCalorieGoal, age };
       }),
     updateProfileData: protectedProcedure
@@ -107,7 +123,36 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         // Get current profile to merge with updates
         const currentProfile = await db.getUserProfile(ctx.user.id);
-        if (!currentProfile) throw new Error("Profile not found");
+        if (!currentProfile) {
+          // If no profile exists yet, create one with the provided data
+          if (input.birthday && input.gender && input.height && input.weight) {
+            // Redirect to setupProfile logic
+            const birthDate = new Date(input.birthday);
+            const today = new Date();
+            let ageCalc = today.getFullYear() - birthDate.getFullYear();
+            const md = today.getMonth() - birthDate.getMonth();
+            if (md < 0 || (md === 0 && today.getDate() < birthDate.getDate())) ageCalc--;
+            let bmrCalc: number;
+            if (input.gender === "male") {
+              bmrCalc = Math.round(88.362 + 13.397 * input.weight + 4.799 * input.height - 5.677 * ageCalc);
+            } else {
+              bmrCalc = Math.round(447.593 + 9.247 * input.weight + 3.098 * input.height - 4.330 * ageCalc);
+            }
+            await db.createProfile({
+              userId: ctx.user.id,
+              age: ageCalc,
+              birthday: input.birthday,
+              gender: input.gender,
+              height: input.height,
+              weight: input.weight,
+              bmr: bmrCalc,
+              dailyCalorieGoal: Math.round(bmrCalc * 1.2),
+              profileCompleted: true,
+            });
+            return { success: true, bmr: bmrCalc, dailyCalorieGoal: Math.round(bmrCalc * 1.2), age: ageCalc };
+          }
+          throw new Error("Profile not found");
+        }
         
         const birthday = input.birthday || currentProfile.birthday;
         const gender = input.gender || currentProfile.gender;
