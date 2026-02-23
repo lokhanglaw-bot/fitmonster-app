@@ -721,11 +721,24 @@ const en = {
   hoursAgoShort: "h ago",
   daysAgoShort: "d ago",
 
-  // Chat v2
+  // Chat
   chatComingSoonTitle: "Real-time Chat Coming Soon",
   chatComingSoonDesc: "Real-time messaging between trainers is under development. You can battle your friends in the meantime!",
   chatComingSoonShort: "Chat coming soon...",
   backToBattle: "Back to Battle",
+  chatPlaceholder: "Type a message...",
+  chatSend: "Send",
+  chatNoMessages: "No messages yet",
+  chatStartConversation: "Say hi to start the conversation!",
+  chatTyping: "typing...",
+  chatOnline: "Online",
+  chatOffline: "Offline",
+  chatYesterday: "Yesterday",
+  chatJustNow: "Just now",
+  chatMinutesAgo: "min ago",
+  chatConnecting: "Connecting...",
+  chatConnected: "Connected",
+  chatDisconnected: "Disconnected",
 };
 
 const zh: Translations = {
@@ -1446,6 +1459,19 @@ const zh: Translations = {
   chatComingSoonDesc: "訓練師之間的即時通訊功能正在開發中。你可以先和好友進行對戰！",
   chatComingSoonShort: "聊天即將推出...",
   backToBattle: "返回對戰",
+  chatPlaceholder: "輸入訊息...",
+  chatSend: "發送",
+  chatNoMessages: "還沒有訊息",
+  chatStartConversation: "打個招呼開始聊天吧！",
+  chatTyping: "正在輸入...",
+  chatOnline: "在線",
+  chatOffline: "離線",
+  chatYesterday: "昨天",
+  chatJustNow: "剛剛",
+  chatMinutesAgo: "分鐘前",
+  chatConnecting: "連接中...",
+  chatConnected: "已連接",
+  chatDisconnected: "已斷開",
 };
 
 const translations: Record<Language, Translations> = { en, zh };

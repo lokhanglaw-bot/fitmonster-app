@@ -154,10 +154,7 @@ export default function BattleScreen() {
   const rejectMutation = trpc.friends.rejectRequest.useMutation();
   const sendRequestMutation = trpc.friends.sendRequest.useMutation();
   const hideLocationMutation = trpc.friends.toggleHideLocation.useMutation();
-  const insertFakeUsersMutation = trpc.testLocation.insertFakeUsers.useMutation();
-  const deleteFakeUsersMutation = trpc.testLocation.deleteFakeUsers.useMutation();
-  const [fakeUserIds, setFakeUserIds] = useState<number[]>([]);
-  const [seedingFakes, setSeedingFakes] = useState(false);
+
 
   // Sync real friends data from backend
   useEffect(() => {
@@ -718,44 +715,6 @@ export default function BattleScreen() {
                     <IconSymbol name="map.fill" size={16} color="#fff" />
                     <Text style={styles.mapLinkText}>{t.openMap || "Open Map"}</Text>
                   </TouchableOpacity>
-                  {/* Seed test users button */}
-                  <TouchableOpacity
-                    style={[styles.mapLinkBtn, { backgroundColor: "#F59E0B", marginTop: 10 }]}
-                    onPress={async () => {
-                      if (seedingFakes) return;
-                      setSeedingFakes(true);
-                      try {
-                        const lat = userLoc?.lat ?? 22.3193;
-                        const lng = userLoc?.lng ?? 114.1694;
-                        const result = await insertFakeUsersMutation.mutateAsync({ centerLat: lat, centerLng: lng, count: 100 });
-                        setFakeUserIds(result.userIds);
-                        Alert.alert("Test Users", `Inserted ${result.count} fake users. Refresh to see them!`);
-                        nearbyQuery.refetch();
-                      } catch (err: any) {
-                        Alert.alert("Error", err?.message || "Failed to insert fake users");
-                      }
-                      setSeedingFakes(false);
-                    }}
-                  >
-                    <Text style={styles.mapLinkText}>{seedingFakes ? "Seeding..." : "🧪 Seed 100 Test Users"}</Text>
-                  </TouchableOpacity>
-                  {fakeUserIds.length > 0 && (
-                    <TouchableOpacity
-                      style={[styles.mapLinkBtn, { backgroundColor: "#EF4444", marginTop: 6 }]}
-                      onPress={async () => {
-                        try {
-                          await deleteFakeUsersMutation.mutateAsync({ userIds: fakeUserIds });
-                          setFakeUserIds([]);
-                          Alert.alert("Test Users", "Deleted all fake users.");
-                          nearbyQuery.refetch();
-                        } catch (err: any) {
-                          Alert.alert("Error", err?.message || "Failed to delete fake users");
-                        }
-                      }}
-                    >
-                      <Text style={styles.mapLinkText}>🗑️ Delete Test Users ({fakeUserIds.length})</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               )}
 

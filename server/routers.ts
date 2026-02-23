@@ -4,9 +4,12 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import * as chatDb from "./chat-db";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 import { getFoodAnalysisPrompt, getFoodAnalysisUserPrompt } from "./food-prompt";
+import { sendToUser } from "./websocket";
+import { sendPushNotification } from "./push-notifications";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -419,12 +422,52 @@ export const appRouter = router({
           userId: ctx.user.id,
           friendId: input.targetUserId,
         });
+        // Send real-time notification to target user
+        const senderMonster = await db.getActiveMonster(ctx.user.id);
+        const senderName = senderMonster?.name || 'A trainer';
+        sendToUser(input.targetUserId, {
+          type: 'friend_request',
+          fromUserId: ctx.user.id,
+          fromName: senderName,
+        });
+        // Send push notification
+        sendPushNotification(input.targetUserId, {
+          title: '\u{1F4E8} New Friend Request',
+          body: `${senderName} wants to be your friend!`,
+          data: { type: 'friend_request', fromUserId: ctx.user.id },
+        });
         return { success: true, id };
       }),
     acceptRequest: protectedProcedure
       .input(z.object({ friendshipId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         await db.updateFriendship(input.friendshipId, 'accepted');
+        // Find who sent the request so we can notify them
+        const friendship = await db.checkFriendship(ctx.user.id, 0); // We need the friendship row
+        // Query the friendship by id to find the sender
+        const { getDb } = await import('./db');
+        const dbInstance = await getDb();
+        if (dbInstance) {
+          const { friendships } = await import('../drizzle/schema');
+          const { eq } = await import('drizzle-orm');
+          const rows = await dbInstance.select().from(friendships).where(eq(friendships.id, input.friendshipId)).limit(1);
+          if (rows[0]) {
+            const senderId = rows[0].userId;
+            const acceptorMonster = await db.getActiveMonster(ctx.user.id);
+            const acceptorName = acceptorMonster?.name || 'A trainer';
+            sendToUser(senderId, {
+              type: 'friend_accepted',
+              fromUserId: ctx.user.id,
+              fromName: acceptorName,
+            });
+            // Send push notification to original sender
+            sendPushNotification(senderId, {
+              title: '\u{2705} Friend Request Accepted',
+              body: `${acceptorName} accepted your friend request!`,
+              data: { type: 'friend_accepted', fromUserId: ctx.user.id },
+            });
+          }
+        }
         return { success: true };
       }),
     rejectRequest: protectedProcedure
@@ -477,6 +520,54 @@ export const appRouter = router({
         console.log(`[Test] Deleted ${input.userIds.length} fake users`);
         return { success: true, deleted: input.userIds.length };
       }),
+  }),
+
+  // Push notification token management
+  pushToken: router({
+    register: protectedProcedure
+      .input(z.object({
+        token: z.string(),
+        platform: z.enum(["ios", "android", "web"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const id = await chatDb.savePushToken(ctx.user.id, input.token, input.platform);
+        return { success: true, id };
+      }),
+    remove: protectedProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        await chatDb.removePushToken(input.token);
+        return { success: true };
+      }),
+  }),
+
+  // Chat API (for REST fallback, main chat uses WebSocket)
+  chat: router({
+    history: protectedProcedure
+      .input(z.object({
+        friendId: z.number(),
+        limit: z.number().optional(),
+        before: z.string().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        return await chatDb.getChatHistory(
+          ctx.user.id,
+          input.friendId,
+          input.limit || 50,
+          input.before ? new Date(input.before) : undefined
+        );
+      }),
+    conversations: protectedProcedure.query(async ({ ctx }) => {
+      const previews = await chatDb.getConversationPreviews(ctx.user.id);
+      const unreadByFriend = await chatDb.getUnreadCountByFriend(ctx.user.id);
+      return previews.map(p => ({
+        ...p,
+        unreadCount: unreadByFriend.find(u => u.senderId === p.partnerId)?.count || 0,
+      }));
+    }),
+    unreadCount: protectedProcedure.query(async ({ ctx }) => {
+      return { count: await chatDb.getUnreadCount(ctx.user.id) };
+    }),
   }),
 
   dailyStats: router({

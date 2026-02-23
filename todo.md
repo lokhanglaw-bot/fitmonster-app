@@ -699,3 +699,8 @@
 - [x] Bug 5: Map doesn't show nearby trainers — requires location sharing toggle ON (by design, not a bug)
 - [x] Bug 6: Map/lists show user real name — changed to Monster name only everywhere
 - [x] Bug 7: Delete all FakeTrainer test users from database (all removed via SQL)
+
+## Feature - Round 60: Real-time Chat, Push Notifications, UI Cleanup
+- [x] Feature 1: WebSocket real-time chat between friends with message persistence in database
+- [x] Feature 2: Push notifications when friend request accepted or battle invite received
+- [x] Feature 3: Remove "Seed 100 test users" button from matching page

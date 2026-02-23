@@ -23,6 +23,7 @@ import { ActivityProvider } from "@/lib/activity-context";
 import { AuthProvider, useAuthContext } from "@/lib/auth-context";
 import { I18nProvider } from "@/lib/i18n-context";
 import { WorkoutTimerProvider } from "@/lib/workout-timer-context";
+import { NotificationProvider } from "@/lib/notification-provider";
 
 // Wrapper that passes userId from auth context to ActivityProvider
 function AuthenticatedActivityProvider({ children }: { children: React.ReactNode }) {
@@ -99,6 +100,7 @@ export default function RootLayout() {
           <AuthProvider>
           <AuthenticatedActivityProvider>
           <WorkoutTimerProvider>
+          <NotificationProvider>
           <AuthGate>
             {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
             {/* If a screen needs the native header, explicitly enable it and set a human title via Stack.Screen options. */}
@@ -116,6 +118,7 @@ export default function RootLayout() {
             </Stack>
             <StatusBar style="auto" />
           </AuthGate>
+          </NotificationProvider>
           </WorkoutTimerProvider>
           </AuthenticatedActivityProvider>
           </AuthProvider>

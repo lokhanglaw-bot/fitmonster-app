@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `chatMessages` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`senderId` int NOT NULL,\n\t`receiverId` int NOT NULL,\n\t`message` text NOT NULL,\n\t`messageType` enum('text','image','system') NOT NULL DEFAULT 'text',\n\t`isRead` boolean NOT NULL DEFAULT false,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `chatMessages_id` PRIMARY KEY(`id`)\n);\nCREATE TABLE IF NOT EXISTS `pushTokens` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`token` varchar(255) NOT NULL,\n\t`platform` enum('ios','android','web') NOT NULL DEFAULT 'ios',\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `pushTokens_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute CREATE TABLE IF NOT EXISTS `chatMessages` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`senderId` int NOT NULL,\n\t`receiverId` int NOT NULL,\n\t`message` text NOT NULL,\n\t`messageType` enum('text','image','system') NOT NULL DEFAULT 'text',\n\t`isRead` boolean NOT NULL DEFAULT false,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `chatMessages_id` PRIMARY KEY(`id`)\n);\nCREATE TABLE IF NOT EXISTS `pushTokens` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`token` varchar(255) NOT NULL,\n\t`platform` enum('ios','android','web') NOT NULL DEFAULT 'ios',\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `pushTokens_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1845
+}

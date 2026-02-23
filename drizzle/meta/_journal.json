@@ -43,6 +43,13 @@
       "when": 1771816347549,
       "tag": "0005_rare_mongu",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1771830474865,
+      "tag": "0006_magical_landau",
+      "breakpoints": true
     }
   ]
 }
