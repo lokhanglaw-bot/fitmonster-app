@@ -715,3 +715,10 @@
 - [x] Feature 1: Unread message badge on friend list in Battle page (show count per friend)
 - [x] Feature 2: Take photo and send directly in chat (camera capture + upload)
 - [x] Feature 3: Voice messages in chat (long-press record, send audio, playback with waveform)
+
+## Bug Fix + Feature - Round 63: Add Record Form Redesign
+- [x] Bug Fix: Keyboard blocks input fields and buttons in Add Record modal
+- [x] Feature 1: Remove manual calorie input — user only types food description (e.g. "一嚿雞胸加兩隻蛋")
+- [x] Feature 2: AI auto-calculates calories and macros from food description using server LLM
+- [x] Feature 3: Show AI-calculated nutrition results before saving
+- [x] Feature 4: One-tap save record and feed monster with EXP reward

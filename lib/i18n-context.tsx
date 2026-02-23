@@ -540,7 +540,7 @@ const en = {
   nowTraining: "{name} is now your active monster for training and battles.",
 
   // Add Record Modal
-  foodNameExample: "Food name (e.g. Grilled Chicken)",
+  foodNameExample: "Describe what you ate (e.g. chicken breast + 2 eggs)",
   exerciseNameExample: "Exercise name (e.g. Running)",
   caloriesKcalPlaceholder: "Calories (kcal)",
   durationMinPlaceholder: "Duration (minutes)",
@@ -552,6 +552,19 @@ const en = {
   statsUpdated: "Your stats have been updated.",
   refreshed: "Refreshed!",
   tasksUpdated: "AI Daily Tasks have been updated with new suggestions.",
+  aiAnalyzing: "AI Analyzing...",
+  aiAnalyze: "AI Analyze Nutrition",
+  aiAnalyzeFailed: "Analysis failed, please try again.",
+  nutritionResult: "Nutrition Result",
+  totalCalories: "Total Calories",
+  totalProtein: "Protein",
+  totalCarbs: "Carbs",
+  totalFat: "Fat",
+  saveAndFeed: "Save Record & Feed Monster",
+  pleaseDescribeFood: "Please describe what you ate.",
+  pleaseAnalyzeFirst: "Please analyze nutrition first.",
+  foodDescriptionHint: "e.g. a chicken breast and 2 eggs",
+  feedingMonster: "Feeding your monster...",
 
   // History Sub-tabs
   caloriesTab: "Calories",
@@ -1291,7 +1304,7 @@ const zh: Translations = {
   nowTraining: "{name} 現在是你的出戰怪獸，用於訓練和對戰。",
 
   // Add Record Modal
-  foodNameExample: "食物名稱（例如：烤雞胸）",
+  foodNameExample: "描述你吃了什麼（例如：一嚿雞胸加兩隻蛋）",
   exerciseNameExample: "運動名稱（例如：跑步）",
   caloriesKcalPlaceholder: "卡路里 (kcal)",
   durationMinPlaceholder: "時長（分鐘）",
@@ -1303,6 +1316,19 @@ const zh: Translations = {
   statsUpdated: "你的數據已更新。",
   refreshed: "已刷新！",
   tasksUpdated: "AI 每日任務已更新為新建議。",
+  aiAnalyzing: "AI 分析中...",
+  aiAnalyze: "AI 分析營養",
+  aiAnalyzeFailed: "分析失敗，請重試。",
+  nutritionResult: "營養分析結果",
+  totalCalories: "總熱量",
+  totalProtein: "蛋白質",
+  totalCarbs: "碳水化合物",
+  totalFat: "脂肪",
+  saveAndFeed: "儲存記錄 & 餵怪獸",
+  pleaseDescribeFood: "請描述你吃了什麼。",
+  pleaseAnalyzeFirst: "請先進行 AI 營養分析。",
+  foodDescriptionHint: "例如：一嚿雞胸加兩隻蛋",
+  feedingMonster: "正在餵你的怪獸...",
 
   // History Sub-tabs
   caloriesTab: "卡路里",

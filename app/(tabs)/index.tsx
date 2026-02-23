@@ -11,6 +11,8 @@ import {
   Modal,
   TextInput,
   FlatList,
+  KeyboardAvoidingView,
+  ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,6 +26,7 @@ import { Pedometer } from "expo-sensors";
 import { useAuth } from "@/hooks/use-auth";
 import { useActivity } from "@/lib/activity-context";
 import { useI18n } from "@/lib/i18n-context";
+import { trpc } from "@/lib/trpc";
 
 // MONSTER_TYPES is built inside the component to use i18n
 
@@ -69,7 +72,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  const { state: activity, setSteps, addRecordFood, addRecordWorkout, addMonster, setMonsters: setMonstersCtx, removeMonster, evolveMonster, checkEvolution, setActiveMonster } = useActivity();
+  const { state: activity, setSteps, logFood, addRecordFood, addRecordWorkout, addMonster, setMonsters: setMonstersCtx, removeMonster, evolveMonster, checkEvolution, setActiveMonster } = useActivity();
   const isFocused = useIsFocused();
   const { language, setLanguage, t, tr } = useI18n();
 
@@ -245,8 +248,11 @@ export default function HomeScreen() {
   const [showAddRecord, setShowAddRecord] = useState(false);
   const [recordType, setRecordType] = useState<"food" | "workout">("food");
   const [recordName, setRecordName] = useState("");
-  const [recordCalories, setRecordCalories] = useState("");
   const [recordDuration, setRecordDuration] = useState("");
+  // AI food analysis state
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const analyzeTextMutation = trpc.foodLogs.analyzeText.useMutation();
 
   // Chart data from shared activity state (weekly arrays)
   const macroData = {
@@ -344,34 +350,65 @@ export default function HomeScreen() {
   const handleAddRecord = useCallback(() => {
     setRecordType("food");
     setRecordName("");
-    setRecordCalories("");
     setRecordDuration("");
+    setAiAnalysisResult(null);
+    setIsAnalyzing(false);
     setShowAddRecord(true);
   }, []);
 
-  const handleSaveRecord = useCallback(() => {
+  const handleAiAnalyze = useCallback(async () => {
     if (!recordName.trim()) {
-      Alert.alert(t.required, t.pleaseEnterName);
+      Alert.alert(t.required, t.pleaseDescribeFood);
       return;
     }
-    if (recordType === "food" && !recordCalories.trim()) {
-      Alert.alert(t.required, t.pleaseEnterCalories);
-      return;
+    setIsAnalyzing(true);
+    setAiAnalysisResult(null);
+    try {
+      const result = await analyzeTextMutation.mutateAsync({
+        description: recordName.trim(),
+        language: language as "en" | "zh",
+      });
+      setAiAnalysisResult(result.analysis);
+    } catch (e) {
+      Alert.alert("Error", t.aiAnalyzeFailed);
+    } finally {
+      setIsAnalyzing(false);
     }
-    if (recordType === "workout" && !recordDuration.trim()) {
-      Alert.alert(t.required, t.pleaseEnterDuration);
-      return;
-    }
-    setShowAddRecord(false);
-    // Update shared activity state
+  }, [recordName, language, t]);
+
+  const handleSaveRecord = useCallback(() => {
     if (recordType === "food") {
-      addRecordFood(recordName.trim(), parseInt(recordCalories, 10) || 0);
+      if (!recordName.trim()) {
+        Alert.alert(t.required, t.pleaseDescribeFood);
+        return;
+      }
+      if (!aiAnalysisResult) {
+        Alert.alert(t.required, t.pleaseAnalyzeFirst);
+        return;
+      }
+      // Use AI analysis data for food log
+      const calories = aiAnalysisResult.totalCalories || 0;
+      const protein = aiAnalysisResult.totalProtein || 0;
+      const carbs = aiAnalysisResult.totalCarbs || 0;
+      const fat = aiAnalysisResult.totalFat || 0;
+      const exp = Math.round(calories * 0.05);
+      logFood({ name: recordName.trim(), calories, protein, carbs, fat, expEarned: exp });
+      setShowAddRecord(false);
+      Alert.alert(`${t.recordSaved} \u2705`, `${recordName}\n${calories} kcal \u2022 ${protein}g ${t.totalProtein} \u2022 ${carbs}g ${t.totalCarbs} \u2022 ${fat}g ${t.totalFat}\n${t.statsUpdated}`);
     } else {
+      if (!recordName.trim()) {
+        Alert.alert(t.required, t.pleaseEnterName);
+        return;
+      }
+      if (!recordDuration.trim()) {
+        Alert.alert(t.required, t.pleaseEnterDuration);
+        return;
+      }
       addRecordWorkout(recordName.trim(), parseInt(recordDuration, 10) || 0);
+      setShowAddRecord(false);
+      Alert.alert(`${t.recordSaved} \u2705`, `${recordName} \u2014 ${recordDuration} min\n${t.statsUpdated}`);
     }
-    const detail = recordType === "food" ? `${recordCalories} kcal` : `${recordDuration} min`;
-    Alert.alert(`${t.recordSaved} ✅`, `${recordName} — ${detail}\n${t.statsUpdated}`);
-  }, [recordType, recordName, recordCalories, recordDuration, addRecordFood, addRecordWorkout]);
+  }, [recordType, recordName, recordDuration, aiAnalysisResult, logFood, addRecordWorkout, t]);
 
   const handleRefreshTasks = useCallback(() => {
     Alert.alert(t.refreshed, t.tasksUpdated);
@@ -1107,73 +1144,138 @@ export default function HomeScreen() {
 
       {/* Add Record Modal */}
       <Modal visible={showAddRecord} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.addRecordTitle}</Text>
-              <TouchableOpacity onPress={() => setShowAddRecord(false)}>
-                <IconSymbol name="xmark" size={24} color={colors.foreground} />
-              </TouchableOpacity>
-            </View>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0}>
+          <View style={styles.modalOverlay}>
+            <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-end" }} keyboardShouldPersistTaps="handled">
+              <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.addRecordTitle}</Text>
+                  <TouchableOpacity onPress={() => setShowAddRecord(false)}>
+                    <IconSymbol name="xmark" size={24} color={colors.foreground} />
+                  </TouchableOpacity>
+                </View>
 
-            {/* Record Type Toggle */}
-            <View style={[styles.toggleRow, { backgroundColor: colors.surface }]}>
-              <TouchableOpacity
-                style={[styles.toggleBtn, { backgroundColor: recordType === "food" ? colors.primary : "transparent" }]}
-                onPress={() => setRecordType("food")}
-              >
-                <Text style={recordType === "food" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>
-                  🍽️ {t.food}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.toggleBtn, { backgroundColor: recordType === "workout" ? colors.primary : "transparent" }]}
-                onPress={() => setRecordType("workout")}
-              >
-                <Text style={recordType === "workout" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>
-                  🏋️ {t.workout}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                {/* Record Type Toggle */}
+                <View style={[styles.toggleRow, { backgroundColor: colors.surface }]}>
+                  <TouchableOpacity
+                    style={[styles.toggleBtn, { backgroundColor: recordType === "food" ? colors.primary : "transparent" }]}
+                    onPress={() => { setRecordType("food"); setAiAnalysisResult(null); }}
+                  >
+                    <Text style={recordType === "food" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>
+                      🍽️ {t.food}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.toggleBtn, { backgroundColor: recordType === "workout" ? colors.primary : "transparent" }]}
+                    onPress={() => { setRecordType("workout"); setAiAnalysisResult(null); }}
+                  >
+                    <Text style={recordType === "workout" ? styles.toggleBtnText : [styles.toggleBtnTextInactive, { color: colors.muted }]}>
+                      🏋️ {t.workout}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
-            {/* Record Name */}
-            <TextInput
-              style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-              placeholder={recordType === "food" ? t.foodNameExample : t.exerciseNameExample}
-              placeholderTextColor={colors.muted}
-              value={recordName}
-              onChangeText={setRecordName}
-            />
+                {recordType === "food" ? (
+                  <>
+                    {/* Food description input */}
+                    <TextInput
+                      style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, minHeight: 60, textAlignVertical: "top" }]}
+                      placeholder={t.foodDescriptionHint}
+                      placeholderTextColor={colors.muted}
+                      value={recordName}
+                      onChangeText={(text) => { setRecordName(text); setAiAnalysisResult(null); }}
+                      multiline
+                      returnKeyType="done"
+                      blurOnSubmit
+                    />
 
-            {/* Calories or Duration */}
-            {recordType === "food" ? (
-              <TextInput
-                style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-                placeholder={t.caloriesKcalPlaceholder}
-                placeholderTextColor={colors.muted}
-                value={recordCalories}
-                onChangeText={setRecordCalories}
-                keyboardType="numeric"
-              />
-            ) : (
-              <TextInput
-                style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-                placeholder={t.durationMinPlaceholder}
-                placeholderTextColor={colors.muted}
-                value={recordDuration}
-                onChangeText={setRecordDuration}
-                keyboardType="numeric"
-              />
-            )}
+                    {/* AI Analyze Button */}
+                    <TouchableOpacity
+                      style={[styles.aiAnalyzeBtn, { backgroundColor: isAnalyzing ? colors.muted : "#8B5CF6" }]}
+                      onPress={handleAiAnalyze}
+                      disabled={isAnalyzing}
+                    >
+                      {isAnalyzing ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <ActivityIndicator size="small" color="#fff" />
+                          <Text style={styles.aiAnalyzeBtnText}>{t.aiAnalyzing}</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.aiAnalyzeBtnText}>🤖 {t.aiAnalyze}</Text>
+                      )}
+                    </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.hatchConfirmBtn, { backgroundColor: colors.primary }]} onPress={handleSaveRecord}>
-              <Text style={styles.hatchConfirmText}>✅ {t.saveRecord}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => setShowAddRecord(false)}>
-              <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
-            </TouchableOpacity>
+                    {/* AI Analysis Result */}
+                    {aiAnalysisResult && (
+                      <View style={[styles.analysisResultCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <Text style={[styles.analysisResultTitle, { color: colors.foreground }]}>📊 {t.analysisResult}</Text>
+                        {aiAnalysisResult.items?.map((item: any, idx: number) => (
+                          <View key={idx} style={[styles.analysisItemRow, { borderBottomColor: colors.border }]}>
+                            <Text style={[styles.analysisItemName, { color: colors.foreground }]}>{item.name}</Text>
+                            <Text style={[styles.analysisItemDetail, { color: colors.muted }]}>
+                              {item.calories} kcal · P{item.protein}g · C{item.carbs}g · F{item.fat}g
+                            </Text>
+                          </View>
+                        ))}
+                        <View style={styles.analysisTotalRow}>
+                          <Text style={[styles.analysisTotalLabel, { color: colors.primary }]}>🔥 {t.totalCalories}</Text>
+                          <Text style={[styles.analysisTotalValue, { color: colors.primary }]}>{aiAnalysisResult.totalCalories} kcal</Text>
+                        </View>
+                        <View style={styles.macroRow}>
+                          <View style={[styles.macroPill, { backgroundColor: "#EF444420" }]}>
+                            <Text style={{ color: "#EF4444", fontSize: 12, fontWeight: "700" }}>P {aiAnalysisResult.totalProtein}g</Text>
+                          </View>
+                          <View style={[styles.macroPill, { backgroundColor: "#F59E0B20" }]}>
+                            <Text style={{ color: "#F59E0B", fontSize: 12, fontWeight: "700" }}>C {aiAnalysisResult.totalCarbs}g</Text>
+                          </View>
+                          <View style={[styles.macroPill, { backgroundColor: "#3B82F620" }]}>
+                            <Text style={{ color: "#3B82F6", fontSize: 12, fontWeight: "700" }}>F {aiAnalysisResult.totalFat}g</Text>
+                          </View>
+                        </View>
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Workout name input */}
+                    <TextInput
+                      style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
+                      placeholder={t.exerciseNameExample}
+                      placeholderTextColor={colors.muted}
+                      value={recordName}
+                      onChangeText={setRecordName}
+                      returnKeyType="done"
+                      blurOnSubmit
+                    />
+                    {/* Duration input */}
+                    <TextInput
+                      style={[styles.nameInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
+                      placeholder={t.durationMinPlaceholder}
+                      placeholderTextColor={colors.muted}
+                      value={recordDuration}
+                      onChangeText={setRecordDuration}
+                      keyboardType="numeric"
+                      returnKeyType="done"
+                      blurOnSubmit
+                    />
+                  </>
+                )}
+
+                {/* Save Button */}
+                <TouchableOpacity
+                  style={[styles.hatchConfirmBtn, { backgroundColor: (recordType === "food" && !aiAnalysisResult) ? colors.muted : colors.primary }]}
+                  onPress={handleSaveRecord}
+                  disabled={recordType === "food" && !aiAnalysisResult}
+                >
+                  <Text style={styles.hatchConfirmText}>✅ {t.saveRecord}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => setShowAddRecord(false)}>
+                  <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Logout Confirmation Modal */}
@@ -1480,4 +1582,18 @@ const styles = StyleSheet.create({
   emptyMonsterCard: { borderRadius: 20, padding: 32, borderWidth: 1, alignItems: "center", gap: 12 },
   emptyMonsterText: { fontSize: 20, fontWeight: "800" },
   emptyMonsterSubtext: { fontSize: 14, textAlign: "center" as const },
+
+  // AI Food Analysis
+  aiAnalyzeBtn: { padding: 14, borderRadius: 14, alignItems: "center" },
+  aiAnalyzeBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  analysisResultCard: { borderRadius: 16, padding: 16, borderWidth: 1, gap: 8 },
+  analysisResultTitle: { fontSize: 16, fontWeight: "700", marginBottom: 4 },
+  analysisItemRow: { paddingVertical: 6, borderBottomWidth: 0.5 },
+  analysisItemName: { fontSize: 14, fontWeight: "600" },
+  analysisItemDetail: { fontSize: 12, marginTop: 2 },
+  analysisTotalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 8 },
+  analysisTotalLabel: { fontSize: 15, fontWeight: "700" },
+  analysisTotalValue: { fontSize: 18, fontWeight: "800" },
+  macroRow: { flexDirection: "row", gap: 8, justifyContent: "center", paddingTop: 4 },
+  macroPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
 });

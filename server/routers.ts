@@ -285,6 +285,81 @@ export const appRouter = router({
           analysis: analysisResult,
         };
       }),
+    // AI Food Analysis from text description - no image needed
+    analyzeText: publicProcedure
+      .input(
+        z.object({
+          description: z.string(), // e.g. "一嚿雞胸加兩隻蛋"
+          language: z.enum(["en", "zh"]).default("en"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const isZh = input.language === "zh";
+        const systemPrompt = `You are a professional nutritionist AI. The user will describe what they ate in text. Estimate the nutrition accurately.
+
+IMPORTANT RULES:
+1. Use USDA/standard nutrition databases as reference.
+2. Be CONSERVATIVE and ACCURATE with estimates.
+3. A plain egg has ~6g protein, ~78 calories.
+4. A chicken breast (100g) has ~31g protein, ~165 calories.
+5. Consider typical portion sizes if not specified.
+6. All text fields MUST be in ${isZh ? "Traditional Chinese (繁體中文)" : "English"}.
+
+Return a JSON object:
+{
+  "foods": [
+    {
+      "name": "string",
+      "portion": "string",
+      "calories": number,
+      "protein": number,
+      "carbs": number,
+      "fat": number
+    }
+  ],
+  "totalCalories": number,
+  "totalProtein": number,
+  "totalCarbs": number,
+  "totalFat": number,
+  "mealType": "breakfast" | "lunch" | "dinner" | "snack",
+  "healthScore": number (1-10),
+  "summary": "string - brief nutritional summary in ${isZh ? "繁體中文" : "English"}"
+}
+
+Always return valid JSON.`;
+
+        const userPrompt = isZh
+          ? `我吃了：${input.description}\n\n請分析營養資訊，用繁體中文回答。`
+          : `I ate: ${input.description}\n\nPlease analyze the nutrition information.`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          response_format: { type: "json_object" },
+        });
+
+        const content = response.choices[0]?.message?.content;
+        const contentStr = typeof content === "string" ? content : "";
+        let analysisResult;
+        try {
+          analysisResult = JSON.parse(contentStr);
+        } catch {
+          analysisResult = {
+            foods: [{ name: input.description, portion: "1 serving", calories: 200, protein: 10, carbs: 25, fat: 8 }],
+            totalCalories: 200,
+            totalProtein: 10,
+            totalCarbs: 25,
+            totalFat: 8,
+            mealType: "snack",
+            healthScore: 5,
+            summary: isZh ? "無法完全分析，顯示估計值。" : "Could not fully analyze. Showing estimated values.",
+          };
+        }
+
+        return { analysis: analysisResult };
+      }),
   }),
 
   quests: router({
