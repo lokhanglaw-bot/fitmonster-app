@@ -1,0 +1,50 @@
+{
+  "query": "SELECT id, name FROM users WHERE name LIKE 'FakeTrainer%' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT id, name FROM users WHERE name LIKE 'FakeTrainer%' LIMIT 10;",
+  "rows": [
+    {
+      "id": "960033",
+      "name": "FakeTrainer1"
+    },
+    {
+      "id": "990008",
+      "name": "FakeTrainer1"
+    },
+    {
+      "id": "1020001",
+      "name": "FakeTrainer1"
+    },
+    {
+      "id": "1020002",
+      "name": "FakeTrainer2"
+    },
+    {
+      "id": "1020003",
+      "name": "FakeTrainer3"
+    },
+    {
+      "id": "1020004",
+      "name": "FakeTrainer4"
+    },
+    {
+      "id": "1020005",
+      "name": "FakeTrainer5"
+    },
+    {
+      "id": "1020006",
+      "name": "FakeTrainer6"
+    },
+    {
+      "id": "1020007",
+      "name": "FakeTrainer7"
+    },
+    {
+      "id": "1020008",
+      "name": "FakeTrainer8"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\n960033\tFakeTrainer1\n990008\tFakeTrainer1\n1020001\tFakeTrainer1\n1020002\tFakeTrainer2\n1020003\tFakeTrainer3\n1020004\tFakeTrainer4\n1020005\tFakeTrainer5\n1020006\tFakeTrainer6\n1020007\tFakeTrainer7\n1020008\tFakeTrainer8\n",
+  "stderr": "",
+  "execution_time_ms": 1518
+}

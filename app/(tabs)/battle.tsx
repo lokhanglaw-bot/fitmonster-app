@@ -45,9 +45,11 @@ type Opponent = {
 function buildOpponentFromNearby(user: any): Opponent {
   const type = (user.monsterType || "bodybuilder").toLowerCase();
   const stage = user.monsterStage || 1;
+  // Use monster name for privacy, fallback to type name
+  const monsterDisplayName = user.monsterName || (type.charAt(0).toUpperCase() + type.slice(1));
   return {
     id: user.userId,
-    name: user.name || "Trainer",
+    name: monsterDisplayName,
     distance: user.distanceKm ? `${user.distanceKm}km` : "?",
     online: true,
     level: user.monsterLevel || 1,
@@ -147,6 +149,7 @@ export default function BattleScreen() {
   // Real backend queries
   const friendsQuery = trpc.friends.list.useQuery(undefined, { retry: 1 });
   const pendingQuery = trpc.friends.pendingRequests.useQuery(undefined, { retry: 1 });
+  const sentQuery = trpc.friends.sentRequests.useQuery(undefined, { retry: 1 });
   const acceptMutation = trpc.friends.acceptRequest.useMutation();
   const rejectMutation = trpc.friends.rejectRequest.useMutation();
   const sendRequestMutation = trpc.friends.sendRequest.useMutation();
@@ -159,30 +162,74 @@ export default function BattleScreen() {
   // Sync real friends data from backend
   useEffect(() => {
     if (friendsQuery.data && friendsQuery.data.length > 0) {
-      const realFriends: Friend[] = friendsQuery.data.map((f: any) => ({
-        id: f.friendId || f.id,
-        name: f.name || 'Trainer',
-        level: f.monsterLevel || 1,
-        monsterType: f.monsterType || 'bodybuilder',
-        monsterImage: getMonsterImage(f.monsterType || 'bodybuilder', f.monsterStage || 1),
+      const realFriends: Friend[] = friendsQuery.data.map((f: any) => {
+        const mType = (f.activeMonster?.monsterType || f.monsterType || 'bodybuilder').toLowerCase();
+        const mName = f.activeMonster?.name || f.monsterName || (mType.charAt(0).toUpperCase() + mType.slice(1));
+        return {
+        id: f.user?.id || f.friendId || f.id,
+        name: mName,
+        level: f.activeMonster?.level || f.monsterLevel || 1,
+        monsterType: f.activeMonster?.monsterType || f.monsterType || 'bodybuilder',
+        monsterImage: getMonsterImage(f.activeMonster?.monsterType || f.monsterType || 'bodybuilder', f.activeMonster?.evolutionStage || f.monsterStage || 1),
         online: Math.random() > 0.5,
-        gradient: getGradientForType(f.monsterType || 'bodybuilder'),
+        gradient: getGradientForType(f.activeMonster?.monsterType || f.monsterType || 'bodybuilder'),
         addedAt: new Date(f.createdAt || Date.now()),
-        gender: f.gender || undefined,
+        gender: f.profile?.gender || f.gender || undefined,
         hideLocation: f.hideLocation || false,
-      }));
+      };
+      });
       setFriends(realFriends);
     }
   }, [friendsQuery.data]);
 
+  // Sync sent requests from backend (persisted across app restarts)
+  useEffect(() => {
+    if (sentQuery.data) {
+      const sentReqs: FriendRequest[] = sentQuery.data.map((r: any) => {
+        const mType = (r.monsterType || 'bodybuilder').toLowerCase();
+        const mName = r.monsterName || (mType.charAt(0).toUpperCase() + mType.slice(1));
+        return {
+          id: r.friendshipId,
+          from: {
+            id: r.userId,
+            name: mName,
+            distance: '?',
+            online: true,
+            level: r.monsterLevel || 1,
+            monsterType: r.monsterType || 'Bodybuilder',
+            monsterImage: getMonsterImage(r.monsterType || 'bodybuilder', 1),
+            streakKey: 'streakBeastMode' as const,
+            matchPercent: 75,
+            todayExp: 0,
+            strength: 20,
+            defense: 15,
+            agility: 15,
+            hp: 200,
+            gradient: getGradientForType(r.monsterType || 'bodybuilder'),
+          },
+          status: 'pending' as const,
+          sentByMe: true,
+          timestamp: new Date(r.createdAt || Date.now()),
+        };
+      });
+      setFriendRequests(prev => {
+        const incoming = prev.filter(p => !p.sentByMe);
+        return [...incoming, ...sentReqs];
+      });
+    }
+  }, [sentQuery.data]);
+
   // Sync real pending requests from backend
   useEffect(() => {
     if (pendingQuery.data && pendingQuery.data.length > 0) {
-      const realRequests: FriendRequest[] = pendingQuery.data.map((r: any) => ({
+      const realRequests: FriendRequest[] = pendingQuery.data.map((r: any) => {
+        const mType = (r.monsterType || 'bodybuilder').toLowerCase();
+        const mName = r.monsterName || (mType.charAt(0).toUpperCase() + mType.slice(1));
+        return {
         id: r.friendshipId,
         from: {
           id: r.userId,
-          name: r.name || 'Trainer',
+          name: mName,
           distance: '?',
           online: true,
           level: r.monsterLevel || 1,
@@ -200,11 +247,12 @@ export default function BattleScreen() {
         status: 'pending' as const,
         sentByMe: false,
         timestamp: new Date(r.createdAt || Date.now()),
-      }));
+      };
+      });
       setFriendRequests(prev => {
-        // Merge: keep local mock requests, add real ones
-        const localOnly = prev.filter(p => p.sentByMe);
-        return [...realRequests, ...localOnly];
+        // Merge: keep sent requests, replace incoming with real ones
+        const sentOnly = prev.filter(p => p.sentByMe);
+        return [...realRequests, ...sentOnly];
       });
     }
   }, [pendingQuery.data]);
@@ -336,6 +384,7 @@ export default function BattleScreen() {
       onSuccess: () => {
         friendsQuery.refetch();
         pendingQuery.refetch();
+        sentQuery.refetch();
       },
     });
 
@@ -351,6 +400,7 @@ export default function BattleScreen() {
       onSuccess: () => {
         friendsQuery.refetch();
         pendingQuery.refetch();
+        sentQuery.refetch();
       },
     });
 
@@ -379,6 +429,7 @@ export default function BattleScreen() {
     rejectMutation.mutate({ friendshipId: request.id }, {
       onSuccess: () => {
         pendingQuery.refetch();
+        sentQuery.refetch();
       },
     });
 

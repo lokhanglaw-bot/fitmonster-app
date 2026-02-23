@@ -61,6 +61,7 @@ const EMOJI_BY_TYPE: Record<string, string> = {
 interface NearbyUser {
   userId: number;
   name: string;
+  monsterName?: string | null;
   gender?: string | null;
   monsterType: string;
   monsterLevel: number;
@@ -405,12 +406,12 @@ export default function NearbyMapScreen() {
                   showsCompass={false}
                   markers={nearbyUsers.map((user) => {
                     const timeInfo = getTimeAgo(user.lastUpdated, t);
-                    const genderLabel = user.gender === "male" ? "♂" : user.gender === "female" ? "♀" : "";
+                    const displayName = user.monsterName || user.name || 'Trainer';
                     return {
                       id: `nearby-${user.userId}`,
                       coordinate: { latitude: user.latitude, longitude: user.longitude },
-                      title: `Fit Monster ${genderLabel}`,
-                      description: `${user.distanceKm} km · ${timeInfo.text}`,
+                      title: displayName,
+                      description: `Lv.${user.monsterLevel || 1} · ${user.distanceKm} km · ${timeInfo.text}`,
                       pinColor: "#3B82F6",
                     };
                   })}
@@ -611,7 +612,7 @@ export default function NearbyMapScreen() {
                       <View style={styles.userInfo}>
                         <View style={styles.userNameRow}>
                           <Text style={[styles.userName, { color: colors.foreground }]}>
-                            Fit Monster {genderLabel}
+                            {item.monsterName || item.name || 'Trainer'} {genderLabel}
                           </Text>
                           {timeInfo.isOnline && <View style={styles.onlineDot} />}
                         </View>

@@ -1,0 +1,18 @@
+{
+  "query": "SELECT userId, latitude, longitude, isSharing, lastUpdated, createdAt FROM userLocations WHERE userId = 300001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT userId, latitude, longitude, isSharing, lastUpdated, createdAt FROM userLocations WHERE userId = 300001;",
+  "rows": [
+    {
+      "userId": "300001",
+      "latitude": "48.85324",
+      "longitude": "2.3380644",
+      "isSharing": "1",
+      "lastUpdated": "2026-02-23 03:03:17",
+      "createdAt": "2026-02-23 03:03:17"
+    }
+  ],
+  "messages": [],
+  "stdout": "userId\tlatitude\tlongitude\tisSharing\tlastUpdated\tcreatedAt\n300001\t48.85324\t2.3380644\t1\t2026-02-23 03:03:17\t2026-02-23 03:03:17\n",
+  "stderr": "",
+  "execution_time_ms": 1594
+}

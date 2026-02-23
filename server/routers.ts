@@ -344,7 +344,7 @@ export const appRouter = router({
           const info = usersInfo.find(u => u.user.id === loc.userId);
           return {
             ...loc,
-            name: info?.profile?.trainerName || info?.user.name || 'Trainer',
+            name: info?.activeMonster?.name || info?.profile?.trainerName || 'Trainer',
             gender: info?.profile?.gender || null,
             monsterType: info?.activeMonster?.monsterType || 'bodybuilder',
             monsterName: info?.activeMonster?.name || null,
@@ -377,11 +377,30 @@ export const appRouter = router({
         return {
           friendshipId: p.id,
           userId: p.userId,
-          name: info?.profile?.trainerName || info?.user.name || 'Trainer',
+          name: info?.activeMonster?.name || info?.profile?.trainerName || 'Trainer',
+          monsterName: info?.activeMonster?.name || null,
           monsterType: info?.activeMonster?.monsterType || 'bodybuilder',
           monsterLevel: info?.activeMonster?.level || 1,
           monsterImageUrl: info?.activeMonster?.imageUrl || null,
           createdAt: p.createdAt,
+        };
+      });
+    }),
+    sentRequests: protectedProcedure.query(async ({ ctx }) => {
+      const sent = await db.getSentFriendRequests(ctx.user.id);
+      const targetIds = sent.map(s => s.friendId);
+      const targetsInfo = await db.getUserInfoForNearby(targetIds);
+      return sent.map(s => {
+        const info = targetsInfo.find(u => u.user.id === s.friendId);
+        return {
+          friendshipId: s.id,
+          userId: s.friendId,
+          name: info?.activeMonster?.name || info?.profile?.trainerName || info?.user.name || 'Trainer',
+          monsterName: info?.activeMonster?.name || null,
+          monsterType: info?.activeMonster?.monsterType || 'bodybuilder',
+          monsterLevel: info?.activeMonster?.level || 1,
+          monsterImageUrl: info?.activeMonster?.imageUrl || null,
+          createdAt: s.createdAt,
         };
       });
     }),

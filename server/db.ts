@@ -417,6 +417,16 @@ export async function getPendingFriendRequests(userId: number) {
   ));
 }
 
+// Get sent friend requests (where current user is the sender)
+export async function getSentFriendRequests(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(friendships).where(and(
+    eq(friendships.userId, userId),
+    eq(friendships.status, "pending")
+  ));
+}
+
 // Check if a friendship already exists between two users
 export async function checkFriendship(userId: number, friendId: number) {
   const db = await getDb();
@@ -467,7 +477,7 @@ export async function getFriendsLocations(userId: number) {
       latitude: loc.latitude,
       longitude: loc.longitude,
       lastUpdated: loc.lastUpdated,
-      name: info?.profile?.trainerName || info?.user.name || 'Trainer',
+      name: info?.activeMonster?.name || info?.profile?.trainerName || 'Trainer',
       monsterType: info?.activeMonster?.monsterType || 'bodybuilder',
       monsterName: info?.activeMonster?.name || null,
       monsterLevel: info?.activeMonster?.level || 1,

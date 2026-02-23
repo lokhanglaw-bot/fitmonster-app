@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, name, email FROM users ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT id, name, email FROM users ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "lok hang Law",
+      "email": "lokhanglaw@gmail.com"
+    },
+    {
+      "id": "30029",
+      "name": "Ken Law",
+      "email": "tym2b2nkfw@privaterelay.appleid.com"
+    },
+    {
+      "id": "90001",
+      "name": "chenghiuching denise",
+      "email": "denise1112cheng@gmail.com"
+    },
+    {
+      "id": "300001",
+      "name": "Stephen NGAI",
+      "email": "stephen.ngaipl@gmail.com"
+    },
+    {
+      "id": "1020101",
+      "name": "NULL",
+      "email": "cherienharper@gmail.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\n1\tlok hang Law\tlokhanglaw@gmail.com\n30029\tKen Law\ttym2b2nkfw@privaterelay.appleid.com\n90001\tchenghiuching denise\tdenise1112cheng@gmail.com\n300001\tStephen NGAI\tstephen.ngaipl@gmail.com\n1020101\tNULL\tcherienharper@gmail.com\n",
+  "stderr": "",
+  "execution_time_ms": 1491
+}

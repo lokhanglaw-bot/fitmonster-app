@@ -720,6 +720,12 @@ const en = {
   minutesAgoShort: "m ago",
   hoursAgoShort: "h ago",
   daysAgoShort: "d ago",
+
+  // Chat v2
+  chatComingSoonTitle: "Real-time Chat Coming Soon",
+  chatComingSoonDesc: "Real-time messaging between trainers is under development. You can battle your friends in the meantime!",
+  chatComingSoonShort: "Chat coming soon...",
+  backToBattle: "Back to Battle",
 };
 
 const zh: Translations = {
@@ -1434,6 +1440,12 @@ const zh: Translations = {
   minutesAgoShort: "分前",
   hoursAgoShort: "小時前",
   daysAgoShort: "天前",
+
+  // Chat v2
+  chatComingSoonTitle: "即時聊天即將推出",
+  chatComingSoonDesc: "訓練師之間的即時通訊功能正在開發中。你可以先和好友進行對戰！",
+  chatComingSoonShort: "聊天即將推出...",
+  backToBattle: "返回對戰",
 };
 
 const translations: Record<Language, Translations> = { en, zh };

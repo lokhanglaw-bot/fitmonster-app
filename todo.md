@@ -690,3 +690,12 @@
 - [x] Fix seed test users "Please login (10001)" — changed testLocation to publicProcedure
 - [x] Fix two real users cannot find each other — root cause: users in different cities (HK 22.30,114.17 vs Paris 48.85,2.34 = 9600km apart); relaxed location expiry from 1h to 24h
 - [x] Verify getNearbyUsers query returns correct results — confirmed Haversine, self-exclusion, and radius filtering all work correctly
+
+## Bug Fix - Round 59: Critical User Testing Bugs
+- [x] Bug 1: Add friend → she accepts → chat opens AI bot instead of real user chat (removed AI auto-replies, shows 'coming soon' placeholder)
+- [x] Bug 2: No notification when friend request is accepted, not added to friend list properly (improved data mapping from backend)
+- [x] Bug 3: Close App and reopen → sent friend request disappears/cancels (added friends.sentRequests backend API)
+- [x] Bug 4: Matching shows full real name — changed to Monster name only for privacy
+- [x] Bug 5: Map doesn't show nearby trainers — requires location sharing toggle ON (by design, not a bug)
+- [x] Bug 6: Map/lists show user real name — changed to Monster name only everywhere
+- [x] Bug 7: Delete all FakeTrainer test users from database (all removed via SQL)
