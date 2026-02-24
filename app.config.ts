@@ -141,6 +141,12 @@ const config: ExpoConfig = {
         },
       },
     ],
+    [
+      "expo-notifications",
+      {
+        enableBackgroundRemoteNotifications: true,
+      },
+    ],
     // HealthKit (iOS) — react-native-health config plugin
     ["react-native-health", {
       healthSharePermission: "FitMonster reads your step count and workout data to power your Monster's growth.",

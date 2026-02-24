@@ -788,6 +788,17 @@ Always return valid JSON.`;
     unreadCount: protectedProcedure.query(async ({ ctx }) => {
       return { count: await chatDb.getUnreadCount(ctx.user.id) };
     }),
+    markRead: protectedProcedure
+      .input(z.object({ senderId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await chatDb.markMessagesAsRead(input.senderId, ctx.user.id);
+        // Notify sender via WebSocket that messages were read
+        sendToUser(input.senderId, {
+          type: "messages_read",
+          readerId: ctx.user.id,
+        });
+        return { success: true };
+      }),
     uploadImage: protectedProcedure
       .input(z.object({
         base64: z.string(),

@@ -861,3 +861,16 @@
 - [x] UX：REST mode 改顯示「已連線」（用戶看不到 REST mode 字樣）
 - [x] UX：Debug Log 面板加上開關（預設關閉，點 🐛 Debug 按鈕可開啟）
 - [x] 確認圖片和語音上傳也走 REST fallback（已確認存在）
+
+## Chat Fix - Round 75: 推播跳轉 + 未讀 badge + 背景通知
+- [x] 推播通知點擊後跳轉到對應聊天室（use-push-notifications.ts 加入 router.push 導航）
+- [x] 冷啟動（app 被殺掉後點推播）也能跳轉到正確聊天室（getLastNotificationResponseAsync）
+- [x] App badge number 根據未讀訊息數量自動更新（notification-provider.tsx + setBadgeCountAsync）
+- [x] 進入聊天室時自動標記已讀（REST markRead mutation + 清除 badge）
+- [x] App 回到前景時自動刷新 badge（AppState listener）
+- [x] 新增 REST chat.markRead endpoint（server/routers.ts）
+- [x] 背景推播通知任務（lib/background-notifications.ts + expo-notifications registerTaskAsync）
+- [x] app.config.ts 加入 expo-notifications plugin 並啟用 enableBackgroundRemoteNotifications
+- [x] _layout.tsx 啟動時註冊背景通知任務
+- [x] 33 個新測試全部通過（tests/round75-push-notifications.test.ts）
+- [x] TypeScript 0 errors

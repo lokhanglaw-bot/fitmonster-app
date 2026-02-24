@@ -24,6 +24,7 @@ import { AuthProvider, useAuthContext } from "@/lib/auth-context";
 import { I18nProvider } from "@/lib/i18n-context";
 import { WorkoutTimerProvider } from "@/lib/workout-timer-context";
 import { NotificationProvider } from "@/lib/notification-provider";
+import { registerBackgroundNotificationTask } from "@/lib/background-notifications";
 
 // Wrapper that passes userId from auth context to ActivityProvider
 function AuthenticatedActivityProvider({ children }: { children: React.ReactNode }) {
@@ -50,6 +51,13 @@ export default function RootLayout() {
   // Initialize Manus runtime for cookie injection from parent container
   useEffect(() => {
     initManusRuntime();
+  }, []);
+
+  // Register background notification task for badge updates when app is in background
+  useEffect(() => {
+    if (Platform.OS !== "web") {
+      registerBackgroundNotificationTask();
+    }
   }, []);
 
   const handleSafeAreaUpdate = useCallback((metrics: Metrics) => {

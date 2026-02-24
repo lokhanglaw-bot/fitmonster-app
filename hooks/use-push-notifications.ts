@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
+import { useRouter } from "expo-router";
 import { trpc } from "@/lib/trpc";
 
-// Configure notification handler
+// Configure notification handler - show notifications even when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -19,6 +20,7 @@ export function usePushNotifications(userId: number | null) {
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const router = useRouter();
 
   const registerMutation = trpc.pushToken.register.useMutation();
 
@@ -53,6 +55,7 @@ export function usePushNotifications(userId: number | null) {
       if (userId) {
         const platform = Platform.OS as "ios" | "android" | "web";
         registerMutation.mutate({ token, platform });
+        console.log("[Push] Registered token with server for userId:", userId);
       }
 
       // Android: set notification channel
@@ -78,17 +81,59 @@ export function usePushNotifications(userId: number | null) {
     // Register for push notifications
     registerForPushNotifications();
 
-    // Listen for incoming notifications
+    // Listen for incoming notifications (foreground)
     notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
       setNotification(notification);
-      console.log("[Push] Notification received:", notification);
+      console.log("[Push] Notification received in foreground:", notification.request.content.title);
     });
 
-    // Listen for notification taps
+    // Listen for notification taps — navigate to the correct screen
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
-      console.log("[Push] Notification tapped:", data);
-      // Navigation can be handled by the parent component
+      console.log("[Push] Notification tapped, data:", JSON.stringify(data));
+
+      if (data?.type === "chat_message" && data?.senderId) {
+        // Navigate to chat screen with the sender
+        const senderId = String(data.senderId);
+        const senderName = String(data.senderName || "Friend");
+        console.log("[Push] Navigating to chat with senderId:", senderId, "name:", senderName);
+        
+        // Use setTimeout to ensure navigation happens after app is fully loaded
+        setTimeout(() => {
+          try {
+            router.push({
+              pathname: "/chat" as any,
+              params: { friendId: senderId, friendName: senderName },
+            });
+          } catch (err) {
+            console.error("[Push] Navigation failed:", err);
+          }
+        }, 500);
+      }
+    });
+
+    // Check if app was opened from a notification (cold start)
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) {
+        const data = response.notification.request.content.data;
+        console.log("[Push] App opened from notification (cold start), data:", JSON.stringify(data));
+        
+        if (data?.type === "chat_message" && data?.senderId) {
+          const senderId = String(data.senderId);
+          const senderName = String(data.senderName || "Friend");
+          // Delay navigation for cold start to ensure app is fully loaded
+          setTimeout(() => {
+            try {
+              router.push({
+                pathname: "/chat" as any,
+                params: { friendId: senderId, friendName: senderName },
+              });
+            } catch (err) {
+              console.error("[Push] Cold start navigation failed:", err);
+            }
+          }, 1500);
+        }
+      }
     });
 
     return () => {
@@ -99,7 +144,7 @@ export function usePushNotifications(userId: number | null) {
         responseListener.current.remove();
       }
     };
-  }, [userId, registerForPushNotifications]);
+  }, [userId, registerForPushNotifications, router]);
 
   return {
     expoPushToken,

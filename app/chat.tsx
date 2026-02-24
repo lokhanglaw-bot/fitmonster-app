@@ -140,6 +140,7 @@ export default function ChatScreen() {
   const uploadImageMutation = trpc.chat.uploadImage.useMutation();
   const uploadAudioMutation = trpc.chat.uploadAudio.useMutation();
   const sendMessageMutation = trpc.chat.sendMessage.useMutation();
+  const markReadMutation = trpc.chat.markRead.useMutation();
 
   // ========== REST API: load chat history on mount ==========
   const historyQuery = trpc.chat.history.useQuery(
@@ -166,6 +167,10 @@ export default function ChatScreen() {
       // Track last message ID for polling
       if (sorted.length > 0) {
         lastMsgIdRef.current = Math.max(...sorted.map((m: any) => m.id));
+      }
+      // Mark messages as read via REST (for both WS and REST mode)
+      if (friendIdNum > 0) {
+        markReadMutation.mutate({ senderId: friendIdNum });
       }
     }
   }, [historyQuery.data]);
