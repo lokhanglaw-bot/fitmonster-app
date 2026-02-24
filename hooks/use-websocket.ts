@@ -10,7 +10,7 @@ type WSMessage = {
 
 type WSStatus = "connecting" | "connected" | "disconnected";
 
-export function useWebSocket(userId: number | null) {
+export function useWebSocket(userId: number | null, openId?: string | null) {
   const wsRef = useRef<WebSocket | null>(null);
   const [status, setStatus] = useState<WSStatus>("disconnected");
   const [lastMessage, setLastMessage] = useState<WSMessage | null>(null);
@@ -90,6 +90,7 @@ export function useWebSocket(userId: number | null) {
             type: "auth",
             token: token || undefined,
             userId: userId,
+            openId: openId || undefined,
           }));
         } catch (e) {
           console.error("[WS] Failed to send auth message:", e);
@@ -177,7 +178,7 @@ export function useWebSocket(userId: number | null) {
         if (userId) connect();
       }, delay);
     }
-  }, [userId, getWsUrl]);
+  }, [userId, openId, getWsUrl]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {

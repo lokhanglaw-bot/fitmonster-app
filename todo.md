@@ -782,3 +782,20 @@
 - [x] Added isConnectingRef to prevent concurrent connection attempts
 - [x] Added loading timeout (8s) in chat.tsx to prevent infinite spinner
 - [x] Added disconnected state UI with helpful message
+
+## Bug Fix - Round 67b: Local login users cannot use server features
+- [x] Root cause: Local login users get Date.now() as user.id (e.g., 1771642074064), which doesn't exist in DB users table
+- [x] WebSocket fallback auth failed because getUserById(1771642074064) returned not found
+- [x] All protectedProcedure endpoints failed for local users (no JWT token, no cookie)
+- [x] Fix 1: Added auth.syncLocalUser public endpoint — syncs local user to DB and returns real DB ID
+- [x] Fix 2: auth-context.tsx localLogin/localSignup now call syncLocalUser to get real DB ID
+- [x] Fix 3: auth-context.tsx fetchUser restores local user and re-syncs to get real DB ID
+- [x] Fix 4: WebSocket server now accepts openId in auth message for fallback lookup
+- [x] Fix 5: tRPC client (lib/trpc.ts) sends X-User-Id and X-Open-Id headers for local users
+- [x] Fix 6: server context.ts createContext now checks X-User-Id/X-Open-Id headers as fallback auth
+- [x] Fix 7: activity-context.tsx monster sync fetch sends X-User-Id/X-Open-Id headers
+- [x] Fix 8: use-profile-data.ts profile sync fetch sends X-User-Id/X-Open-Id headers
+- [x] Verified: syncLocalUser endpoint creates user in DB and returns real ID
+- [x] Verified: X-User-Id header auth works with protectedProcedure endpoints
+- [x] Verified: WebSocket auth with DB ID succeeds
+- [x] Verified: WebSocket auth with invalid Date.now() ID + valid openId succeeds via openId fallback

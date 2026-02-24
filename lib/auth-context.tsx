@@ -3,8 +3,36 @@ import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getApiBaseUrl } from "@/constants/oauth";
 
 const LOCAL_AUTH_KEY = "@fitmonster_local_auth";
+
+// Sync local user to backend DB and get real DB ID
+async function syncLocalUserToDb(openId: string, name: string, email: string): Promise<number | null> {
+  try {
+    const baseUrl = getApiBaseUrl();
+    if (!baseUrl) return null;
+    const res = await fetch(`${baseUrl}/api/trpc/auth.syncLocalUser?batch=1`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ "0": { json: { openId, name, email } } }),
+    });
+    if (!res.ok) {
+      console.warn("[AuthProvider] syncLocalUser failed:", res.status);
+      return null;
+    }
+    const data = await res.json();
+    const result = data?.[0]?.result?.data?.json;
+    if (result?.id) {
+      console.log("[AuthProvider] Local user synced to DB, real ID:", result.id);
+      return result.id;
+    }
+    return null;
+  } catch (err) {
+    console.warn("[AuthProvider] syncLocalUser error:", err);
+    return null;
+  }
+}
 
 type AuthContextType = {
   user: Auth.User | null;
@@ -36,9 +64,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const localUser = JSON.parse(localAuthRaw);
           console.log("[AuthProvider] Local auth user found:", localUser.name);
+          const openId = localUser.openId || `local-${localUser.email}`;
+          // Sync to DB to get real DB ID (fixes Date.now() IDs that don't exist in DB)
+          const dbId = await syncLocalUserToDb(openId, localUser.name, localUser.email);
+          const finalId = dbId || localUser.id || 0;
+          // Update stored ID if we got a real DB ID
+          if (dbId && dbId !== localUser.id) {
+            console.log(`[AuthProvider] Updating local user ID from ${localUser.id} to DB ID ${dbId}`);
+            localUser.id = dbId;
+            localUser.openId = openId;
+            await AsyncStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(localUser));
+          }
           const userInfo: Auth.User = {
-            id: localUser.id || 0,
-            openId: localUser.openId || `local-${localUser.email}`,
+            id: finalId,
+            openId,
             name: localUser.name,
             email: localUser.email,
             loginMethod: "local",
@@ -105,7 +144,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const localLogin = useCallback(async (name: string, email: string) => {
-    // Reuse existing ID if the same email has logged in before, so data persists
+    const openId = `local-${email.trim()}`;
+    // Try to get real DB ID first
     let existingId: number | null = null;
     try {
       const existingRaw = await AsyncStorage.getItem(LOCAL_AUTH_KEY);
@@ -116,11 +156,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (_) { /* ignore */ }
+    // Sync to DB and get real DB ID (replaces Date.now() with actual auto-increment ID)
+    const dbId = await syncLocalUserToDb(openId, name, email.trim());
+    const finalId = dbId || existingId || Date.now();
     const localUser = {
-      id: existingId || Date.now(),
-      openId: `local-${email}`,
+      id: finalId,
+      openId,
       name,
-      email,
+      email: email.trim(),
       loginMethod: "local" as const,
       lastSignedIn: new Date().toISOString(),
     };
@@ -135,11 +178,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     setUser(userInfo);
     setLoading(false);
-    console.log("[AuthProvider] Local login successful:", name);
+    console.log("[AuthProvider] Local login successful:", name, "DB ID:", finalId);
   }, []);
 
   const localSignup = useCallback(async (name: string, email: string) => {
-    // Reuse existing ID if the same email has signed up before, so data persists
+    const openId = `local-${email.trim()}`;
+    // Try to get real DB ID first
     let existingId: number | null = null;
     try {
       const existingRaw = await AsyncStorage.getItem(LOCAL_AUTH_KEY);
@@ -150,11 +194,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (_) { /* ignore */ }
+    // Sync to DB and get real DB ID (replaces Date.now() with actual auto-increment ID)
+    const dbId = await syncLocalUserToDb(openId, name, email.trim());
+    const finalId = dbId || existingId || Date.now();
     const localUser = {
-      id: existingId || Date.now(),
-      openId: `local-${email}`,
+      id: finalId,
+      openId,
       name,
-      email,
+      email: email.trim(),
       loginMethod: "local" as const,
       lastSignedIn: new Date().toISOString(),
     };
@@ -169,7 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     setUser(userInfo);
     setLoading(false);
-    console.log("[AuthProvider] Local signup successful:", name);
+    console.log("[AuthProvider] Local signup successful:", name, "DB ID:", finalId);
   }, []);
 
   const logout = useCallback(async () => {

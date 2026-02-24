@@ -91,6 +91,17 @@ export function useProfileData(): { data: ProfileData | null; reload: () => void
           const tok = await AuthModule.getSessionToken();
           if (tok) hdrs["Authorization"] = `Bearer ${tok}`;
         }
+        // For local login users: add X-User-Id and X-Open-Id headers
+        if (!hdrs["Authorization"]) {
+          try {
+            const localAuthRaw = await AsyncStorage.getItem("@fitmonster_local_auth");
+            if (localAuthRaw) {
+              const localUser = JSON.parse(localAuthRaw);
+              if (localUser.id) hdrs["X-User-Id"] = String(localUser.id);
+              if (localUser.openId) hdrs["X-Open-Id"] = localUser.openId;
+            }
+          } catch (_) { /* ignore */ }
+        }
         await fetch(`${apiBase}/api/trpc/profile.setupProfile?batch=1`, {
           method: "POST",
           headers: hdrs,

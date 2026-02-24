@@ -16,9 +16,10 @@ const NotificationContext = createContext<NotificationContextType | null>(null);
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuthContext();
   const userId = user?.id || null;
+  const openId = user?.openId || null;
   const queryClient = useQueryClient();
 
-  const { status: wsStatus, send: wsSend, on: wsOn } = useWebSocket(userId);
+  const { status: wsStatus, send: wsSend, on: wsOn } = useWebSocket(userId, openId);
   const { expoPushToken } = usePushNotifications(userId);
 
   // Listen for real-time events and invalidate relevant queries

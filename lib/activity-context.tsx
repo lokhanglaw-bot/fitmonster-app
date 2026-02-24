@@ -462,6 +462,17 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
           const token = await Auth.getSessionToken();
           if (token) headers["Authorization"] = `Bearer ${token}`;
         }
+        // For local login users: add X-User-Id and X-Open-Id headers
+        if (!headers["Authorization"]) {
+          try {
+            const localAuthRaw = await AsyncStorage.getItem("@fitmonster_local_auth");
+            if (localAuthRaw) {
+              const localUser = JSON.parse(localAuthRaw);
+              if (localUser.id) headers["X-User-Id"] = String(localUser.id);
+              if (localUser.openId) headers["X-Open-Id"] = localUser.openId;
+            }
+          } catch (_) { /* ignore */ }
+        }
         // Use direct fetch to avoid tRPC circular dependency
         const body = JSON.stringify({
           "0": {

@@ -4,6 +4,9 @@ import superjson from "superjson";
 import type { AppRouter } from "@/server/routers";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const LOCAL_AUTH_KEY = "@fitmonster_local_auth";
 
 /**
  * tRPC React client for type-safe API calls.
@@ -27,7 +30,24 @@ export function createTRPCClient() {
         transformer: superjson,
         async headers() {
           const token = await Auth.getSessionToken();
-          return token ? { Authorization: `Bearer ${token}` } : {};
+          if (token) {
+            return { Authorization: `Bearer ${token}` };
+          }
+          // For local login users: send X-User-Id and X-Open-Id headers
+          // so the server can identify them without JWT token
+          try {
+            const localAuthRaw = await AsyncStorage.getItem(LOCAL_AUTH_KEY);
+            if (localAuthRaw) {
+              const localUser = JSON.parse(localAuthRaw);
+              const headers: Record<string, string> = {};
+              if (localUser.id) headers["X-User-Id"] = String(localUser.id);
+              if (localUser.openId) headers["X-Open-Id"] = localUser.openId;
+              return headers;
+            }
+          } catch (e) {
+            // ignore
+          }
+          return {};
         },
         // Custom fetch to include credentials for cookie-based auth
         fetch(url, options) {

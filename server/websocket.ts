@@ -51,28 +51,44 @@ export function setupWebSocket(server: HttpServer) {
             console.log(`[WS] Primary auth failed:`, err?.message || err);
             // If auth fails, try fallback: userId from message
             const fallbackId = msg.userId ? Number(msg.userId) : null;
-            console.log(`[WS] Trying fallback auth with userId:`, fallbackId);
+            const fallbackOpenId = msg.openId || null;
+            console.log(`[WS] Trying fallback auth with userId: ${fallbackId}, openId: ${fallbackOpenId}`);
+            
+            let resolvedUser: { id: number } | undefined = undefined;
+            
             if (fallbackId && !isNaN(fallbackId) && fallbackId > 0) {
               try {
-                // Verify this user exists in the users table
-                const existingUser = await db.getUserById(fallbackId);
-                console.log(`[WS] Fallback user lookup result:`, existingUser ? `found (id=${existingUser.id})` : 'not found');
-                if (existingUser) {
-                  userId = fallbackId;
-                  if (!userConnections.has(fallbackId)) {
-                    userConnections.set(fallbackId, new Set());
-                  }
-                  userConnections.get(fallbackId)!.add(ws);
-                  ws.send(JSON.stringify({ type: "auth_success", userId: fallbackId }));
-                  const unreadCount = await chatDb.getUnreadCount(fallbackId);
-                  ws.send(JSON.stringify({ type: "unread_count", count: unreadCount }));
-                  console.log(`[WS] User ${fallbackId} connected via fallback auth.`);
-                  return;
-                }
-              } catch (fallbackErr: any) {
-                console.error(`[WS] Fallback auth error:`, fallbackErr?.message || fallbackErr);
+                resolvedUser = await db.getUserById(fallbackId);
+                console.log(`[WS] Fallback userId lookup:`, resolvedUser ? `found (id=${resolvedUser.id})` : 'not found');
+              } catch (e: any) {
+                console.error(`[WS] Fallback userId lookup error:`, e?.message);
               }
             }
+            
+            // If userId lookup failed, try openId lookup
+            if (!resolvedUser && fallbackOpenId) {
+              try {
+                resolvedUser = await db.getUserByOpenId(fallbackOpenId) || undefined;
+                console.log(`[WS] Fallback openId lookup:`, resolvedUser ? `found (id=${resolvedUser.id})` : 'not found');
+              } catch (e: any) {
+                console.error(`[WS] Fallback openId lookup error:`, e?.message);
+              }
+            }
+            
+            if (resolvedUser) {
+              userId = resolvedUser.id;
+              if (!userConnections.has(userId)) {
+                userConnections.set(userId, new Set());
+              }
+              userConnections.get(userId)!.add(ws);
+              ws.send(JSON.stringify({ type: "auth_success", userId }));
+              const unreadCount = await chatDb.getUnreadCount(userId);
+              ws.send(JSON.stringify({ type: "unread_count", count: unreadCount }));
+              console.log(`[WS] User ${userId} connected via fallback auth.`);
+              return;
+            }
+            
+            console.log(`[WS] All auth methods failed for userId=${fallbackId}, openId=${fallbackOpenId}`);
             ws.send(JSON.stringify({ type: "auth_error", message: "Authentication failed" }));
             ws.close();
           }

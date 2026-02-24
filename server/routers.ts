@@ -23,6 +23,30 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    // Sync local (email/password) users to DB so they get a real DB ID
+    // This is needed because local login generates Date.now() IDs that don't exist in DB
+    syncLocalUser: publicProcedure
+      .input(z.object({
+        openId: z.string().min(1),
+        name: z.string().optional(),
+        email: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Upsert the user into the DB
+        await db.upsertUser({
+          openId: input.openId,
+          name: input.name || null,
+          email: input.email || null,
+          loginMethod: "local",
+          lastSignedIn: new Date(),
+        });
+        // Get the user back to return the real DB ID
+        const user = await db.getUserByOpenId(input.openId);
+        if (!user) {
+          throw new Error("Failed to sync local user");
+        }
+        return { id: user.id, openId: user.openId };
+      }),
   }),
 
   // FitMonster API Routers
