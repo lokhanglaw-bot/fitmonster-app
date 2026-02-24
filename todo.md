@@ -885,3 +885,14 @@
 - [x] 推播通知仍正常運作（push notification 不依賴 WS）
 - [x] TypeScript 0 errors
 - [x] 58 個測試全部通過（Round 75 + 76）
+
+## Round 77: Chat UX 修正 + 智慧 Polling
+- [x] Back button 修正：handleBack 優先 canDismiss → canGoBack → replace("/(tabs)")
+- [x] handleSend 加 debounce (300ms) + isSending 鎖防止重複發送，送出時顯示 spinner
+- [x] 輸入框先清空再 await，失敗時還原文字
+- [x] KeyboardAvoidingView behavior="height" on Android + keyboardShouldPersistTaps + keyboardDismissMode
+- [x] scrollToBottom 用 requestAnimationFrame，鍵盤彈出時也滾到底
+- [x] 智慧 polling：4s 正常 / 2s 加速（收到新訊息或發送後持續 30 秒）
+- [x] 加入 [Chat] Polling mode log
+- [x] TypeScript 0 errors
+- [x] 58 個測試全部通過（Round 76 + 77）

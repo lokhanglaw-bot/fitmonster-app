@@ -38,6 +38,11 @@ type ChatMessage = {
   createdAt: string;
 };
 
+// Polling constants
+const NORMAL_POLL_INTERVAL = 4000;
+const ACCELERATED_POLL_INTERVAL = 2000;
+const ACCELERATED_DURATION = 30000;
+
 export default function ChatScreen() {
   const colors = useColors();
   const router = useRouter();
@@ -50,6 +55,7 @@ export default function ChatScreen() {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -60,13 +66,19 @@ export default function ChatScreen() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [playingAudioId, setPlayingAudioId] = useState<number | null>(null);
   const flatListRef = useRef<FlatList>(null);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
   const recorderRef = useRef<any>(null);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioPlayerRef = useRef<any>(null);
   const pulseAnim = useRef(new RNAnimated.Value(1)).current;
-  const restPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Smart polling refs
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const acceleratedUntilRef = useRef<number>(0);
+  const prevMsgCountRef = useRef<number>(0);
+  const isMountedRef = useRef(true);
+  // Debounce ref for send button
+  const lastSendTimeRef = useRef<number>(0);
 
   const uploadImageMutation = trpc.chat.uploadImage.useMutation();
   const uploadAudioMutation = trpc.chat.uploadAudio.useMutation();
@@ -83,6 +95,19 @@ export default function ChatScreen() {
     }
   );
 
+  // Helper: scroll to bottom immediately
+  const scrollToBottom = useCallback((animated = true) => {
+    requestAnimationFrame(() => {
+      flatListRef.current?.scrollToEnd({ animated });
+    });
+  }, []);
+
+  // Helper: activate accelerated polling
+  const activateAcceleratedPolling = useCallback(() => {
+    acceleratedUntilRef.current = Date.now() + ACCELERATED_DURATION;
+    console.log("[Chat] Polling mode: accelerated (2s) - new message received");
+  }, []);
+
   // When REST history loads, populate messages
   useEffect(() => {
     if (historyQuery.data) {
@@ -92,6 +117,17 @@ export default function ChatScreen() {
           createdAt: typeof m.createdAt === "string" ? m.createdAt : new Date(m.createdAt).toISOString(),
         }))
         .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      // Detect new incoming messages (not from me) to trigger accelerated polling
+      const newCount = sorted.length;
+      if (prevMsgCountRef.current > 0 && newCount > prevMsgCountRef.current) {
+        const lastMsg = sorted[sorted.length - 1];
+        if (lastMsg && lastMsg.senderId !== myId) {
+          activateAcceleratedPolling();
+        }
+      }
+      prevMsgCountRef.current = newCount;
+
       setMessages(sorted);
       setLoading(false);
       // Mark messages as read
@@ -101,21 +137,41 @@ export default function ChatScreen() {
     }
   }, [historyQuery.data]);
 
-  // ========== REST POLLING: poll for new messages every 5 seconds ==========
+  // ========== SMART POLLING: 4s normal / 2s accelerated ==========
   useEffect(() => {
-    if (friendIdNum && myId) {
-      restPollRef.current = setInterval(async () => {
+    if (!friendIdNum || !myId) return;
+    isMountedRef.current = true;
+
+    const schedulePoll = () => {
+      if (!isMountedRef.current) return;
+
+      const isAccelerated = Date.now() < acceleratedUntilRef.current;
+      const interval = isAccelerated ? ACCELERATED_POLL_INTERVAL : NORMAL_POLL_INTERVAL;
+
+      pollTimerRef.current = setTimeout(async () => {
+        if (!isMountedRef.current) return;
         try {
           await historyQuery.refetch();
         } catch (_err) {
           // Silently ignore polling errors
         }
-      }, 5000);
-    }
+        // Check if mode changed after poll
+        const stillAccelerated = Date.now() < acceleratedUntilRef.current;
+        if (isAccelerated && !stillAccelerated) {
+          console.log("[Chat] Polling mode: normal (4s)");
+        }
+        schedulePoll();
+      }, interval);
+    };
+
+    console.log("[Chat] Polling mode: normal (4s)");
+    schedulePoll();
+
     return () => {
-      if (restPollRef.current) {
-        clearInterval(restPollRef.current);
-        restPollRef.current = null;
+      isMountedRef.current = false;
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
       }
     };
   }, [friendIdNum, myId]);
@@ -133,19 +189,19 @@ export default function ChatScreen() {
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (messages.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      scrollToBottom(true);
     }
-  }, [messages.length]);
+  }, [messages.length, scrollToBottom]);
 
-  // Close emoji picker when keyboard shows
+  // Close emoji picker when keyboard shows, and scroll to bottom
   useEffect(() => {
-    const sub = Keyboard.addListener("keyboardDidShow", () => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => {
       setShowEmojiPicker(false);
+      // Scroll to bottom when keyboard appears so last message is visible
+      scrollToBottom(true);
     });
-    return () => sub.remove();
-  }, []);
+    return () => showSub.remove();
+  }, [scrollToBottom]);
 
   // Cleanup recording and audio player on unmount
   useEffect(() => {
@@ -173,10 +229,23 @@ export default function ChatScreen() {
     }
   }, [isRecording, pulseAnim]);
 
-  // ========== SEND MESSAGE via REST ==========
+  // ========== SEND MESSAGE via REST (with debounce + isSending lock) ==========
   const handleSend = useCallback(async () => {
     const text = inputText.trim();
     if (!text || !friendIdNum) return;
+
+    // Debounce: ignore if last send was less than 300ms ago
+    const now = Date.now();
+    if (now - lastSendTimeRef.current < 300) return;
+    lastSendTimeRef.current = now;
+
+    // Lock: prevent double-send
+    if (isSending) return;
+    setIsSending(true);
+
+    // Clear input immediately for responsiveness
+    setInputText("");
+    setShowEmojiPicker(false);
 
     try {
       const savedMsg = await sendMessageMutation.mutateAsync({
@@ -184,7 +253,6 @@ export default function ChatScreen() {
         message: text,
         messageType: "text",
       });
-      // Add message to local state immediately
       if (savedMsg) {
         const newMsg: ChatMessage = {
           id: savedMsg.id,
@@ -199,16 +267,22 @@ export default function ChatScreen() {
           if (prev.some((m) => m.id === newMsg.id)) return prev;
           return [...prev, newMsg];
         });
+        // Scroll to bottom immediately after sending
+        scrollToBottom(true);
+        // Activate accelerated polling after sending
+        activateAcceleratedPolling();
       }
-      setInputText("");
-      setShowEmojiPicker(false);
     } catch (err: any) {
+      // Restore input text on failure so user can retry
+      setInputText(text);
       Alert.alert(
         (t as any).chatNetworkUnstable || "Failed to send",
         err?.message || "Please try again"
       );
+    } finally {
+      setIsSending(false);
     }
-  }, [inputText, friendIdNum, t, sendMessageMutation, myId]);
+  }, [inputText, friendIdNum, t, sendMessageMutation, myId, isSending, scrollToBottom, activateAcceleratedPolling]);
 
   const handleTyping = useCallback((text: string) => {
     setInputText(text);
@@ -271,6 +345,8 @@ export default function ChatScreen() {
             createdAt: typeof savedMsg.createdAt === "string" ? savedMsg.createdAt : new Date(savedMsg.createdAt).toISOString(),
           }];
         });
+        scrollToBottom(true);
+        activateAcceleratedPolling();
       }
     } catch (err: any) {
       Alert.alert(
@@ -280,7 +356,7 @@ export default function ChatScreen() {
     } finally {
       setUploadingImage(false);
     }
-  }, [friendIdNum, t, uploadImageMutation, sendMessageMutation, myId]);
+  }, [friendIdNum, t, uploadImageMutation, sendMessageMutation, myId, scrollToBottom, activateAcceleratedPolling]);
 
   // Pick image from gallery
   const handlePickImage = useCallback(async () => {
@@ -458,6 +534,8 @@ export default function ChatScreen() {
             createdAt: typeof savedMsg.createdAt === "string" ? savedMsg.createdAt : new Date(savedMsg.createdAt).toISOString(),
           }];
         });
+        scrollToBottom(true);
+        activateAcceleratedPolling();
       }
 
       try { recorder.remove?.(); } catch {}
@@ -472,7 +550,7 @@ export default function ChatScreen() {
         (t as any).chatVoiceFailed || "Failed to send voice"
       );
     }
-  }, [recordingDuration, friendIdNum, t, uploadAudioMutation, sendMessageMutation, myId]);
+  }, [recordingDuration, friendIdNum, t, uploadAudioMutation, sendMessageMutation, myId, scrollToBottom, activateAcceleratedPolling]);
 
   const cancelRecording = useCallback(async () => {
     if (!recorderRef.current) return;
@@ -685,9 +763,25 @@ export default function ChatScreen() {
   const statusText = (t as any).chatConnected || "Connected";
   const statusColor = colors.success;
 
+  // Back button handler: try dismiss first (modal), then back, then navigate to tabs
+  const handleBack = useCallback(() => {
+    if (router.canDismiss()) {
+      router.dismiss();
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      // Fallback: navigate to the main tab
+      router.replace("/(tabs)");
+    }
+  }, [router]);
+
   return (
     <ScreenContainer edges={["left", "right", "bottom"]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
         {/* Header */}
         <View
           style={[
@@ -696,10 +790,7 @@ export default function ChatScreen() {
           ]}
         >
           <TouchableOpacity
-            onPress={() => {
-              if (router.canDismiss()) router.dismiss();
-              else router.back();
-            }}
+            onPress={handleBack}
             style={styles.backBtn}
           >
             <IconSymbol name="arrow.left" size={24} color={colors.foreground} />
@@ -734,6 +825,8 @@ export default function ChatScreen() {
                 flatListRef.current?.scrollToEnd({ animated: false });
               }
             }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
           />
         </View>
 
@@ -819,9 +912,17 @@ export default function ChatScreen() {
             {inputText.trim() ? (
               <TouchableOpacity
                 onPress={handleSend}
-                style={[styles.sendBtn, { backgroundColor: colors.primary }]}
+                disabled={isSending}
+                style={[
+                  styles.sendBtn,
+                  { backgroundColor: isSending ? colors.muted : colors.primary },
+                ]}
               >
-                <IconSymbol name="paperplane.fill" size={20} color="#fff" />
+                {isSending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <IconSymbol name="paperplane.fill" size={20} color="#fff" />
+                )}
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
