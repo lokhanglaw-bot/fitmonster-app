@@ -62,6 +62,7 @@ export default function ChatScreen() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [playingAudioId, setPlayingAudioId] = useState<number | null>(null);
   const [restMode, setRestMode] = useState(false); // true = WS failed, using REST polling
+  const [showDebugLog, setShowDebugLog] = useState(false); // Debug Log panel toggle (default OFF)
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -172,14 +173,14 @@ export default function ChatScreen() {
   // ========== REST POLLING: when in REST mode, poll for new messages every 3 seconds ==========
   useEffect(() => {
     if (restMode && friendIdNum && myId) {
-      console.log("[Chat] Starting REST polling (every 3s)");
+      console.log("[Chat] Starting REST polling (every 6s)");
       restPollRef.current = setInterval(async () => {
         try {
           await historyQuery.refetch();
         } catch (err) {
           console.error("[Chat] REST poll error:", err);
         }
-      }, 3000);
+      }, 6000);
     } else {
       if (restPollRef.current) {
         console.log("[Chat] Stopping REST polling");
@@ -878,18 +879,14 @@ export default function ChatScreen() {
     return null;
   }, [loading, colors, t, messages.length]);
 
-  // Status display: show REST mode when WS is down but REST is working
-  const statusText = restMode
-    ? "REST mode (online)"
-    : status === "connected"
+  // Status display: REST mode shows as "Connected" (user doesn't need to know the mode)
+  const statusText = (restMode || status === "connected")
     ? ((t as any).chatConnected || "Connected")
     : status === "connecting"
     ? ((t as any).chatConnecting || "Connecting...")
     : ((t as any).chatDisconnected || "Disconnected");
 
-  const statusColor = restMode
-    ? colors.warning
-    : status === "connected" ? colors.success : status === "connecting" ? colors.warning : colors.error;
+  const statusColor = (restMode || status === "connected") ? colors.success : status === "connecting" ? colors.warning : colors.error;
 
   // In REST mode or WS connected, user can send messages
   const canSend = status === "connected" || restMode;
@@ -976,39 +973,51 @@ export default function ChatScreen() {
           </View>
         )}
 
-        {/* Debug Log Panel */}
-        <View style={[styles.debugPanel, { backgroundColor: "#1a1a2e", borderTopColor: colors.border }]}>
-          <View style={styles.debugHeader}>
-            <Text style={styles.debugTitle}>Debug Log ({debugLogs.length}) {restMode ? "📡 REST" : status === "connected" ? "🟢 WS" : "🔴 WS"}</Text>
-            <TouchableOpacity onPress={() => { debugLogRef.current = []; setDebugLogs([]); }}>
-              <Text style={styles.debugClear}>Clear</Text>
-            </TouchableOpacity>
+        {/* Debug Log Toggle Button (small, bottom-right of messages area) */}
+        <TouchableOpacity
+          onPress={() => setShowDebugLog(!showDebugLog)}
+          style={[styles.debugToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <Text style={[styles.debugToggleText, { color: colors.muted }]}>
+            {showDebugLog ? "Hide Log" : "🐛 Debug"}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Debug Log Panel (hidden by default) */}
+        {showDebugLog && (
+          <View style={[styles.debugPanel, { backgroundColor: "#1a1a2e", borderTopColor: colors.border }]}>
+            <View style={styles.debugHeader}>
+              <Text style={styles.debugTitle}>Debug Log ({debugLogs.length}) {restMode ? "📡 REST" : status === "connected" ? "🟢 WS" : "🔴 WS"}</Text>
+              <TouchableOpacity onPress={() => { debugLogRef.current = []; setDebugLogs([]); }}>
+                <Text style={styles.debugClear}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.debugScroll} nestedScrollEnabled>
+              {debugLogs.length === 0 ? (
+                <Text style={styles.debugText}>Waiting for logs...</Text>
+              ) : (
+                debugLogs.map((log, i) => (
+                  <Text
+                    key={i}
+                    style={[
+                      styles.debugText,
+                      log.includes("AUTH SUCCESS") && { color: "#4ade80" },
+                      log.includes("DISCONNECTED") && { color: "#f87171" },
+                      log.includes("ERROR") && { color: "#f87171" },
+                      log.includes("STATUS CHANGED") && { color: "#60a5fa" },
+                      log.includes("TCP CONNECTED") && { color: "#4ade80" },
+                      log.includes("Connecting to") && { color: "#fbbf24" },
+                      log.includes("REST") && { color: "#c084fc" },
+                      log.includes("Switching") && { color: "#c084fc" },
+                    ]}
+                  >
+                    {log}
+                  </Text>
+                ))
+              )}
+            </ScrollView>
           </View>
-          <ScrollView style={styles.debugScroll} nestedScrollEnabled>
-            {debugLogs.length === 0 ? (
-              <Text style={styles.debugText}>Waiting for logs...</Text>
-            ) : (
-              debugLogs.map((log, i) => (
-                <Text
-                  key={i}
-                  style={[
-                    styles.debugText,
-                    log.includes("AUTH SUCCESS") && { color: "#4ade80" },
-                    log.includes("DISCONNECTED") && { color: "#f87171" },
-                    log.includes("ERROR") && { color: "#f87171" },
-                    log.includes("STATUS CHANGED") && { color: "#60a5fa" },
-                    log.includes("TCP CONNECTED") && { color: "#4ade80" },
-                    log.includes("Connecting to") && { color: "#fbbf24" },
-                    log.includes("REST") && { color: "#c084fc" },
-                    log.includes("Switching") && { color: "#c084fc" },
-                  ]}
-                >
-                  {log}
-                </Text>
-              ))
-            )}
-          </ScrollView>
-        </View>
+        )}
 
         {/* Input Bar */}
         {!isRecording && (
@@ -1251,6 +1260,19 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 64, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: "700", textAlign: "center", marginBottom: 12 },
   emptyDesc: { fontSize: 14, textAlign: "center", lineHeight: 22 },
+  debugToggle: {
+    alignSelf: "flex-end",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginRight: 8,
+    marginBottom: 2,
+  },
+  debugToggleText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
   debugPanel: {
     maxHeight: 150,
     borderTopWidth: 1,

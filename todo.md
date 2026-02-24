@@ -854,3 +854,10 @@
 - [x] 移除「已斷開」大圖示，改為顯示「REST mode (online)」
 - [x] Debug Log 顯示 REST/WS 模式切換過程
 - [x] TypeScript 0 errors
+
+## Chat Fix - Round 74: 補強項目
+- [x] 離線推播：sendMessage mutation 中對方不在線時發 push notification（已確認存在）
+- [x] Polling 間隔改成每 6 秒一次
+- [x] UX：REST mode 改顯示「已連線」（用戶看不到 REST mode 字樣）
+- [x] UX：Debug Log 面板加上開關（預設關閉，點 🐛 Debug 按鈕可開啟）
+- [x] 確認圖片和語音上傳也走 REST fallback（已確認存在）
