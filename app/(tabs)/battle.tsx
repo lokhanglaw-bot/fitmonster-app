@@ -148,6 +148,8 @@ export default function BattleScreen() {
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [showBattle, setShowBattle] = useState(false);
   const [battle, setBattle] = useState<BattleState | null>(null);
+  const [locationTooltip, setLocationTooltip] = useState<{ friendId: number; text: string } | null>(null);
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Real backend queries
   const friendsQuery = trpc.friends.list.useQuery(undefined, { retry: 1 });
@@ -570,14 +572,22 @@ export default function BattleScreen() {
     const newValue = !friend.hideLocation;
     // Optimistic update
     setFriends((prev) => prev.map((f) => f.id === friend.id ? { ...f, hideLocation: newValue } : f));
+    // Show tooltip feedback
+    const toastText = newValue
+      ? tr(t.locationHiddenToast, { name: friend.name })
+      : tr(t.locationVisibleToast, { name: friend.name });
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    setLocationTooltip({ friendId: friend.id, text: toastText });
+    tooltipTimerRef.current = setTimeout(() => setLocationTooltip(null), 2500);
     try {
       await hideLocationMutation.mutateAsync({ friendId: friend.id, hide: newValue });
       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {
       // Revert on error
       setFriends((prev) => prev.map((f) => f.id === friend.id ? { ...f, hideLocation: !newValue } : f));
+      setLocationTooltip(null);
     }
-  }, [hideLocationMutation]);
+  }, [hideLocationMutation, t, tr]);
 
   return (
     <ScreenContainer>
@@ -879,15 +889,27 @@ export default function BattleScreen() {
                             return null;
                           })()}
                         </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.hideLocBtn, { backgroundColor: friend.hideLocation ? colors.error : colors.border }]}
-                          onPress={() => handleToggleHideLocation(friend)}
-                        >
-                          <Text style={{ fontSize: 12, color: friend.hideLocation ? "#fff" : colors.muted }}>
-                            {friend.hideLocation ? "📍" : "👁"}
+                        <View>
+                          <TouchableOpacity
+                            style={[styles.hideLocBtn, { backgroundColor: friend.hideLocation ? colors.error : colors.border }]}
+                            onPress={() => handleToggleHideLocation(friend)}
+                          >
+                            <Text style={{ fontSize: 12, color: friend.hideLocation ? "#fff" : colors.muted }}>
+                              {friend.hideLocation ? "📍" : "👁"}
+                            </Text>
+                          </TouchableOpacity>
+                          <Text style={[styles.hideLocLabel, { color: colors.muted }]}>
+                            {friend.hideLocation ? t.hideFriendLocation : t.showFriendLocation}
                           </Text>
-                        </TouchableOpacity>
+                        </View>
                       </View>
+                      {locationTooltip?.friendId === friend.id && (
+                        <View style={[styles.tooltipBubble, { backgroundColor: colors.foreground }]}>
+                          <Text style={[styles.tooltipText, { color: colors.background }]}>
+                            {locationTooltip.text}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   ))}
                 </>
@@ -1159,5 +1181,22 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 11,
     fontWeight: "700" as const,
+  },
+  hideLocLabel: {
+    fontSize: 9,
+    textAlign: "center" as const,
+    marginTop: 2,
+    maxWidth: 40,
+  },
+  tooltipBubble: {
+    alignSelf: "center" as const,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 6,
+  },
+  tooltipText: {
+    fontSize: 12,
+    fontWeight: "500" as const,
   },
 });

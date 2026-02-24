@@ -799,3 +799,6 @@
 - [x] Verified: X-User-Id header auth works with protectedProcedure endpoints
 - [x] Verified: WebSocket auth with DB ID succeeds
 - [x] Verified: WebSocket auth with invalid Date.now() ID + valid openId succeeds via openId fallback
+
+## Feature - Round 68: Location toggle tooltip
+- [x] Add tooltip/explanation to the location hide/show toggle button on friend cards
