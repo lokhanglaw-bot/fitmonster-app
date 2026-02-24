@@ -823,3 +823,11 @@
 - [x] 修復 chat.tsx：移除暴力 3 秒重連 interval，改為 5 秒一次性嘗試
 - [x] 伺服器端測試通過：auth_success、ping/pong、get_history 全部正常
 - [ ] 等待用戶手機端實測確認 connected 狀態正常
+
+## Chat Fix - Round 71: 最終修復 status 傳遞鏈路（手機端仍顯示「已斷開」）
+- [x] chat.tsx 改為直接用 useWebSocket 拿 status（不再經過 useNotifications 轉）
+- [x] use-websocket.ts 確保 auth_success 強制 setStatus("connected") 並加 log
+- [x] chat.tsx 加入 status debug log
+- [x] Reconnect 按鈕直接呼叫 connect()
+- [x] 驗證 TypeScript 編譯通過
+- [x] 存檔 checkpoint

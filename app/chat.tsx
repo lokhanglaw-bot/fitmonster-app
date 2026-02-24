@@ -24,7 +24,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useI18n } from "@/lib/i18n-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthContext } from "@/lib/auth-context";
-import { useNotifications } from "@/lib/notification-provider";
+import { useWebSocket } from "@/hooks/use-websocket";
 import { EmojiPicker } from "@/components/emoji-picker";
 import { ImagePreviewModal } from "@/components/image-preview-modal";
 import { trpc } from "@/lib/trpc";
@@ -70,7 +70,14 @@ export default function ChatScreen() {
   const pulseAnim = useRef(new RNAnimated.Value(1)).current;
   const reconnectIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { wsStatus: status, wsSend: send, wsOn: on, wsReconnect: reconnect } = useNotifications();
+  // ========== DIRECT WebSocket connection (bypass useNotifications context) ==========
+  const { status, send, on, connect: reconnect } = useWebSocket(myId, user?.openId);
+
+  // Debug: log every status change
+  useEffect(() => {
+    console.log("[Chat] ====== WS STATUS CHANGED ======", status);
+  }, [status]);
+
   const uploadImageMutation = trpc.chat.uploadImage.useMutation();
   const uploadAudioMutation = trpc.chat.uploadAudio.useMutation();
 

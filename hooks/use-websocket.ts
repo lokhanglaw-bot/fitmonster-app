@@ -174,7 +174,7 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
 
       ws.onopen = async () => {
         clearTimeout(connectTimeout);
-        console.log("[WS] TCP connected, sending auth...");
+        console.log("[WS] 🟢 TCP CONNECTED! readyState:", ws.readyState, "Sending auth...");
         isConnectingRef.current = false;
 
         let token: string | null = null;
@@ -204,6 +204,7 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
           // Parse the incoming data - handle string, Blob, ArrayBuffer
           let text: string;
           const rawData = event.data;
+          console.log("[WS] 📩 onmessage fired! data type:", typeof rawData, "constructor:", rawData?.constructor?.name, "length:", typeof rawData === 'string' ? rawData.length : 'N/A');
 
           if (typeof rawData === "string") {
             text = rawData;
@@ -221,10 +222,20 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
 
           const msg = JSON.parse(text) as WSMessage;
 
-          // Handle auth_success
+          // Handle auth_success — FORCE status to connected
           if (msg.type === "auth_success") {
-            console.log("[WS] ✅ Auth success! userId:", msg.userId);
+            console.log("[WS] ✅✅✅ AUTH SUCCESS RECEIVED! userId:", msg.userId, "— FORCING status to connected");
+            console.log("[WS] Current statusRef before update:", statusRef.current);
             setStatus("connected");
+            // Double-ensure: schedule another setStatus in case React batches it away
+            setTimeout(() => {
+              if (statusRef.current !== "connected") {
+                console.log("[WS] ⚠️ Status still not connected after 100ms, forcing again");
+                setStatus("connected");
+              } else {
+                console.log("[WS] ✅ Status confirmed as connected after 100ms");
+              }
+            }, 100);
             reconnectAttemptsRef.current = 0;
             authFailCountRef.current = 0;
 
@@ -279,7 +290,7 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
 
       ws.onclose = (event: CloseEvent) => {
         clearTimeout(connectTimeout);
-        console.log("[WS] Disconnected, code:", event?.code, "reason:", event?.reason);
+        console.log("[WS] 🔴 DISCONNECTED! code:", event?.code, "reason:", event?.reason, "wasClean:", event?.wasClean);
         setStatus("disconnected");
         wsRef.current = null;
         isConnectingRef.current = false;
