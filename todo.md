@@ -837,3 +837,20 @@
 - [x] 顯示最近 20 條 [WS] 和 [Chat] 開頭的 log
 - [x] 小字灰色文字顯示（深色背景 + 等寬字體 + 顏色標記）
 - [x] use-websocket.ts 的 log 透過 console.log 攔截傳到 chat.tsx 顯示
+
+## Chat Fix - Round 72: 後端 /ws 端點 404 問題
+- [ ] 檢查 server/_core/index.ts 是否有掛載 WebSocket
+- [ ] 確認 websocket.ts 的 export 和掛載方式正確
+- [ ] 確保 /ws 端點在部署後可被存取
+- [ ] 重啟後端並驗證 log 出現 WebSocket server started
+- [ ] 存檔 checkpoint
+
+## Chat Fix - Round 73: REST Polling Fallback (Production WS 404)
+- [x] 診斷：Production reverse proxy 不支援 WebSocket upgrade（返回 404）
+- [x] chat.tsx 加入 REST polling fallback（WS 失敗 2 次後自動切換）
+- [x] handleSend 支援 REST fallback（用 trpc.chat.sendMessage）
+- [x] 圖片/語音發送也支援 REST fallback
+- [x] REST mode 每 3 秒輪詢新訊息
+- [x] 移除「已斷開」大圖示，改為顯示「REST mode (online)」
+- [x] Debug Log 顯示 REST/WS 模式切換過程
+- [x] TypeScript 0 errors

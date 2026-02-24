@@ -61,7 +61,7 @@ export default function ChatScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [playingAudioId, setPlayingAudioId] = useState<number | null>(null);
-  const [historyLoadedFromRest, setHistoryLoadedFromRest] = useState(false);
+  const [restMode, setRestMode] = useState(false); // true = WS failed, using REST polling
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -69,7 +69,9 @@ export default function ChatScreen() {
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioPlayerRef = useRef<any>(null);
   const pulseAnim = useRef(new RNAnimated.Value(1)).current;
-  const reconnectIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wsFailCountRef = useRef(0);
+  const restPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastMsgIdRef = useRef(0);
 
   // ========== DEBUG LOG STATE ==========
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
@@ -105,13 +107,29 @@ export default function ChatScreen() {
     };
   }, [addDebugLog]);
 
-  // ========== DIRECT WebSocket connection (bypass useNotifications context) ==========
-  const { status, send, on, connect: reconnect } = useWebSocket(myId, user?.openId);
+  // ========== WebSocket connection (will auto-fallback to REST if WS fails) ==========
+  const { status, send, on, connect: wsReconnect } = useWebSocket(myId, user?.openId);
 
   // Debug: log every status change
   useEffect(() => {
     console.log("[Chat] ====== WS STATUS CHANGED ======", status);
-  }, [status]);
+    if (status === "disconnected") {
+      wsFailCountRef.current += 1;
+      console.log("[Chat] WS fail count:", wsFailCountRef.current);
+      // After 2 WS failures, switch to REST polling mode
+      if (wsFailCountRef.current >= 2 && !restMode) {
+        console.log("[Chat] 🔄 Switching to REST polling mode (WS unavailable)");
+        setRestMode(true);
+      }
+    } else if (status === "connected") {
+      // WS recovered! Switch back
+      wsFailCountRef.current = 0;
+      if (restMode) {
+        console.log("[Chat] ✅ WS recovered, switching back from REST mode");
+        setRestMode(false);
+      }
+    }
+  }, [status, restMode]);
 
   // Log mount info
   useEffect(() => {
@@ -120,8 +138,9 @@ export default function ChatScreen() {
 
   const uploadImageMutation = trpc.chat.uploadImage.useMutation();
   const uploadAudioMutation = trpc.chat.uploadAudio.useMutation();
+  const sendMessageMutation = trpc.chat.sendMessage.useMutation();
 
-  // ========== REST API fallback: load chat history on mount ==========
+  // ========== REST API: load chat history on mount ==========
   const historyQuery = trpc.chat.history.useQuery(
     { friendId: friendIdNum, limit: 50 },
     {
@@ -131,9 +150,9 @@ export default function ChatScreen() {
     }
   );
 
-  // When REST history loads, populate messages (only if WS hasn't loaded them yet)
+  // When REST history loads, populate messages
   useEffect(() => {
-    if (historyQuery.data && !historyLoadedFromRest) {
+    if (historyQuery.data) {
       console.log("[Chat] REST API loaded history:", historyQuery.data.length, "messages");
       const sorted = [...historyQuery.data]
         .map((m: any) => ({
@@ -143,34 +162,38 @@ export default function ChatScreen() {
         .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       setMessages(sorted);
       setLoading(false);
-      setHistoryLoadedFromRest(true);
+      // Track last message ID for polling
+      if (sorted.length > 0) {
+        lastMsgIdRef.current = Math.max(...sorted.map((m: any) => m.id));
+      }
     }
-  }, [historyQuery.data, historyLoadedFromRest]);
+  }, [historyQuery.data]);
 
-  // ========== Auto-reconnect: use-websocket.ts handles reconnection automatically ==========
-  // Only trigger a manual reconnect if status stays disconnected for 5+ seconds
+  // ========== REST POLLING: when in REST mode, poll for new messages every 3 seconds ==========
   useEffect(() => {
-    if (status === "disconnected") {
-      console.log("[Chat] WS status is disconnected — will try manual reconnect in 5s");
-      reconnectIntervalRef.current = setTimeout(() => {
-        if (reconnect) {
-          console.log("[Chat] Manual reconnect attempt...");
-          reconnect();
+    if (restMode && friendIdNum && myId) {
+      console.log("[Chat] Starting REST polling (every 3s)");
+      restPollRef.current = setInterval(async () => {
+        try {
+          await historyQuery.refetch();
+        } catch (err) {
+          console.error("[Chat] REST poll error:", err);
         }
-      }, 5000);
+      }, 3000);
     } else {
-      if (reconnectIntervalRef.current) {
-        clearTimeout(reconnectIntervalRef.current);
-        reconnectIntervalRef.current = null;
+      if (restPollRef.current) {
+        console.log("[Chat] Stopping REST polling");
+        clearInterval(restPollRef.current);
+        restPollRef.current = null;
       }
     }
     return () => {
-      if (reconnectIntervalRef.current) {
-        clearTimeout(reconnectIntervalRef.current);
-        reconnectIntervalRef.current = null;
+      if (restPollRef.current) {
+        clearInterval(restPollRef.current);
+        restPollRef.current = null;
       }
     };
-  }, [status, reconnect]);
+  }, [restMode, friendIdNum, myId]);
 
   // Request chat history on WS connect
   useEffect(() => {
@@ -192,7 +215,7 @@ export default function ChatScreen() {
     return () => clearTimeout(timeout);
   }, [loading]);
 
-  // Listen for WebSocket messages
+  // Listen for WebSocket messages (only active when WS is connected)
   useEffect(() => {
     const unsubs: Array<() => void> = [];
 
@@ -294,47 +317,70 @@ export default function ChatScreen() {
     }
   }, [isRecording, pulseAnim]);
 
-  // ========== handleSend with connection check ==========
-  const handleSend = useCallback(() => {
+  // ========== SEND MESSAGE: WS if connected, REST fallback otherwise ==========
+  const handleSend = useCallback(async () => {
     const text = inputText.trim();
     if (!text || !friendIdNum) return;
 
-    // Check connection status before sending
-    if (status !== "connected") {
-      console.log("[Chat] Cannot send — WS status:", status);
-      Alert.alert(
-        (t as any).chatNetworkUnstable || "目前網路不穩",
-        (t as any).chatTryLater || "請稍後再試"
-      );
-      return;
+    // Try WS first
+    if (status === "connected") {
+      console.log("[Chat] Sending via WS to", friendIdNum, ":", text.substring(0, 50));
+      const sent = send({
+        type: "send_message",
+        receiverId: friendIdNum,
+        message: text,
+        messageType: "text",
+      });
+      console.log("[Chat] WS send result:", sent);
+      if (sent) {
+        setInputText("");
+        setShowEmojiPicker(false);
+        return;
+      }
     }
 
-    console.log("[Chat] Sending message to", friendIdNum, ":", text.substring(0, 50));
-    const sent = send({
-      type: "send_message",
-      receiverId: friendIdNum,
-      message: text,
-      messageType: "text",
-    });
-    console.log("[Chat] Send result:", sent);
-
-    if (sent) {
+    // REST fallback
+    console.log("[Chat] Sending via REST to", friendIdNum, ":", text.substring(0, 50));
+    try {
+      const savedMsg = await sendMessageMutation.mutateAsync({
+        receiverId: friendIdNum,
+        message: text,
+        messageType: "text",
+      });
+      console.log("[Chat] REST send success, msgId:", savedMsg?.id);
+      // Add message to local state immediately
+      if (savedMsg) {
+        const newMsg: ChatMessage = {
+          id: savedMsg.id,
+          senderId: myId,
+          receiverId: friendIdNum,
+          message: savedMsg.message,
+          messageType: savedMsg.messageType,
+          isRead: false,
+          createdAt: typeof savedMsg.createdAt === "string" ? savedMsg.createdAt : new Date(savedMsg.createdAt).toISOString(),
+        };
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
+      }
       setInputText("");
       setShowEmojiPicker(false);
-    } else {
+    } catch (err: any) {
+      console.error("[Chat] REST send failed:", err);
       Alert.alert(
-        (t as any).chatNetworkUnstable || "目前網路不穩",
-        (t as any).chatTryLater || "請稍後再試"
+        (t as any).chatNetworkUnstable || "Failed to send",
+        err?.message || "Please try again"
       );
     }
-  }, [inputText, friendIdNum, send, status, t]);
+  }, [inputText, friendIdNum, send, status, t, sendMessageMutation, myId]);
 
   const handleTyping = useCallback((text: string) => {
     setInputText(text);
-    if (text.length > 0 && friendIdNum) {
+    if (text.length > 0 && friendIdNum && status === "connected") {
       send({ type: "typing", receiverId: friendIdNum });
     }
-  }, [friendIdNum, send]);
+  }, [friendIdNum, send, status]);
 
   const handleEmojiSelect = useCallback((emoji: string) => {
     setInputText((prev) => prev + emoji);
@@ -350,7 +396,7 @@ export default function ChatScreen() {
     }
   }, [showEmojiPicker]);
 
-  // Upload and send image helper
+  // Upload and send image helper — with REST fallback
   const uploadAndSendImage = useCallback(async (asset: ImagePicker.ImagePickerAsset) => {
     if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
       Alert.alert(
@@ -365,14 +411,6 @@ export default function ChatScreen() {
       return;
     }
 
-    if (status !== "connected") {
-      Alert.alert(
-        (t as any).chatNetworkUnstable || "目前網路不穩",
-        (t as any).chatTryLater || "請稍後再試"
-      );
-      return;
-    }
-
     setUploadingImage(true);
     setShowEmojiPicker(false);
 
@@ -383,13 +421,38 @@ export default function ChatScreen() {
         mimeType,
       });
 
-      console.log("[Chat] Image uploaded, sending to", friendIdNum);
-      send({
-        type: "send_message",
-        receiverId: friendIdNum,
-        message: url,
-        messageType: "image",
-      });
+      console.log("[Chat] Image uploaded, url:", url);
+
+      // Try WS first, then REST
+      if (status === "connected") {
+        send({
+          type: "send_message",
+          receiverId: friendIdNum,
+          message: url,
+          messageType: "image",
+        });
+      } else {
+        console.log("[Chat] Sending image via REST");
+        const savedMsg = await sendMessageMutation.mutateAsync({
+          receiverId: friendIdNum,
+          message: url,
+          messageType: "image",
+        });
+        if (savedMsg) {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === savedMsg.id)) return prev;
+            return [...prev, {
+              id: savedMsg.id,
+              senderId: myId,
+              receiverId: friendIdNum,
+              message: savedMsg.message,
+              messageType: savedMsg.messageType,
+              isRead: false,
+              createdAt: typeof savedMsg.createdAt === "string" ? savedMsg.createdAt : new Date(savedMsg.createdAt).toISOString(),
+            }];
+          });
+        }
+      }
     } catch (err: any) {
       console.error("[Chat] Image upload failed:", err);
       Alert.alert(
@@ -399,7 +462,7 @@ export default function ChatScreen() {
     } finally {
       setUploadingImage(false);
     }
-  }, [friendIdNum, send, t, uploadImageMutation, status]);
+  }, [friendIdNum, send, t, uploadImageMutation, status, sendMessageMutation, myId]);
 
   // Pick image from gallery
   const handlePickImage = useCallback(async () => {
@@ -461,7 +524,6 @@ export default function ChatScreen() {
         }
       );
     } else {
-      // Android / Web: use Alert as action sheet
       Alert.alert(
         (t as any).chatAttachTitle || "Send attachment",
         undefined,
@@ -474,18 +536,10 @@ export default function ChatScreen() {
     }
   }, [handleTakePhoto, handlePickImage, t]);
 
-  // Voice recording
+  // Voice recording — with REST fallback for sending
   const startRecording = useCallback(async () => {
     if (Platform.OS === "web") {
       Alert.alert("Info", "Voice messages are not supported on web");
-      return;
-    }
-
-    if (status !== "connected") {
-      Alert.alert(
-        (t as any).chatNetworkUnstable || "目前網路不穩",
-        (t as any).chatTryLater || "請稍後再試"
-      );
       return;
     }
 
@@ -506,7 +560,6 @@ export default function ChatScreen() {
         allowsRecording: true,
       });
 
-      // Access AudioRecorder class from AudioModule native module
       const AudioRecorderClass = (ExpoAudio.AudioModule as any).AudioRecorder;
       const recorder = new AudioRecorderClass(ExpoAudio.RecordingPresets.HIGH_QUALITY);
       recorderRef.current = recorder;
@@ -519,7 +572,6 @@ export default function ChatScreen() {
       setShowEmojiPicker(false);
       Keyboard.dismiss();
 
-      // Start duration timer
       recordingTimerRef.current = setInterval(() => {
         setRecordingDuration((prev) => prev + 1);
       }, 1000);
@@ -527,7 +579,7 @@ export default function ChatScreen() {
       console.error("[Chat] Recording start failed:", err);
       Alert.alert((t as any).error || "Error", "Failed to start recording");
     }
-  }, [t, status]);
+  }, [t]);
 
   const stopRecording = useCallback(async () => {
     if (!recorderRef.current) return;
@@ -546,7 +598,6 @@ export default function ChatScreen() {
       setIsRecording(false);
       setRecordingDuration(0);
 
-      // Minimum 1 second
       if (duration < 1) {
         Alert.alert("", (t as any).chatVoiceTooShort || "Too short, hold longer");
         try { recorder.remove?.(); } catch {}
@@ -556,7 +607,6 @@ export default function ChatScreen() {
 
       setUploadingAudio(true);
 
-      // Read file as base64
       if (!uri) {
         setUploadingAudio(false);
         return;
@@ -566,21 +616,44 @@ export default function ChatScreen() {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // Upload to server
       const { url } = await uploadAudioMutation.mutateAsync({
         base64,
         duration,
       });
 
       console.log("[Chat] Audio uploaded, sending to", friendIdNum);
-      // Send audio message via WebSocket
-      // Format: url|duration
-      send({
-        type: "send_message",
-        receiverId: friendIdNum,
-        message: `${url}|${duration}`,
-        messageType: "audio",
-      });
+      const audioMessage = `${url}|${duration}`;
+
+      // Try WS first, then REST
+      if (status === "connected") {
+        send({
+          type: "send_message",
+          receiverId: friendIdNum,
+          message: audioMessage,
+          messageType: "audio",
+        });
+      } else {
+        console.log("[Chat] Sending audio via REST");
+        const savedMsg = await sendMessageMutation.mutateAsync({
+          receiverId: friendIdNum,
+          message: audioMessage,
+          messageType: "audio",
+        });
+        if (savedMsg) {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === savedMsg.id)) return prev;
+            return [...prev, {
+              id: savedMsg.id,
+              senderId: myId,
+              receiverId: friendIdNum,
+              message: savedMsg.message,
+              messageType: savedMsg.messageType,
+              isRead: false,
+              createdAt: typeof savedMsg.createdAt === "string" ? savedMsg.createdAt : new Date(savedMsg.createdAt).toISOString(),
+            }];
+          });
+        }
+      }
 
       try { recorder.remove?.(); } catch {}
       recorderRef.current = null;
@@ -595,7 +668,7 @@ export default function ChatScreen() {
         (t as any).chatVoiceFailed || "Failed to send voice"
       );
     }
-  }, [recordingDuration, friendIdNum, send, t, uploadAudioMutation]);
+  }, [recordingDuration, friendIdNum, send, t, uploadAudioMutation, status, sendMessageMutation, myId]);
 
   const cancelRecording = useCallback(async () => {
     if (!recorderRef.current) return;
@@ -617,7 +690,6 @@ export default function ChatScreen() {
     if (Platform.OS === "web") return;
 
     try {
-      // Stop currently playing audio
       if (audioPlayerRef.current) {
         try {
           audioPlayerRef.current.pause();
@@ -640,7 +712,6 @@ export default function ChatScreen() {
 
       player.play();
 
-      // Listen for completion
       const checkInterval = setInterval(() => {
         if (!player.playing) {
           clearInterval(checkInterval);
@@ -650,7 +721,6 @@ export default function ChatScreen() {
         }
       }, 500);
 
-      // Safety timeout (max 5 min)
       setTimeout(() => {
         clearInterval(checkInterval);
         setPlayingAudioId(null);
@@ -694,7 +764,6 @@ export default function ChatScreen() {
     const isImage = item.messageType === "image";
     const isAudio = item.messageType === "audio";
 
-    // Parse audio message: "url|duration"
     let audioUrl = "";
     let audioDuration = 0;
     if (isAudio) {
@@ -741,7 +810,6 @@ export default function ChatScreen() {
                 />
               </View>
               <View style={styles.audioWaveContainer}>
-                {/* Simple waveform visualization */}
                 {Array.from({ length: 12 }).map((_, i) => {
                   const height = 8 + Math.sin(i * 0.8 + item.id) * 8;
                   return (
@@ -789,55 +857,42 @@ export default function ChatScreen() {
         <View style={styles.emptyContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.emptyDesc, { color: colors.muted, marginTop: 12 }]}>
-            {status === "connecting" ? ((t as any).chatConnecting || "Connecting...") : ((t as any).chatLoading || "Loading...")}
+            {(t as any).chatLoading || "Loading..."}
           </Text>
         </View>
       );
     }
-    if (status === "disconnected" && messages.length === 0) {
+    if (messages.length === 0) {
       return (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyEmoji}>🔌</Text>
+          <Text style={styles.emptyEmoji}>💬</Text>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            {(t as any).chatDisconnected || "Disconnected"}
+            {(t as any).chatNoMessages || "No messages yet"}
           </Text>
           <Text style={[styles.emptyDesc, { color: colors.muted }]}>
-            {(t as any).chatDisconnectedHint || "Please check your connection and try again"}
+            {(t as any).chatStartConversation || "Say hi to start the conversation!"}
           </Text>
-          <TouchableOpacity
-            onPress={() => {
-              console.log("[Chat] Manual reconnect triggered");
-              if (reconnect) reconnect();
-            }}
-            style={[styles.reconnectBtn, { backgroundColor: colors.primary }]}
-          >
-            <Text style={styles.reconnectBtnText}>
-              {(t as any).chatReconnect || "Reconnect"}
-            </Text>
-          </TouchableOpacity>
         </View>
       );
     }
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyEmoji}>💬</Text>
-        <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-          {(t as any).chatNoMessages || "No messages yet"}
-        </Text>
-        <Text style={[styles.emptyDesc, { color: colors.muted }]}>
-          {(t as any).chatStartConversation || "Say hi to start the conversation!"}
-        </Text>
-      </View>
-    );
-  }, [loading, colors, t, status, messages.length, reconnect]);
+    return null;
+  }, [loading, colors, t, messages.length]);
 
-  const statusText = status === "connected"
+  // Status display: show REST mode when WS is down but REST is working
+  const statusText = restMode
+    ? "REST mode (online)"
+    : status === "connected"
     ? ((t as any).chatConnected || "Connected")
     : status === "connecting"
     ? ((t as any).chatConnecting || "Connecting...")
     : ((t as any).chatDisconnected || "Disconnected");
 
-  const statusColor = status === "connected" ? colors.success : status === "connecting" ? colors.warning : colors.error;
+  const statusColor = restMode
+    ? colors.warning
+    : status === "connected" ? colors.success : status === "connecting" ? colors.warning : colors.error;
+
+  // In REST mode or WS connected, user can send messages
+  const canSend = status === "connected" || restMode;
 
   return (
     <ScreenContainer edges={["left", "right", "bottom"]}>
@@ -924,7 +979,7 @@ export default function ChatScreen() {
         {/* Debug Log Panel */}
         <View style={[styles.debugPanel, { backgroundColor: "#1a1a2e", borderTopColor: colors.border }]}>
           <View style={styles.debugHeader}>
-            <Text style={styles.debugTitle}>Debug Log ({debugLogs.length})</Text>
+            <Text style={styles.debugTitle}>Debug Log ({debugLogs.length}) {restMode ? "📡 REST" : status === "connected" ? "🟢 WS" : "🔴 WS"}</Text>
             <TouchableOpacity onPress={() => { debugLogRef.current = []; setDebugLogs([]); }}>
               <Text style={styles.debugClear}>Clear</Text>
             </TouchableOpacity>
@@ -944,6 +999,8 @@ export default function ChatScreen() {
                     log.includes("STATUS CHANGED") && { color: "#60a5fa" },
                     log.includes("TCP CONNECTED") && { color: "#4ade80" },
                     log.includes("Connecting to") && { color: "#fbbf24" },
+                    log.includes("REST") && { color: "#c084fc" },
+                    log.includes("Switching") && { color: "#c084fc" },
                   ]}
                 >
                   {log}
@@ -1077,7 +1134,6 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 12,
   },
-  // Audio message styles
   audioRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1108,7 +1164,6 @@ const styles = StyleSheet.create({
     minWidth: 32,
     textAlign: "right",
   },
-  // Recording bar
   recordingBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -1196,18 +1251,6 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 64, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: "700", textAlign: "center", marginBottom: 12 },
   emptyDesc: { fontSize: 14, textAlign: "center", lineHeight: 22 },
-  reconnectBtn: {
-    marginTop: 16,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  reconnectBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  // Debug panel styles
   debugPanel: {
     maxHeight: 150,
     borderTopWidth: 1,
