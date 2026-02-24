@@ -874,3 +874,14 @@
 - [x] _layout.tsx 啟動時註冊背景通知任務
 - [x] 33 個新測試全部通過（tests/round75-push-notifications.test.ts）
 - [x] TypeScript 0 errors
+
+## Round 76: 移除 WebSocket，全面改用 REST polling
+- [x] 審查所有 WS 相關程式碼（chat.tsx, notification-provider.tsx, use-websocket.ts）
+- [x] chat.tsx 移除 WS 連線邏輯，直接使用 REST polling
+- [x] notification-provider.tsx 移除 WS 依賴，改用 REST polling 接收新訊息
+- [x] use-websocket.ts 保留檔案但不再被任何元件 import
+- [x] 移除所有 WS 錯誤 log、fallback 邏輯、Debug Log 面板
+- [x] 連線狀態永遠顯示「已連線」（綠色）
+- [x] 推播通知仍正常運作（push notification 不依賴 WS）
+- [x] TypeScript 0 errors
+- [x] 58 個測試全部通過（Round 75 + 76）

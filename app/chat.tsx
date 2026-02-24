@@ -13,7 +13,6 @@ import {
   Keyboard,
   ActionSheetIOS,
   Animated as RNAnimated,
-  ScrollView,
 } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -25,7 +24,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useI18n } from "@/lib/i18n-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthContext } from "@/lib/auth-context";
-import { useWebSocket } from "@/hooks/use-websocket";
 import { EmojiPicker } from "@/components/emoji-picker";
 import { ImagePreviewModal } from "@/components/image-preview-modal";
 import { trpc } from "@/lib/trpc";
@@ -61,8 +59,6 @@ export default function ChatScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [playingAudioId, setPlayingAudioId] = useState<number | null>(null);
-  const [restMode, setRestMode] = useState(false); // true = WS failed, using REST polling
-  const [showDebugLog, setShowDebugLog] = useState(false); // Debug Log panel toggle (default OFF)
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -70,72 +66,7 @@ export default function ChatScreen() {
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioPlayerRef = useRef<any>(null);
   const pulseAnim = useRef(new RNAnimated.Value(1)).current;
-  const wsFailCountRef = useRef(0);
   const restPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const lastMsgIdRef = useRef(0);
-
-  // ========== DEBUG LOG STATE ==========
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-  const debugLogRef = useRef<string[]>([]);
-  const addDebugLog = useCallback((msg: string) => {
-    const ts = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    const entry = `[${ts}] ${msg}`;
-    debugLogRef.current = [...debugLogRef.current.slice(-19), entry];
-    setDebugLogs([...debugLogRef.current]);
-  }, []);
-
-  // Intercept console.log to capture [WS] and [Chat] messages
-  useEffect(() => {
-    const origLog = console.log;
-    const origError = console.error;
-    console.log = (...args: any[]) => {
-      origLog(...args);
-      const str = args.map(a => typeof a === "string" ? a : JSON.stringify(a)).join(" ");
-      if (str.includes("[WS]") || str.includes("[Chat]")) {
-        addDebugLog(str);
-      }
-    };
-    console.error = (...args: any[]) => {
-      origError(...args);
-      const str = args.map(a => typeof a === "string" ? a : JSON.stringify(a)).join(" ");
-      if (str.includes("[WS]") || str.includes("[Chat]")) {
-        addDebugLog("ERROR: " + str);
-      }
-    };
-    return () => {
-      console.log = origLog;
-      console.error = origError;
-    };
-  }, [addDebugLog]);
-
-  // ========== WebSocket connection (will auto-fallback to REST if WS fails) ==========
-  const { status, send, on, connect: wsReconnect } = useWebSocket(myId, user?.openId);
-
-  // Debug: log every status change
-  useEffect(() => {
-    console.log("[Chat] ====== WS STATUS CHANGED ======", status);
-    if (status === "disconnected") {
-      wsFailCountRef.current += 1;
-      console.log("[Chat] WS fail count:", wsFailCountRef.current);
-      // After 2 WS failures, switch to REST polling mode
-      if (wsFailCountRef.current >= 2 && !restMode) {
-        console.log("[Chat] 🔄 Switching to REST polling mode (WS unavailable)");
-        setRestMode(true);
-      }
-    } else if (status === "connected") {
-      // WS recovered! Switch back
-      wsFailCountRef.current = 0;
-      if (restMode) {
-        console.log("[Chat] ✅ WS recovered, switching back from REST mode");
-        setRestMode(false);
-      }
-    }
-  }, [status, restMode]);
-
-  // Log mount info
-  useEffect(() => {
-    console.log("[Chat] Screen mounted. myId:", myId, "friendId:", friendIdNum, "openId:", user?.openId || "none");
-  }, []);
 
   const uploadImageMutation = trpc.chat.uploadImage.useMutation();
   const uploadAudioMutation = trpc.chat.uploadAudio.useMutation();
@@ -155,7 +86,6 @@ export default function ChatScreen() {
   // When REST history loads, populate messages
   useEffect(() => {
     if (historyQuery.data) {
-      console.log("[Chat] REST API loaded history:", historyQuery.data.length, "messages");
       const sorted = [...historyQuery.data]
         .map((m: any) => ({
           ...m,
@@ -164,34 +94,23 @@ export default function ChatScreen() {
         .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       setMessages(sorted);
       setLoading(false);
-      // Track last message ID for polling
-      if (sorted.length > 0) {
-        lastMsgIdRef.current = Math.max(...sorted.map((m: any) => m.id));
-      }
-      // Mark messages as read via REST (for both WS and REST mode)
+      // Mark messages as read
       if (friendIdNum > 0) {
         markReadMutation.mutate({ senderId: friendIdNum });
       }
     }
   }, [historyQuery.data]);
 
-  // ========== REST POLLING: when in REST mode, poll for new messages every 3 seconds ==========
+  // ========== REST POLLING: poll for new messages every 5 seconds ==========
   useEffect(() => {
-    if (restMode && friendIdNum && myId) {
-      console.log("[Chat] Starting REST polling (every 6s)");
+    if (friendIdNum && myId) {
       restPollRef.current = setInterval(async () => {
         try {
           await historyQuery.refetch();
-        } catch (err) {
-          console.error("[Chat] REST poll error:", err);
+        } catch (_err) {
+          // Silently ignore polling errors
         }
-      }, 6000);
-    } else {
-      if (restPollRef.current) {
-        console.log("[Chat] Stopping REST polling");
-        clearInterval(restPollRef.current);
-        restPollRef.current = null;
-      }
+      }, 5000);
     }
     return () => {
       if (restPollRef.current) {
@@ -199,86 +118,17 @@ export default function ChatScreen() {
         restPollRef.current = null;
       }
     };
-  }, [restMode, friendIdNum, myId]);
-
-  // Request chat history on WS connect
-  useEffect(() => {
-    if (status === "connected" && friendIdNum) {
-      console.log("[Chat] WS connected, requesting history for friend:", friendIdNum);
-      send({ type: "get_history", friendId: friendIdNum, limit: 50 });
-      send({ type: "mark_read", senderId: friendIdNum });
-    }
-  }, [status, friendIdNum, send]);
+  }, [friendIdNum, myId]);
 
   // Timeout: stop loading spinner if nothing loads within 8 seconds
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (loading) {
-        console.log("[Chat] Loading timeout reached (8s), stopping spinner");
         setLoading(false);
       }
     }, 8000);
     return () => clearTimeout(timeout);
   }, [loading]);
-
-  // Listen for WebSocket messages (only active when WS is connected)
-  useEffect(() => {
-    const unsubs: Array<() => void> = [];
-
-    unsubs.push(on("chat_history", (msg) => {
-      if (msg.friendId === friendIdNum) {
-        console.log("[Chat] WS received chat_history:", (msg.messages as any[])?.length, "messages");
-        const history = (msg.messages as ChatMessage[]).reverse();
-        setMessages(history);
-        setLoading(false);
-      }
-    }));
-
-    unsubs.push(on("new_message", (msg) => {
-      const newMsg = msg.message as ChatMessage;
-      console.log("[Chat] Received new_message:", newMsg?.id, "from:", newMsg?.senderId, "to:", newMsg?.receiverId);
-      if (
-        (newMsg.senderId === friendIdNum && newMsg.receiverId === myId) ||
-        (newMsg.senderId === myId && newMsg.receiverId === friendIdNum)
-      ) {
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === newMsg.id)) return prev;
-          return [...prev, newMsg];
-        });
-        if (newMsg.senderId === friendIdNum) {
-          send({ type: "mark_read", senderId: friendIdNum });
-        }
-      }
-    }));
-
-    unsubs.push(on("typing", (msg) => {
-      if (msg.senderId === friendIdNum) {
-        setIsTyping(true);
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000);
-      }
-    }));
-
-    unsubs.push(on("messages_read", (msg) => {
-      if (msg.readerId === friendIdNum) {
-        console.log("[Chat] Messages read by friend:", friendIdNum);
-        setMessages((prev) =>
-          prev.map((m) => (m.senderId === myId ? { ...m, isRead: true } : m))
-        );
-      }
-    }));
-
-    unsubs.push(on("auth_success", () => {
-      console.log("[Chat] WS auth_success, requesting history...");
-      send({ type: "get_history", friendId: friendIdNum, limit: 50 });
-      send({ type: "mark_read", senderId: friendIdNum });
-    }));
-
-    return () => {
-      unsubs.forEach((u) => u());
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    };
-  }, [on, friendIdNum, myId, send]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -323,37 +173,17 @@ export default function ChatScreen() {
     }
   }, [isRecording, pulseAnim]);
 
-  // ========== SEND MESSAGE: WS if connected, REST fallback otherwise ==========
+  // ========== SEND MESSAGE via REST ==========
   const handleSend = useCallback(async () => {
     const text = inputText.trim();
     if (!text || !friendIdNum) return;
 
-    // Try WS first
-    if (status === "connected") {
-      console.log("[Chat] Sending via WS to", friendIdNum, ":", text.substring(0, 50));
-      const sent = send({
-        type: "send_message",
-        receiverId: friendIdNum,
-        message: text,
-        messageType: "text",
-      });
-      console.log("[Chat] WS send result:", sent);
-      if (sent) {
-        setInputText("");
-        setShowEmojiPicker(false);
-        return;
-      }
-    }
-
-    // REST fallback
-    console.log("[Chat] Sending via REST to", friendIdNum, ":", text.substring(0, 50));
     try {
       const savedMsg = await sendMessageMutation.mutateAsync({
         receiverId: friendIdNum,
         message: text,
         messageType: "text",
       });
-      console.log("[Chat] REST send success, msgId:", savedMsg?.id);
       // Add message to local state immediately
       if (savedMsg) {
         const newMsg: ChatMessage = {
@@ -373,20 +203,16 @@ export default function ChatScreen() {
       setInputText("");
       setShowEmojiPicker(false);
     } catch (err: any) {
-      console.error("[Chat] REST send failed:", err);
       Alert.alert(
         (t as any).chatNetworkUnstable || "Failed to send",
         err?.message || "Please try again"
       );
     }
-  }, [inputText, friendIdNum, send, status, t, sendMessageMutation, myId]);
+  }, [inputText, friendIdNum, t, sendMessageMutation, myId]);
 
   const handleTyping = useCallback((text: string) => {
     setInputText(text);
-    if (text.length > 0 && friendIdNum && status === "connected") {
-      send({ type: "typing", receiverId: friendIdNum });
-    }
-  }, [friendIdNum, send, status]);
+  }, []);
 
   const handleEmojiSelect = useCallback((emoji: string) => {
     setInputText((prev) => prev + emoji);
@@ -402,7 +228,7 @@ export default function ChatScreen() {
     }
   }, [showEmojiPicker]);
 
-  // Upload and send image helper — with REST fallback
+  // Upload and send image via REST
   const uploadAndSendImage = useCallback(async (asset: ImagePicker.ImagePickerAsset) => {
     if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
       Alert.alert(
@@ -427,40 +253,26 @@ export default function ChatScreen() {
         mimeType,
       });
 
-      console.log("[Chat] Image uploaded, url:", url);
-
-      // Try WS first, then REST
-      if (status === "connected") {
-        send({
-          type: "send_message",
-          receiverId: friendIdNum,
-          message: url,
-          messageType: "image",
+      const savedMsg = await sendMessageMutation.mutateAsync({
+        receiverId: friendIdNum,
+        message: url,
+        messageType: "image",
+      });
+      if (savedMsg) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === savedMsg.id)) return prev;
+          return [...prev, {
+            id: savedMsg.id,
+            senderId: myId,
+            receiverId: friendIdNum,
+            message: savedMsg.message,
+            messageType: savedMsg.messageType,
+            isRead: false,
+            createdAt: typeof savedMsg.createdAt === "string" ? savedMsg.createdAt : new Date(savedMsg.createdAt).toISOString(),
+          }];
         });
-      } else {
-        console.log("[Chat] Sending image via REST");
-        const savedMsg = await sendMessageMutation.mutateAsync({
-          receiverId: friendIdNum,
-          message: url,
-          messageType: "image",
-        });
-        if (savedMsg) {
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === savedMsg.id)) return prev;
-            return [...prev, {
-              id: savedMsg.id,
-              senderId: myId,
-              receiverId: friendIdNum,
-              message: savedMsg.message,
-              messageType: savedMsg.messageType,
-              isRead: false,
-              createdAt: typeof savedMsg.createdAt === "string" ? savedMsg.createdAt : new Date(savedMsg.createdAt).toISOString(),
-            }];
-          });
-        }
       }
     } catch (err: any) {
-      console.error("[Chat] Image upload failed:", err);
       Alert.alert(
         (t as any).error || "Error",
         (t as any).chatImageFailed || "Failed to send image"
@@ -468,7 +280,7 @@ export default function ChatScreen() {
     } finally {
       setUploadingImage(false);
     }
-  }, [friendIdNum, send, t, uploadImageMutation, status, sendMessageMutation, myId]);
+  }, [friendIdNum, t, uploadImageMutation, sendMessageMutation, myId]);
 
   // Pick image from gallery
   const handlePickImage = useCallback(async () => {
@@ -482,8 +294,8 @@ export default function ChatScreen() {
 
       if (result.canceled || !result.assets[0]) return;
       await uploadAndSendImage(result.assets[0]);
-    } catch (err: any) {
-      console.error("[Chat] Image pick failed:", err);
+    } catch (_err: any) {
+      // Silently handle
     }
   }, [uploadAndSendImage]);
 
@@ -507,8 +319,8 @@ export default function ChatScreen() {
 
       if (result.canceled || !result.assets[0]) return;
       await uploadAndSendImage(result.assets[0]);
-    } catch (err: any) {
-      console.error("[Chat] Camera failed:", err);
+    } catch (_err: any) {
+      // Silently handle
     }
   }, [uploadAndSendImage, t]);
 
@@ -542,7 +354,7 @@ export default function ChatScreen() {
     }
   }, [handleTakePhoto, handlePickImage, t]);
 
-  // Voice recording — with REST fallback for sending
+  // Voice recording
   const startRecording = useCallback(async () => {
     if (Platform.OS === "web") {
       Alert.alert("Info", "Voice messages are not supported on web");
@@ -581,8 +393,7 @@ export default function ChatScreen() {
       recordingTimerRef.current = setInterval(() => {
         setRecordingDuration((prev) => prev + 1);
       }, 1000);
-    } catch (err: any) {
-      console.error("[Chat] Recording start failed:", err);
+    } catch (_err: any) {
       Alert.alert((t as any).error || "Error", "Failed to start recording");
     }
   }, [t]);
@@ -627,45 +438,32 @@ export default function ChatScreen() {
         duration,
       });
 
-      console.log("[Chat] Audio uploaded, sending to", friendIdNum);
       const audioMessage = `${url}|${duration}`;
 
-      // Try WS first, then REST
-      if (status === "connected") {
-        send({
-          type: "send_message",
-          receiverId: friendIdNum,
-          message: audioMessage,
-          messageType: "audio",
+      const savedMsg = await sendMessageMutation.mutateAsync({
+        receiverId: friendIdNum,
+        message: audioMessage,
+        messageType: "audio",
+      });
+      if (savedMsg) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === savedMsg.id)) return prev;
+          return [...prev, {
+            id: savedMsg.id,
+            senderId: myId,
+            receiverId: friendIdNum,
+            message: savedMsg.message,
+            messageType: savedMsg.messageType,
+            isRead: false,
+            createdAt: typeof savedMsg.createdAt === "string" ? savedMsg.createdAt : new Date(savedMsg.createdAt).toISOString(),
+          }];
         });
-      } else {
-        console.log("[Chat] Sending audio via REST");
-        const savedMsg = await sendMessageMutation.mutateAsync({
-          receiverId: friendIdNum,
-          message: audioMessage,
-          messageType: "audio",
-        });
-        if (savedMsg) {
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === savedMsg.id)) return prev;
-            return [...prev, {
-              id: savedMsg.id,
-              senderId: myId,
-              receiverId: friendIdNum,
-              message: savedMsg.message,
-              messageType: savedMsg.messageType,
-              isRead: false,
-              createdAt: typeof savedMsg.createdAt === "string" ? savedMsg.createdAt : new Date(savedMsg.createdAt).toISOString(),
-            }];
-          });
-        }
       }
 
       try { recorder.remove?.(); } catch {}
       recorderRef.current = null;
       setUploadingAudio(false);
-    } catch (err: any) {
-      console.error("[Chat] Recording stop/upload failed:", err);
+    } catch (_err: any) {
       setIsRecording(false);
       setUploadingAudio(false);
       setRecordingDuration(0);
@@ -674,7 +472,7 @@ export default function ChatScreen() {
         (t as any).chatVoiceFailed || "Failed to send voice"
       );
     }
-  }, [recordingDuration, friendIdNum, send, t, uploadAudioMutation, status, sendMessageMutation, myId]);
+  }, [recordingDuration, friendIdNum, t, uploadAudioMutation, sendMessageMutation, myId]);
 
   const cancelRecording = useCallback(async () => {
     if (!recorderRef.current) return;
@@ -733,8 +531,7 @@ export default function ChatScreen() {
         try { player.pause(); player.remove?.(); } catch {}
         audioPlayerRef.current = null;
       }, 300000);
-    } catch (err: any) {
-      console.error("[Chat] Audio playback failed:", err);
+    } catch (_err: any) {
       setPlayingAudioId(null);
     }
   }, [playingAudioId]);
@@ -884,17 +681,9 @@ export default function ChatScreen() {
     return null;
   }, [loading, colors, t, messages.length]);
 
-  // Status display: REST mode shows as "Connected" (user doesn't need to know the mode)
-  const statusText = (restMode || status === "connected")
-    ? ((t as any).chatConnected || "Connected")
-    : status === "connecting"
-    ? ((t as any).chatConnecting || "Connecting...")
-    : ((t as any).chatDisconnected || "Disconnected");
-
-  const statusColor = (restMode || status === "connected") ? colors.success : status === "connecting" ? colors.warning : colors.error;
-
-  // In REST mode or WS connected, user can send messages
-  const canSend = status === "connected" || restMode;
+  // Always show "Connected" status
+  const statusText = (t as any).chatConnected || "Connected";
+  const statusColor = colors.success;
 
   return (
     <ScreenContainer edges={["left", "right", "bottom"]}>
@@ -975,52 +764,6 @@ export default function ChatScreen() {
                 <IconSymbol name="paperplane.fill" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
-          </View>
-        )}
-
-        {/* Debug Log Toggle Button (small, bottom-right of messages area) */}
-        <TouchableOpacity
-          onPress={() => setShowDebugLog(!showDebugLog)}
-          style={[styles.debugToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}
-        >
-          <Text style={[styles.debugToggleText, { color: colors.muted }]}>
-            {showDebugLog ? "Hide Log" : "🐛 Debug"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Debug Log Panel (hidden by default) */}
-        {showDebugLog && (
-          <View style={[styles.debugPanel, { backgroundColor: "#1a1a2e", borderTopColor: colors.border }]}>
-            <View style={styles.debugHeader}>
-              <Text style={styles.debugTitle}>Debug Log ({debugLogs.length}) {restMode ? "📡 REST" : status === "connected" ? "🟢 WS" : "🔴 WS"}</Text>
-              <TouchableOpacity onPress={() => { debugLogRef.current = []; setDebugLogs([]); }}>
-                <Text style={styles.debugClear}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.debugScroll} nestedScrollEnabled>
-              {debugLogs.length === 0 ? (
-                <Text style={styles.debugText}>Waiting for logs...</Text>
-              ) : (
-                debugLogs.map((log, i) => (
-                  <Text
-                    key={i}
-                    style={[
-                      styles.debugText,
-                      log.includes("AUTH SUCCESS") && { color: "#4ade80" },
-                      log.includes("DISCONNECTED") && { color: "#f87171" },
-                      log.includes("ERROR") && { color: "#f87171" },
-                      log.includes("STATUS CHANGED") && { color: "#60a5fa" },
-                      log.includes("TCP CONNECTED") && { color: "#4ade80" },
-                      log.includes("Connecting to") && { color: "#fbbf24" },
-                      log.includes("REST") && { color: "#c084fc" },
-                      log.includes("Switching") && { color: "#c084fc" },
-                    ]}
-                  >
-                    {log}
-                  </Text>
-                ))
-              )}
-            </ScrollView>
           </View>
         )}
 
@@ -1265,50 +1008,4 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 64, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: "700", textAlign: "center", marginBottom: 12 },
   emptyDesc: { fontSize: 14, textAlign: "center", lineHeight: 22 },
-  debugToggle: {
-    alignSelf: "flex-end",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginRight: 8,
-    marginBottom: 2,
-  },
-  debugToggleText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  debugPanel: {
-    maxHeight: 150,
-    borderTopWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  debugHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingBottom: 4,
-  },
-  debugTitle: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#9ca3af",
-    letterSpacing: 0.5,
-  },
-  debugClear: {
-    fontSize: 11,
-    color: "#60a5fa",
-    fontWeight: "600",
-  },
-  debugScroll: {
-    maxHeight: 120,
-  },
-  debugText: {
-    fontSize: 10,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    color: "#9ca3af",
-    lineHeight: 14,
-    paddingVertical: 1,
-  },
 });

@@ -2,16 +2,11 @@ import React, { createContext, useContext, useEffect, useMemo, useCallback } fro
 import { Platform, AppState } from "react-native";
 import * as Notifications from "expo-notifications";
 import { useAuthContext } from "@/lib/auth-context";
-import { useWebSocket } from "@/hooks/use-websocket";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 
 type NotificationContextType = {
-  wsStatus: "connecting" | "connected" | "disconnected";
-  wsSend: (msg: any) => boolean;
-  wsOn: (type: string, listener: (msg: any) => void) => () => void;
-  wsReconnect: () => void;
   expoPushToken: string | null;
   updateBadgeCount: () => void;
 };
@@ -21,16 +16,14 @@ const NotificationContext = createContext<NotificationContextType | null>(null);
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuthContext();
   const userId = user?.id || null;
-  const openId = user?.openId || null;
   const queryClient = useQueryClient();
 
-  const { status: wsStatus, send: wsSend, on: wsOn, connect: wsReconnect } = useWebSocket(userId, openId);
   const { expoPushToken } = usePushNotifications(userId);
 
-  // Fetch unread count for badge updates
+  // Fetch unread count for badge updates (poll every 15 seconds)
   const unreadQuery = trpc.chat.unreadCount.useQuery(undefined, {
     enabled: !!userId,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 15000,
     retry: 1,
   });
 
@@ -40,9 +33,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     try {
       const count = unreadQuery.data?.count || 0;
       await Notifications.setBadgeCountAsync(count);
-      console.log("[Badge] Updated badge count to:", count);
-    } catch (err) {
-      console.error("[Badge] Failed to update badge:", err);
+    } catch (_err) {
+      // Silently ignore badge errors
     }
   }, [unreadQuery.data?.count]);
 
@@ -53,49 +45,23 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, [unreadQuery.data, updateBadgeCount]);
 
-  // Update badge when app comes to foreground
+  // Update badge and refresh queries when app comes to foreground
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (nextAppState === "active") {
+      if (nextAppState === "active" && userId) {
         unreadQuery.refetch();
+        // Also refresh conversations and friend lists
+        queryClient.invalidateQueries({ queryKey: [["chat", "conversations"]] });
+        queryClient.invalidateQueries({ queryKey: [["friends", "pendingRequests"]] });
+        queryClient.invalidateQueries({ queryKey: [["friends", "list"]] });
       }
     });
     return () => subscription.remove();
-  }, [unreadQuery]);
-
-  // Listen for real-time events and invalidate relevant queries
-  useEffect(() => {
-    if (!userId) return;
-
-    const unsubs: Array<() => void> = [];
-
-    // When a friend request is received, refresh pending requests
-    unsubs.push(wsOn("friend_request", () => {
-      queryClient.invalidateQueries({ queryKey: [["friends", "pendingRequests"]] });
-    }));
-
-    // When a friend request is accepted, refresh friends list
-    unsubs.push(wsOn("friend_accepted", () => {
-      queryClient.invalidateQueries({ queryKey: [["friends", "list"]] });
-      queryClient.invalidateQueries({ queryKey: [["friends", "sentRequests"]] });
-    }));
-
-    // When a new chat message arrives, refresh unread count and badge
-    unsubs.push(wsOn("new_message", () => {
-      queryClient.invalidateQueries({ queryKey: [["chat", "unreadCount"]] });
-      queryClient.invalidateQueries({ queryKey: [["chat", "conversations"]] });
-      // Immediately refetch to update badge
-      unreadQuery.refetch();
-    }));
-
-    return () => {
-      unsubs.forEach((u) => u());
-    };
-  }, [userId, wsOn, queryClient, unreadQuery]);
+  }, [unreadQuery, userId, queryClient]);
 
   const value = useMemo(
-    () => ({ wsStatus, wsSend, wsOn, wsReconnect, expoPushToken, updateBadgeCount }),
-    [wsStatus, wsSend, wsOn, wsReconnect, expoPushToken, updateBadgeCount]
+    () => ({ expoPushToken, updateBadgeCount }),
+    [expoPushToken, updateBadgeCount]
   );
 
   return (
