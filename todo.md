@@ -831,3 +831,9 @@
 - [x] Reconnect 按鈕直接呼叫 connect()
 - [x] 驗證 TypeScript 編譯通過
 - [x] 存檔 checkpoint
+
+## Chat Debug Log UI
+- [x] 在 chat.tsx 加入可視化 Debug Log 區域（輸入框上方）
+- [x] 顯示最近 20 條 [WS] 和 [Chat] 開頭的 log
+- [x] 小字灰色文字顯示（深色背景 + 等寬字體 + 顏色標記）
+- [x] use-websocket.ts 的 log 透過 console.log 攔截傳到 chat.tsx 顯示

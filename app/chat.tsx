@@ -13,6 +13,7 @@ import {
   Keyboard,
   ActionSheetIOS,
   Animated as RNAnimated,
+  ScrollView,
 } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -70,6 +71,40 @@ export default function ChatScreen() {
   const pulseAnim = useRef(new RNAnimated.Value(1)).current;
   const reconnectIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ========== DEBUG LOG STATE ==========
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const debugLogRef = useRef<string[]>([]);
+  const addDebugLog = useCallback((msg: string) => {
+    const ts = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const entry = `[${ts}] ${msg}`;
+    debugLogRef.current = [...debugLogRef.current.slice(-19), entry];
+    setDebugLogs([...debugLogRef.current]);
+  }, []);
+
+  // Intercept console.log to capture [WS] and [Chat] messages
+  useEffect(() => {
+    const origLog = console.log;
+    const origError = console.error;
+    console.log = (...args: any[]) => {
+      origLog(...args);
+      const str = args.map(a => typeof a === "string" ? a : JSON.stringify(a)).join(" ");
+      if (str.includes("[WS]") || str.includes("[Chat]")) {
+        addDebugLog(str);
+      }
+    };
+    console.error = (...args: any[]) => {
+      origError(...args);
+      const str = args.map(a => typeof a === "string" ? a : JSON.stringify(a)).join(" ");
+      if (str.includes("[WS]") || str.includes("[Chat]")) {
+        addDebugLog("ERROR: " + str);
+      }
+    };
+    return () => {
+      console.log = origLog;
+      console.error = origError;
+    };
+  }, [addDebugLog]);
+
   // ========== DIRECT WebSocket connection (bypass useNotifications context) ==========
   const { status, send, on, connect: reconnect } = useWebSocket(myId, user?.openId);
 
@@ -77,6 +112,11 @@ export default function ChatScreen() {
   useEffect(() => {
     console.log("[Chat] ====== WS STATUS CHANGED ======", status);
   }, [status]);
+
+  // Log mount info
+  useEffect(() => {
+    console.log("[Chat] Screen mounted. myId:", myId, "friendId:", friendIdNum, "openId:", user?.openId || "none");
+  }, []);
 
   const uploadImageMutation = trpc.chat.uploadImage.useMutation();
   const uploadAudioMutation = trpc.chat.uploadAudio.useMutation();
@@ -881,6 +921,38 @@ export default function ChatScreen() {
           </View>
         )}
 
+        {/* Debug Log Panel */}
+        <View style={[styles.debugPanel, { backgroundColor: "#1a1a2e", borderTopColor: colors.border }]}>
+          <View style={styles.debugHeader}>
+            <Text style={styles.debugTitle}>Debug Log ({debugLogs.length})</Text>
+            <TouchableOpacity onPress={() => { debugLogRef.current = []; setDebugLogs([]); }}>
+              <Text style={styles.debugClear}>Clear</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.debugScroll} nestedScrollEnabled>
+            {debugLogs.length === 0 ? (
+              <Text style={styles.debugText}>Waiting for logs...</Text>
+            ) : (
+              debugLogs.map((log, i) => (
+                <Text
+                  key={i}
+                  style={[
+                    styles.debugText,
+                    log.includes("AUTH SUCCESS") && { color: "#4ade80" },
+                    log.includes("DISCONNECTED") && { color: "#f87171" },
+                    log.includes("ERROR") && { color: "#f87171" },
+                    log.includes("STATUS CHANGED") && { color: "#60a5fa" },
+                    log.includes("TCP CONNECTED") && { color: "#4ade80" },
+                    log.includes("Connecting to") && { color: "#fbbf24" },
+                  ]}
+                >
+                  {log}
+                </Text>
+              ))
+            )}
+          </ScrollView>
+        </View>
+
         {/* Input Bar */}
         {!isRecording && (
           <View style={[styles.inputBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
@@ -1134,5 +1206,39 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  // Debug panel styles
+  debugPanel: {
+    maxHeight: 150,
+    borderTopWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  debugHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingBottom: 4,
+  },
+  debugTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#9ca3af",
+    letterSpacing: 0.5,
+  },
+  debugClear: {
+    fontSize: 11,
+    color: "#60a5fa",
+    fontWeight: "600",
+  },
+  debugScroll: {
+    maxHeight: 120,
+  },
+  debugText: {
+    fontSize: 10,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    color: "#9ca3af",
+    lineHeight: 14,
+    paddingVertical: 1,
   },
 });
