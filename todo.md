@@ -802,3 +802,16 @@
 
 ## Feature - Round 68: Location toggle tooltip
 - [x] Add tooltip/explanation to the location hide/show toggle button on friend cards
+
+
+## Chat Fix - Round 69: 徹底修復聊天功能
+- [x] Step 1: chat.tsx — 加入 WS 自動重連邏輯（status !== connected 時每 3 秒重連）
+- [x] Step 1: chat.tsx — handleSend 加入連線狀態檢查，未連線時顯示 Alert
+- [x] Step 1: chat.tsx — App 開啟時用 tRPC REST API 強制載入聊天歷史（不只靠 WS）
+- [x] Step 1: chat.tsx — 發送/接收訊息加入 console.log debug 記錄
+- [x] Step 2: use-websocket.ts — 改善自動重連機制（disconnect 後 3 秒重連）
+- [x] Step 2: use-websocket.ts — 確保 wsStatus 正確更新
+- [x] Step 2: notification-provider.ts — 暴露 wsReconnect 方法給 chat.tsx 使用
+- [x] Step 3: server/routers.ts — chat.sendMessage mutation 加入離線推播通知
+- [x] Step 4: server/websocket.ts — 確保 new_message 正確廣播、mark_read 正確更新
+- [x] Step 5: 測試驗證所有修復並存檔 checkpoint

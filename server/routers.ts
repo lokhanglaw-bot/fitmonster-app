@@ -8,8 +8,8 @@ import * as chatDb from "./chat-db";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 import { getFoodAnalysisPrompt, getFoodAnalysisUserPrompt } from "./food-prompt";
-import { sendToUser, getOnlineStatuses } from "./websocket";
-import { sendPushNotification } from "./push-notifications";
+import { sendToUser, getOnlineStatuses, isUserOnline } from "./websocket";
+import { sendPushNotification, sendChatPushNotification } from "./push-notifications";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -811,6 +811,56 @@ Always return valid JSON.`;
         const buffer = Buffer.from(input.base64, "base64");
         const { url } = await storagePut(key, buffer, "audio/mp4");
         return { url, duration: input.duration || 0 };
+      }),
+    // REST fallback: send message via tRPC (used when WS is down)
+    sendMessage: protectedProcedure
+      .input(z.object({
+        receiverId: z.number(),
+        message: z.string(),
+        messageType: z.enum(["text", "image", "audio"]).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const senderId = ctx.user.id;
+        const { receiverId, message, messageType } = input;
+        console.log(`[Chat REST] sendMessage from ${senderId} to ${receiverId}, type: ${messageType || "text"}`);
+
+        // Save to database
+        const savedMsg = await chatDb.saveMessage({
+          senderId,
+          receiverId,
+          message: message.trim(),
+          messageType: messageType || "text",
+        });
+
+        if (!savedMsg) {
+          throw new Error("Failed to save message");
+        }
+
+        // Try to deliver via WebSocket to receiver
+        const receiverOnline = sendToUser(receiverId, {
+          type: "new_message",
+          message: savedMsg,
+        });
+
+        // Also send to sender's other devices
+        sendToUser(senderId, {
+          type: "new_message",
+          message: savedMsg,
+        });
+
+        // If receiver is offline, send push notification
+        if (!receiverOnline) {
+          console.log(`[Chat REST] Receiver ${receiverId} is offline, sending push notification`);
+          const senderMonster = await db.getActiveMonster(senderId);
+          const senderName = senderMonster?.name || "Someone";
+          const preview = (messageType === "image") ? "📷 Photo"
+            : (messageType === "audio") ? "🎤 Voice message"
+            : message.trim().substring(0, 100);
+          sendChatPushNotification(senderId, receiverId, senderName, preview)
+            .catch(err => console.error("[Chat REST] Push notification failed:", err));
+        }
+
+        return savedMsg;
       }),
   }),
 

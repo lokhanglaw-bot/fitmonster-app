@@ -8,6 +8,7 @@ type NotificationContextType = {
   wsStatus: "connecting" | "connected" | "disconnected";
   wsSend: (msg: any) => boolean;
   wsOn: (type: string, listener: (msg: any) => void) => () => void;
+  wsReconnect: () => void;
   expoPushToken: string | null;
 };
 
@@ -19,7 +20,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const openId = user?.openId || null;
   const queryClient = useQueryClient();
 
-  const { status: wsStatus, send: wsSend, on: wsOn } = useWebSocket(userId, openId);
+  const { status: wsStatus, send: wsSend, on: wsOn, connect: wsReconnect } = useWebSocket(userId, openId);
   const { expoPushToken } = usePushNotifications(userId);
 
   // Listen for real-time events and invalidate relevant queries
@@ -51,8 +52,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [userId, wsOn, queryClient]);
 
   const value = useMemo(
-    () => ({ wsStatus, wsSend, wsOn, expoPushToken }),
-    [wsStatus, wsSend, wsOn, expoPushToken]
+    () => ({ wsStatus, wsSend, wsOn, wsReconnect, expoPushToken }),
+    [wsStatus, wsSend, wsOn, wsReconnect, expoPushToken]
   );
 
   return (

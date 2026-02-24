@@ -11,6 +11,19 @@ const userConnections = new Map<number, Set<WebSocket>>();
 export function setupWebSocket(server: HttpServer) {
   const wss = new WebSocketServer({ server, path: "/ws" });
 
+  // Periodic cleanup of dead connections (every 30 seconds)
+  const cleanupInterval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      if (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+        ws.terminate();
+      }
+    });
+  }, 30000);
+
+  wss.on("close", () => {
+    clearInterval(cleanupInterval);
+  });
+
   wss.on("connection", async (ws, req) => {
     let userId: number | null = null;
 
@@ -18,6 +31,14 @@ export function setupWebSocket(server: HttpServer) {
     ws.on("message", async (data) => {
       try {
         const msg = JSON.parse(data.toString());
+
+        // Handle ping/pong keepalive from client
+        if (msg.type === "ping") {
+          try {
+            ws.send(JSON.stringify({ type: "pong" }));
+          } catch {}
+          return;
+        }
 
         // Authentication message
         if (msg.type === "auth") {
@@ -43,10 +64,14 @@ export function setupWebSocket(server: HttpServer) {
             ws.send(JSON.stringify({ type: "auth_success", userId }));
 
             // Send unread message count
-            const unreadCount = await chatDb.getUnreadCount(userId);
-            ws.send(JSON.stringify({ type: "unread_count", count: unreadCount }));
+            try {
+              const unreadCount = await chatDb.getUnreadCount(userId);
+              ws.send(JSON.stringify({ type: "unread_count", count: unreadCount }));
+            } catch (e) {
+              console.error("[WS] Failed to get unread count:", e);
+            }
 
-            console.log(`[WS] User ${userId} connected. Total connections: ${userConnections.get(userId)!.size}`);
+            console.log(`[WS] User ${userId} connected via token auth. Total connections: ${userConnections.get(userId)!.size}`);
           } catch (err: any) {
             console.log(`[WS] Primary auth failed:`, err?.message || err);
             // If auth fails, try fallback: userId from message
@@ -82,9 +107,13 @@ export function setupWebSocket(server: HttpServer) {
               }
               userConnections.get(userId)!.add(ws);
               ws.send(JSON.stringify({ type: "auth_success", userId }));
-              const unreadCount = await chatDb.getUnreadCount(userId);
-              ws.send(JSON.stringify({ type: "unread_count", count: unreadCount }));
-              console.log(`[WS] User ${userId} connected via fallback auth.`);
+              try {
+                const unreadCount = await chatDb.getUnreadCount(userId);
+                ws.send(JSON.stringify({ type: "unread_count", count: unreadCount }));
+              } catch (e) {
+                console.error("[WS] Failed to get unread count:", e);
+              }
+              console.log(`[WS] User ${userId} connected via fallback auth. Total connections: ${userConnections.get(userId)!.size}`);
               return;
             }
             
@@ -109,6 +138,8 @@ export function setupWebSocket(server: HttpServer) {
             return;
           }
 
+          console.log(`[WS] send_message from ${userId} to ${receiverId}, type: ${messageType || "text"}`);
+
           // Save to database
           const savedMsg = await chatDb.saveMessage({
             senderId: userId,
@@ -122,12 +153,22 @@ export function setupWebSocket(server: HttpServer) {
             return;
           }
 
-          // Send to sender (confirmation)
+          console.log(`[WS] Message saved with id: ${savedMsg.id}`);
+
+          // Send to sender (confirmation) — send to ALL sender's devices
           const outgoing = {
             type: "new_message",
             message: savedMsg,
           };
-          ws.send(JSON.stringify(outgoing));
+          const senderSockets = userConnections.get(userId);
+          if (senderSockets) {
+            const payload = JSON.stringify(outgoing);
+            senderSockets.forEach((sock) => {
+              if (sock.readyState === WebSocket.OPEN) {
+                sock.send(payload);
+              }
+            });
+          }
 
           // Send to receiver if online
           const receiverSockets = userConnections.get(Number(receiverId));
@@ -142,8 +183,11 @@ export function setupWebSocket(server: HttpServer) {
             });
           }
 
+          console.log(`[WS] Message delivered - receiver ${receiverId} online: ${receiverOnline}`);
+
           // Send push notification if receiver is offline
           if (!receiverOnline) {
+            console.log(`[WS] Sending push notification to offline user ${receiverId}`);
             const senderMonster = await db.getActiveMonster(userId);
             const senderName = senderMonster?.name || "Someone";
             const preview = (messageType === "image") ? "📷 Photo"
@@ -158,6 +202,7 @@ export function setupWebSocket(server: HttpServer) {
         if (msg.type === "mark_read") {
           const { senderId } = msg;
           if (senderId) {
+            console.log(`[WS] mark_read: user ${userId} read messages from ${senderId}`);
             await chatDb.markMessagesAsRead(Number(senderId), userId);
             // Notify the sender that their messages were read
             const senderSockets = userConnections.get(Number(senderId));
@@ -171,6 +216,7 @@ export function setupWebSocket(server: HttpServer) {
                   sock.send(payload);
                 }
               });
+              console.log(`[WS] Notified sender ${senderId} about read receipt`);
             }
           }
         }
@@ -179,6 +225,7 @@ export function setupWebSocket(server: HttpServer) {
         if (msg.type === "get_history") {
           const { friendId, before, limit } = msg;
           if (!friendId) return;
+          console.log(`[WS] get_history: user ${userId} requesting history with ${friendId}`);
           const messages = await chatDb.getChatHistory(
             userId,
             Number(friendId),
@@ -190,6 +237,7 @@ export function setupWebSocket(server: HttpServer) {
             friendId: Number(friendId),
             messages,
           }));
+          console.log(`[WS] Sent ${messages.length} history messages to user ${userId}`);
         }
 
         // Typing indicator
@@ -211,7 +259,9 @@ export function setupWebSocket(server: HttpServer) {
 
       } catch (err) {
         console.error("[WS] Error processing message:", err);
-        ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
+        try {
+          ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
+        } catch {}
       }
     });
 
@@ -224,7 +274,7 @@ export function setupWebSocket(server: HttpServer) {
             userConnections.delete(userId);
           }
         }
-        console.log(`[WS] User ${userId} disconnected.`);
+        console.log(`[WS] User ${userId} disconnected. Remaining connections: ${userConnections.get(userId)?.size || 0}`);
       }
     });
 

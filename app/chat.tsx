@@ -60,6 +60,7 @@ export default function ChatScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [playingAudioId, setPlayingAudioId] = useState<number | null>(null);
+  const [historyLoadedFromRest, setHistoryLoadedFromRest] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -67,24 +68,77 @@ export default function ChatScreen() {
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioPlayerRef = useRef<any>(null);
   const pulseAnim = useRef(new RNAnimated.Value(1)).current;
+  const reconnectIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { wsStatus: status, wsSend: send, wsOn: on } = useNotifications();
+  const { wsStatus: status, wsSend: send, wsOn: on, wsReconnect: reconnect } = useNotifications();
   const uploadImageMutation = trpc.chat.uploadImage.useMutation();
   const uploadAudioMutation = trpc.chat.uploadAudio.useMutation();
 
-  // Request chat history on connect
+  // ========== REST API fallback: load chat history on mount ==========
+  const historyQuery = trpc.chat.history.useQuery(
+    { friendId: friendIdNum, limit: 50 },
+    {
+      enabled: !!friendIdNum && friendIdNum > 0 && !!myId,
+      refetchOnMount: true,
+      staleTime: 0,
+    }
+  );
+
+  // When REST history loads, populate messages (only if WS hasn't loaded them yet)
+  useEffect(() => {
+    if (historyQuery.data && !historyLoadedFromRest) {
+      console.log("[Chat] REST API loaded history:", historyQuery.data.length, "messages");
+      const sorted = [...historyQuery.data]
+        .map((m: any) => ({
+          ...m,
+          createdAt: typeof m.createdAt === "string" ? m.createdAt : new Date(m.createdAt).toISOString(),
+        }))
+        .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      setMessages(sorted);
+      setLoading(false);
+      setHistoryLoadedFromRest(true);
+    }
+  }, [historyQuery.data, historyLoadedFromRest]);
+
+  // ========== Auto-reconnect: if WS not connected, try every 3 seconds ==========
+  useEffect(() => {
+    if (status !== "connected") {
+      console.log("[Chat] WS status is", status, "— starting auto-reconnect interval");
+      reconnectIntervalRef.current = setInterval(() => {
+        if (reconnect) {
+          console.log("[Chat] Auto-reconnect attempt...");
+          reconnect();
+        }
+      }, 3000);
+    } else {
+      // Connected — clear the interval
+      if (reconnectIntervalRef.current) {
+        clearInterval(reconnectIntervalRef.current);
+        reconnectIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (reconnectIntervalRef.current) {
+        clearInterval(reconnectIntervalRef.current);
+        reconnectIntervalRef.current = null;
+      }
+    };
+  }, [status, reconnect]);
+
+  // Request chat history on WS connect
   useEffect(() => {
     if (status === "connected" && friendIdNum) {
+      console.log("[Chat] WS connected, requesting history for friend:", friendIdNum);
       send({ type: "get_history", friendId: friendIdNum, limit: 50 });
       send({ type: "mark_read", senderId: friendIdNum });
     }
   }, [status, friendIdNum, send]);
 
-  // Timeout: stop loading spinner if WS doesn't connect within 8 seconds
+  // Timeout: stop loading spinner if nothing loads within 8 seconds
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (loading) {
-        console.log("[Chat] Loading timeout reached, stopping spinner");
+        console.log("[Chat] Loading timeout reached (8s), stopping spinner");
         setLoading(false);
       }
     }, 8000);
@@ -97,6 +151,7 @@ export default function ChatScreen() {
 
     unsubs.push(on("chat_history", (msg) => {
       if (msg.friendId === friendIdNum) {
+        console.log("[Chat] WS received chat_history:", (msg.messages as any[])?.length, "messages");
         const history = (msg.messages as ChatMessage[]).reverse();
         setMessages(history);
         setLoading(false);
@@ -105,6 +160,7 @@ export default function ChatScreen() {
 
     unsubs.push(on("new_message", (msg) => {
       const newMsg = msg.message as ChatMessage;
+      console.log("[Chat] Received new_message:", newMsg?.id, "from:", newMsg?.senderId, "to:", newMsg?.receiverId);
       if (
         (newMsg.senderId === friendIdNum && newMsg.receiverId === myId) ||
         (newMsg.senderId === myId && newMsg.receiverId === friendIdNum)
@@ -127,7 +183,17 @@ export default function ChatScreen() {
       }
     }));
 
+    unsubs.push(on("messages_read", (msg) => {
+      if (msg.readerId === friendIdNum) {
+        console.log("[Chat] Messages read by friend:", friendIdNum);
+        setMessages((prev) =>
+          prev.map((m) => (m.senderId === myId ? { ...m, isRead: true } : m))
+        );
+      }
+    }));
+
     unsubs.push(on("auth_success", () => {
+      console.log("[Chat] WS auth_success, requesting history...");
       send({ type: "get_history", friendId: friendIdNum, limit: 50 });
       send({ type: "mark_read", senderId: friendIdNum });
     }));
@@ -181,19 +247,40 @@ export default function ChatScreen() {
     }
   }, [isRecording, pulseAnim]);
 
+  // ========== handleSend with connection check ==========
   const handleSend = useCallback(() => {
     const text = inputText.trim();
     if (!text || !friendIdNum) return;
 
-    send({
+    // Check connection status before sending
+    if (status !== "connected") {
+      console.log("[Chat] Cannot send — WS status:", status);
+      Alert.alert(
+        (t as any).chatNetworkUnstable || "目前網路不穩",
+        (t as any).chatTryLater || "請稍後再試"
+      );
+      return;
+    }
+
+    console.log("[Chat] Sending message to", friendIdNum, ":", text.substring(0, 50));
+    const sent = send({
       type: "send_message",
       receiverId: friendIdNum,
       message: text,
       messageType: "text",
     });
-    setInputText("");
-    setShowEmojiPicker(false);
-  }, [inputText, friendIdNum, send]);
+    console.log("[Chat] Send result:", sent);
+
+    if (sent) {
+      setInputText("");
+      setShowEmojiPicker(false);
+    } else {
+      Alert.alert(
+        (t as any).chatNetworkUnstable || "目前網路不穩",
+        (t as any).chatTryLater || "請稍後再試"
+      );
+    }
+  }, [inputText, friendIdNum, send, status, t]);
 
   const handleTyping = useCallback((text: string) => {
     setInputText(text);
@@ -231,6 +318,14 @@ export default function ChatScreen() {
       return;
     }
 
+    if (status !== "connected") {
+      Alert.alert(
+        (t as any).chatNetworkUnstable || "目前網路不穩",
+        (t as any).chatTryLater || "請稍後再試"
+      );
+      return;
+    }
+
     setUploadingImage(true);
     setShowEmojiPicker(false);
 
@@ -241,6 +336,7 @@ export default function ChatScreen() {
         mimeType,
       });
 
+      console.log("[Chat] Image uploaded, sending to", friendIdNum);
       send({
         type: "send_message",
         receiverId: friendIdNum,
@@ -256,7 +352,7 @@ export default function ChatScreen() {
     } finally {
       setUploadingImage(false);
     }
-  }, [friendIdNum, send, t, uploadImageMutation]);
+  }, [friendIdNum, send, t, uploadImageMutation, status]);
 
   // Pick image from gallery
   const handlePickImage = useCallback(async () => {
@@ -338,6 +434,14 @@ export default function ChatScreen() {
       return;
     }
 
+    if (status !== "connected") {
+      Alert.alert(
+        (t as any).chatNetworkUnstable || "目前網路不穩",
+        (t as any).chatTryLater || "請稍後再試"
+      );
+      return;
+    }
+
     try {
       const ExpoAudio = await import("expo-audio");
 
@@ -376,7 +480,7 @@ export default function ChatScreen() {
       console.error("[Chat] Recording start failed:", err);
       Alert.alert((t as any).error || "Error", "Failed to start recording");
     }
-  }, [t]);
+  }, [t, status]);
 
   const stopRecording = useCallback(async () => {
     if (!recorderRef.current) return;
@@ -421,6 +525,7 @@ export default function ChatScreen() {
         duration,
       });
 
+      console.log("[Chat] Audio uploaded, sending to", friendIdNum);
       // Send audio message via WebSocket
       // Format: url|duration
       send({
@@ -642,7 +747,7 @@ export default function ChatScreen() {
         </View>
       );
     }
-    if (status === "disconnected") {
+    if (status === "disconnected" && messages.length === 0) {
       return (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>🔌</Text>
@@ -652,6 +757,17 @@ export default function ChatScreen() {
           <Text style={[styles.emptyDesc, { color: colors.muted }]}>
             {(t as any).chatDisconnectedHint || "Please check your connection and try again"}
           </Text>
+          <TouchableOpacity
+            onPress={() => {
+              console.log("[Chat] Manual reconnect triggered");
+              if (reconnect) reconnect();
+            }}
+            style={[styles.reconnectBtn, { backgroundColor: colors.primary }]}
+          >
+            <Text style={styles.reconnectBtnText}>
+              {(t as any).chatReconnect || "Reconnect"}
+            </Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -666,7 +782,7 @@ export default function ChatScreen() {
         </Text>
       </View>
     );
-  }, [loading, colors, t, status]);
+  }, [loading, colors, t, status, messages.length, reconnect]);
 
   const statusText = status === "connected"
     ? ((t as any).chatConnected || "Connected")
@@ -1001,4 +1117,15 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 64, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: "700", textAlign: "center", marginBottom: 12 },
   emptyDesc: { fontSize: 14, textAlign: "center", lineHeight: 22 },
+  reconnectBtn: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  reconnectBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
 });
