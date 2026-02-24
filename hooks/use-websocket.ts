@@ -10,6 +10,14 @@ type WSMessage = {
 
 type WSStatus = "connecting" | "connected" | "disconnected";
 
+/**
+ * WebSocket hook with:
+ * - Fallback auth (userId + openId)
+ * - Auto-reconnect on disconnect (3s backoff)
+ * - Ping/pong keepalive (25s)
+ * - Blob/ArrayBuffer data handling for React Native
+ * - Stable refs to prevent circular useCallback dependencies
+ */
 export function useWebSocket(userId: number | null, openId?: string | null) {
   const wsRef = useRef<WebSocket | null>(null);
   const [status, setStatus] = useState<WSStatus>("disconnected");
@@ -23,9 +31,16 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const statusRef = useRef<WSStatus>("disconnected");
 
-  // Keep statusRef in sync so callbacks always see latest value
+  // Store userId and openId in refs so connect() doesn't need them as deps
+  const userIdRef = useRef(userId);
+  const openIdRef = useRef(openId);
+  useEffect(() => { userIdRef.current = userId; }, [userId]);
+  useEffect(() => { openIdRef.current = openId; }, [openId]);
+
+  // Keep statusRef in sync
   useEffect(() => {
     statusRef.current = status;
+    console.log("[WS] Status changed to:", status);
   }, [status]);
 
   const getWsUrl = useCallback(() => {
@@ -34,7 +49,6 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
       console.log("[WS] No API base URL available");
       return null;
     }
-    // Convert http(s) to ws(s)
     const wsBase = apiBase.replace(/^http/, "ws");
     return `${wsBase}/ws`;
   }, []);
@@ -46,25 +60,71 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
     }
   }, []);
 
-  const connect = useCallback(async () => {
-    if (!userId) {
+  const clearReconnectTimeout = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Dispatch message to registered listeners
+  const dispatchMessage = useCallback((msg: WSMessage) => {
+    setLastMessage(msg);
+
+    const typeListeners = listenersRef.current.get(msg.type);
+    if (typeListeners) {
+      typeListeners.forEach((listener) => {
+        try { listener(msg); } catch (e) {
+          console.error("[WS] Listener error for type", msg.type, ":", e);
+        }
+      });
+    }
+    const wildcardListeners = listenersRef.current.get("*");
+    if (wildcardListeners) {
+      wildcardListeners.forEach((listener) => {
+        try { listener(msg); } catch (e) {
+          console.error("[WS] Wildcard listener error:", e);
+        }
+      });
+    }
+  }, []);
+
+  // Schedule auto-reconnect
+  const scheduleReconnect = useCallback(() => {
+    if (authFailCountRef.current >= maxAuthRetries) {
+      console.log("[WS] Not reconnecting due to repeated auth failures");
+      return;
+    }
+    const delay = Math.min(3000 * Math.pow(1.5, Math.min(reconnectAttemptsRef.current, 5)), 15000);
+    reconnectAttemptsRef.current++;
+    console.log(`[WS] Reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttemptsRef.current})`);
+    clearReconnectTimeout();
+    reconnectTimeoutRef.current = setTimeout(() => {
+      if (userIdRef.current) connectRef.current();
+    }, delay);
+  }, [clearReconnectTimeout]);
+
+  // Use a ref for connect so it can be called without circular deps
+  const connectRef = useRef<() => void>(() => {});
+
+  const connect = useCallback(() => {
+    const currentUserId = userIdRef.current;
+    const currentOpenId = openIdRef.current;
+
+    if (!currentUserId) {
       console.log("[WS] No userId, skipping connect");
       return;
     }
-    // Prevent concurrent connection attempts
     if (isConnectingRef.current) {
       console.log("[WS] Already connecting, skipping");
       return;
     }
-    // If already connected, skip
     if (wsRef.current?.readyState === WebSocket.OPEN && statusRef.current === "connected") {
       console.log("[WS] Already connected, skipping reconnect");
       return;
     }
-    // Don't reconnect if auth has permanently failed too many times
     if (authFailCountRef.current >= maxAuthRetries) {
       console.log("[WS] Auth failed too many times, resetting counter for retry");
-      // Reset so manual reconnect can work
       authFailCountRef.current = 0;
     }
 
@@ -77,11 +137,16 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
     // Clean up existing connection
     if (wsRef.current) {
       try {
+        wsRef.current.onopen = null;
+        wsRef.current.onmessage = null;
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
         wsRef.current.close();
       } catch {}
       wsRef.current = null;
     }
     clearPingInterval();
+    clearReconnectTimeout();
 
     isConnectingRef.current = true;
     setStatus("connecting");
@@ -91,12 +156,19 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
-      // Connection timeout: if not open within 10 seconds, close and retry
+      // Connection timeout
       const connectTimeout = setTimeout(() => {
         if (ws.readyState !== WebSocket.OPEN) {
-          console.log("[WS] Connection timeout, closing...");
+          console.log("[WS] Connection timeout (10s), closing...");
           isConnectingRef.current = false;
-          try { ws.close(); } catch {}
+          try {
+            ws.onopen = null;
+            ws.onmessage = null;
+            ws.onclose = null;
+            ws.onerror = null;
+            ws.close();
+          } catch {}
+          scheduleReconnect();
         }
       }, 10000);
 
@@ -105,142 +177,149 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
         console.log("[WS] TCP connected, sending auth...");
         isConnectingRef.current = false;
 
-        // Authenticate - always send both token and userId
         let token: string | null = null;
         try {
           token = await Auth.getSessionToken();
         } catch (e) {
           console.log("[WS] Failed to get session token:", e);
         }
-        
-        console.log("[WS] Sending auth - token present:", !!token, "userId:", userId, "platform:", Platform.OS);
-        
+
+        console.log("[WS] Sending auth - token:", !!token, "userId:", currentUserId, "platform:", Platform.OS);
+
         try {
           ws.send(JSON.stringify({
             type: "auth",
             token: token || undefined,
-            userId: userId,
-            openId: openId || undefined,
+            userId: currentUserId,
+            openId: currentOpenId || undefined,
           }));
+          console.log("[WS] Auth message sent");
         } catch (e) {
           console.error("[WS] Failed to send auth message:", e);
         }
       };
 
-      ws.onmessage = (event) => {
+      ws.onmessage = async (event: MessageEvent) => {
         try {
-          const msg = JSON.parse(event.data) as WSMessage;
+          // Parse the incoming data - handle string, Blob, ArrayBuffer
+          let text: string;
+          const rawData = event.data;
 
-          // Handle auth responses
+          if (typeof rawData === "string") {
+            text = rawData;
+          } else if (rawData instanceof ArrayBuffer) {
+            text = new TextDecoder().decode(rawData);
+            console.log("[WS] Decoded ArrayBuffer:", text.substring(0, 80));
+          } else if (typeof Blob !== "undefined" && rawData instanceof Blob) {
+            text = await rawData.text();
+            console.log("[WS] Decoded Blob:", text.substring(0, 80));
+          } else {
+            // Fallback: try toString (works for Buffer in some environments)
+            text = String(rawData);
+            console.log("[WS] Fallback toString, type:", typeof rawData, "constructor:", rawData?.constructor?.name);
+          }
+
+          const msg = JSON.parse(text) as WSMessage;
+
+          // Handle auth_success
           if (msg.type === "auth_success") {
-            console.log("[WS] Auth success, userId:", msg.userId);
+            console.log("[WS] ✅ Auth success! userId:", msg.userId);
             setStatus("connected");
             reconnectAttemptsRef.current = 0;
             authFailCountRef.current = 0;
 
-            // Start ping/keepalive every 25 seconds
+            // Start ping keepalive
             clearPingInterval();
             pingIntervalRef.current = setInterval(() => {
               if (wsRef.current?.readyState === WebSocket.OPEN) {
                 try {
                   wsRef.current.send(JSON.stringify({ type: "ping" }));
                 } catch {
-                  console.log("[WS] Ping failed, connection may be dead");
+                  console.log("[WS] Ping send failed");
                 }
               }
             }, 25000);
-          } else if (msg.type === "auth_error") {
-            console.error("[WS] Auth error:", msg.message);
+
+            // Dispatch to listeners too (so chat.tsx can react)
+            dispatchMessage(msg);
+            return;
+          }
+
+          // Handle auth_error
+          if (msg.type === "auth_error") {
+            console.error("[WS] ❌ Auth error:", msg.message);
             authFailCountRef.current++;
             setStatus("disconnected");
             if (authFailCountRef.current < maxAuthRetries) {
               const delay = Math.min(2000 * Math.pow(2, authFailCountRef.current), 30000);
               console.log(`[WS] Will retry auth in ${delay}ms (attempt ${authFailCountRef.current}/${maxAuthRetries})`);
+              clearReconnectTimeout();
               reconnectTimeoutRef.current = setTimeout(() => {
-                if (userId) connect();
+                if (userIdRef.current) connectRef.current();
               }, delay);
-            } else {
-              console.log("[WS] Max auth retries reached, giving up");
             }
             return;
-          } else if (msg.type === "pong") {
-            // Keepalive response, ignore
+          }
+
+          // Handle pong (keepalive response)
+          if (msg.type === "pong") {
             return;
           }
 
-          setLastMessage(msg);
+          if (msg.type === "unread_count") {
+            console.log("[WS] Unread count:", msg.count);
+          }
 
-          // Dispatch to listeners
-          const typeListeners = listenersRef.current.get(msg.type);
-          if (typeListeners) {
-            typeListeners.forEach((listener) => listener(msg));
-          }
-          // Also dispatch to wildcard listeners
-          const wildcardListeners = listenersRef.current.get("*");
-          if (wildcardListeners) {
-            wildcardListeners.forEach((listener) => listener(msg));
-          }
+          // Dispatch all other messages to listeners
+          dispatchMessage(msg);
         } catch (err) {
-          console.error("[WS] Failed to parse message:", err);
+          console.error("[WS] onmessage parse error:", err, "raw type:", typeof event.data);
         }
       };
 
-      ws.onclose = (event) => {
+      ws.onclose = (event: CloseEvent) => {
         clearTimeout(connectTimeout);
         console.log("[WS] Disconnected, code:", event?.code, "reason:", event?.reason);
         setStatus("disconnected");
         wsRef.current = null;
         isConnectingRef.current = false;
         clearPingInterval();
-
-        // Don't auto-reconnect if auth failed too many times
-        if (authFailCountRef.current >= maxAuthRetries) {
-          console.log("[WS] Not reconnecting due to repeated auth failures");
-          return;
-        }
-
-        // Auto-reconnect with fixed 3 second delay (capped backoff)
-        const delay = Math.min(3000 * Math.pow(1.5, Math.min(reconnectAttemptsRef.current, 5)), 15000);
-        reconnectAttemptsRef.current++;
-        console.log(`[WS] Reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttemptsRef.current})`);
-        reconnectTimeoutRef.current = setTimeout(() => {
-          if (userId) connect();
-        }, delay);
+        scheduleReconnect();
       };
 
-      ws.onerror = (error) => {
-        console.error("[WS] Error:", error);
+      ws.onerror = (error: Event) => {
+        console.error("[WS] Error event:", (error as any)?.message || "unknown");
         isConnectingRef.current = false;
       };
     } catch (err) {
-      console.error("[WS] Connection failed:", err);
+      console.error("[WS] Connection creation failed:", err);
       setStatus("disconnected");
       isConnectingRef.current = false;
-      
-      // Retry on connection failure
-      const delay = Math.min(3000 * Math.pow(1.5, Math.min(reconnectAttemptsRef.current, 5)), 15000);
-      reconnectAttemptsRef.current++;
-      reconnectTimeoutRef.current = setTimeout(() => {
-        if (userId) connect();
-      }, delay);
+      scheduleReconnect();
     }
-  }, [userId, openId, getWsUrl, clearPingInterval]);
+  }, [getWsUrl, clearPingInterval, clearReconnectTimeout, scheduleReconnect, dispatchMessage]);
+
+  // Keep connectRef in sync
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
+    clearReconnectTimeout();
     clearPingInterval();
     if (wsRef.current) {
       try {
+        wsRef.current.onopen = null;
+        wsRef.current.onmessage = null;
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
         wsRef.current.close();
       } catch {}
       wsRef.current = null;
     }
     isConnectingRef.current = false;
     setStatus("disconnected");
-  }, [clearPingInterval]);
+  }, [clearPingInterval, clearReconnectTimeout]);
 
   const send = useCallback((msg: WSMessage) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -252,7 +331,7 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
         return false;
       }
     }
-    console.log("[WS] Cannot send, WebSocket not open. readyState:", wsRef.current?.readyState, "status:", statusRef.current);
+    console.log("[WS] Cannot send — readyState:", wsRef.current?.readyState, "status:", statusRef.current);
     return false;
   }, []);
 
@@ -261,8 +340,6 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
       listenersRef.current.set(type, new Set());
     }
     listenersRef.current.get(type)!.add(listener);
-
-    // Return unsubscribe function
     return () => {
       listenersRef.current.get(type)?.delete(listener);
     };
@@ -271,7 +348,7 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
   // Connect when userId is available
   useEffect(() => {
     if (userId) {
-      // Reset auth failure count when userId changes (e.g., re-login)
+      console.log("[WS] userId available:", userId, "— initiating connection");
       authFailCountRef.current = 0;
       reconnectAttemptsRef.current = 0;
       connect();
@@ -279,23 +356,24 @@ export function useWebSocket(userId: number | null, openId?: string | null) {
     return () => {
       disconnect();
     };
-  }, [userId, connect, disconnect]);
+    // Only re-run when userId changes, NOT when connect/disconnect change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   // Reconnect on app foreground
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active" && userId) {
-        // Always try to reconnect when app comes to foreground
+      if (state === "active" && userIdRef.current) {
         if (statusRef.current !== "connected") {
           console.log("[WS] App foregrounded, reconnecting...");
           authFailCountRef.current = 0;
           reconnectAttemptsRef.current = 0;
-          connect();
+          connectRef.current();
         }
       }
     });
     return () => subscription.remove();
-  }, [userId, connect]);
+  }, []);
 
   return {
     status,

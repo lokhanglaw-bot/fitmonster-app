@@ -815,3 +815,11 @@
 - [x] Step 3: server/routers.ts — chat.sendMessage mutation 加入離線推播通知
 - [x] Step 4: server/websocket.ts — 確保 new_message 正確廣播、mark_read 正確更新
 - [x] Step 5: 測試驗證所有修復並存檔 checkpoint
+
+## Chat Fix - Round 70: 客戶端 WS 狀態「已斷開」但伺服器連線成功
+- [x] 診斷：客戶端 connect() 因 useEffect 依賴循環導致重複觸發，舊連線在 auth 完成前被關閉
+- [x] 修復 use-websocket.ts：用 ref 存儲 userId/openId 避免 connect 重建；加入 Blob/ArrayBuffer 解析
+- [x] 修復 server/websocket.ts：加入 safeSend 保護避免 crash；重構 auth 流程消除 race condition
+- [x] 修復 chat.tsx：移除暴力 3 秒重連 interval，改為 5 秒一次性嘗試
+- [x] 伺服器端測試通過：auth_success、ping/pong、get_history 全部正常
+- [ ] 等待用戶手機端實測確認 connected 狀態正常

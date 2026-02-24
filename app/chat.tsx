@@ -68,7 +68,7 @@ export default function ChatScreen() {
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioPlayerRef = useRef<any>(null);
   const pulseAnim = useRef(new RNAnimated.Value(1)).current;
-  const reconnectIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const reconnectIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { wsStatus: status, wsSend: send, wsOn: on, wsReconnect: reconnect } = useNotifications();
   const uploadImageMutation = trpc.chat.uploadImage.useMutation();
@@ -100,26 +100,26 @@ export default function ChatScreen() {
     }
   }, [historyQuery.data, historyLoadedFromRest]);
 
-  // ========== Auto-reconnect: if WS not connected, try every 3 seconds ==========
+  // ========== Auto-reconnect: use-websocket.ts handles reconnection automatically ==========
+  // Only trigger a manual reconnect if status stays disconnected for 5+ seconds
   useEffect(() => {
-    if (status !== "connected") {
-      console.log("[Chat] WS status is", status, "— starting auto-reconnect interval");
-      reconnectIntervalRef.current = setInterval(() => {
+    if (status === "disconnected") {
+      console.log("[Chat] WS status is disconnected — will try manual reconnect in 5s");
+      reconnectIntervalRef.current = setTimeout(() => {
         if (reconnect) {
-          console.log("[Chat] Auto-reconnect attempt...");
+          console.log("[Chat] Manual reconnect attempt...");
           reconnect();
         }
-      }, 3000);
+      }, 5000);
     } else {
-      // Connected — clear the interval
       if (reconnectIntervalRef.current) {
-        clearInterval(reconnectIntervalRef.current);
+        clearTimeout(reconnectIntervalRef.current);
         reconnectIntervalRef.current = null;
       }
     }
     return () => {
       if (reconnectIntervalRef.current) {
-        clearInterval(reconnectIntervalRef.current);
+        clearTimeout(reconnectIntervalRef.current);
         reconnectIntervalRef.current = null;
       }
     };
