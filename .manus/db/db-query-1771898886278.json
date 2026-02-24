@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, openId, name, email FROM users ORDER BY id LIMIT 20",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT id, openId, name, email FROM users ORDER BY id LIMIT 20",
+  "rows": [
+    {
+      "id": "1",
+      "openId": "k9DvnZSEkoEQuGrqThQvGs",
+      "name": "lok hang Law",
+      "email": "lokhanglaw@gmail.com"
+    },
+    {
+      "id": "30029",
+      "openId": "Vi6xfTsFpQfR2ejfe4ZRTK",
+      "name": "Ken Law",
+      "email": "tym2b2nkfw@privaterelay.appleid.com"
+    },
+    {
+      "id": "90001",
+      "openId": "5zFDAFwv7rpk82Sg8euaQu",
+      "name": "chenghiuching denise",
+      "email": "denise1112cheng@gmail.com"
+    },
+    {
+      "id": "300001",
+      "openId": "jRAoJZzE59tkPjpfAY98ow",
+      "name": "Stephen NGAI",
+      "email": "stephen.ngaipl@gmail.com"
+    },
+    {
+      "id": "1020101",
+      "openId": "QXsjy7UbK7eXqU7RNMSM2V",
+      "name": "NULL",
+      "email": "cherienharper@gmail.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\n1\tk9DvnZSEkoEQuGrqThQvGs\tlok hang Law\tlokhanglaw@gmail.com\n30029\tVi6xfTsFpQfR2ejfe4ZRTK\tKen Law\ttym2b2nkfw@privaterelay.appleid.com\n90001\t5zFDAFwv7rpk82Sg8euaQu\tchenghiuching denise\tdenise1112cheng@gmail.com\n300001\tjRAoJZzE59tkPjpfAY98ow\tStephen NGAI\tstephen.ngaipl@gmail.com\n1020101\tQXsjy7UbK7eXqU7RNMSM2V\tNULL\tcherienharper@gmail.com\n",
+  "stderr": "",
+  "execution_time_ms": 1491
+}

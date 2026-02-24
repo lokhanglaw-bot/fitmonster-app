@@ -767,3 +767,18 @@
 - [x] Added profile sync on profile-setup and edit-profile save
 - [x] Made setupProfile endpoint support upsert (create if not exists)
 - [x] Made updateProfileData endpoint handle missing profile gracefully
+
+## Bug Fix - Round 67: Chat disconnection and mystery icons
+- [x] Bug 1: Chat always shows "已斷開" (disconnected) on native iOS — WebSocket cannot connect from Expo Go → Fixed: chat.tsx now uses shared WebSocket from NotificationProvider instead of creating its own instance; useWebSocket hook improved to not permanently give up on auth failure (uses retry counter with max 5 attempts instead of boolean flag); added detailed logging for debugging
+- [x] Bug 2: Chat messages typed and sent don't appear — loading spinner shown indefinitely → Fixed: added 8-second loading timeout to prevent infinite spinner; added disconnected state UI with helpful message
+- [x] Bug 3: Identify red pin icon and grey eye icon on friend card — explain or fix functionality → Identified: these are location visibility toggle buttons. Red 📍 = location hidden from this friend; Grey 👁 = location visible to this friend. This is the hideLocation feature.
+- [x] Ensure WebSocket URL is correct for native platform (not localhost) → Verified: EXPO_PUBLIC_API_BASE_URL is correctly set to the external sandbox URL
+- [x] Ensure chat send message works end-to-end → Verified: WebSocket server correctly handles send_message, saves to DB, and forwards to receiver
+
+### Round 67 Root Cause Analysis:
+- [x] chat.tsx was creating its own useWebSocket instance, competing with NotificationProvider's instance
+- [x] useWebSocket had authFailedRef (boolean) that permanently blocked reconnection after any auth failure
+- [x] Changed to authFailCountRef (counter) with maxAuthRetries=5 and exponential backoff
+- [x] Added isConnectingRef to prevent concurrent connection attempts
+- [x] Added loading timeout (8s) in chat.tsx to prevent infinite spinner
+- [x] Added disconnected state UI with helpful message

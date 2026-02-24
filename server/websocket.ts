@@ -29,7 +29,7 @@ export function setupWebSocket(server: HttpServer) {
                 cookie: msg.cookie || undefined,
               },
             } as any;
-            console.log(`[WS] Auth attempt - token present: ${!!msg.token}, cookie present: ${!!msg.cookie}`);
+            console.log(`[WS] Auth attempt - token present: ${!!msg.token}, cookie present: ${!!msg.cookie}, userId: ${msg.userId} (type: ${typeof msg.userId})`);
             const user = await sdk.authenticateRequest(fakeReq);
             userId = user.id;
 

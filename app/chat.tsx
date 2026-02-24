@@ -24,7 +24,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useI18n } from "@/lib/i18n-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthContext } from "@/lib/auth-context";
-import { useWebSocket } from "@/hooks/use-websocket";
+import { useNotifications } from "@/lib/notification-provider";
 import { EmojiPicker } from "@/components/emoji-picker";
 import { ImagePreviewModal } from "@/components/image-preview-modal";
 import { trpc } from "@/lib/trpc";
@@ -68,7 +68,7 @@ export default function ChatScreen() {
   const audioPlayerRef = useRef<any>(null);
   const pulseAnim = useRef(new RNAnimated.Value(1)).current;
 
-  const { status, send, on } = useWebSocket(myId);
+  const { wsStatus: status, wsSend: send, wsOn: on } = useNotifications();
   const uploadImageMutation = trpc.chat.uploadImage.useMutation();
   const uploadAudioMutation = trpc.chat.uploadAudio.useMutation();
 
@@ -79,6 +79,17 @@ export default function ChatScreen() {
       send({ type: "mark_read", senderId: friendIdNum });
     }
   }, [status, friendIdNum, send]);
+
+  // Timeout: stop loading spinner if WS doesn't connect within 8 seconds
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.log("[Chat] Loading timeout reached, stopping spinner");
+        setLoading(false);
+      }
+    }, 8000);
+    return () => clearTimeout(timeout);
+  }, [loading]);
 
   // Listen for WebSocket messages
   useEffect(() => {
@@ -625,6 +636,22 @@ export default function ChatScreen() {
       return (
         <View style={styles.emptyContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.emptyDesc, { color: colors.muted, marginTop: 12 }]}>
+            {status === "connecting" ? ((t as any).chatConnecting || "Connecting...") : ((t as any).chatLoading || "Loading...")}
+          </Text>
+        </View>
+      );
+    }
+    if (status === "disconnected") {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyEmoji}>🔌</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+            {(t as any).chatDisconnected || "Disconnected"}
+          </Text>
+          <Text style={[styles.emptyDesc, { color: colors.muted }]}>
+            {(t as any).chatDisconnectedHint || "Please check your connection and try again"}
+          </Text>
         </View>
       );
     }
@@ -639,7 +666,7 @@ export default function ChatScreen() {
         </Text>
       </View>
     );
-  }, [loading, colors, t]);
+  }, [loading, colors, t, status]);
 
   const statusText = status === "connected"
     ? ((t as any).chatConnected || "Connected")
