@@ -24,6 +24,7 @@ import { AuthProvider, useAuthContext } from "@/lib/auth-context";
 import { I18nProvider } from "@/lib/i18n-context";
 import { WorkoutTimerProvider } from "@/lib/workout-timer-context";
 import { NotificationProvider } from "@/lib/notification-provider";
+import { CaringProvider } from "@/lib/caring-context";
 import { registerBackgroundNotificationTask } from "@/lib/background-notifications";
 
 // Wrapper that passes userId from auth context to ActivityProvider
@@ -32,6 +33,13 @@ function AuthenticatedActivityProvider({ children }: { children: React.ReactNode
   // Use openId (stable across logins) instead of numeric id (Date.now() changes each login)
   const userId = user ? (user.openId || String(user.id)) : null;
   return <ActivityProvider userId={userId}>{children}</ActivityProvider>;
+}
+
+// Wrapper that passes userId from auth context to CaringProvider
+function AuthenticatedCaringProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthContext();
+  const userId = user ? (user.openId || String(user.id)) : null;
+  return <CaringProvider userId={userId}>{children}</CaringProvider>;
 }
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -107,6 +115,7 @@ export default function RootLayout() {
           <I18nProvider>
           <AuthProvider>
           <AuthenticatedActivityProvider>
+          <AuthenticatedCaringProvider>
           <WorkoutTimerProvider>
           <NotificationProvider>
           <AuthGate>
@@ -128,6 +137,7 @@ export default function RootLayout() {
           </AuthGate>
           </NotificationProvider>
           </WorkoutTimerProvider>
+          </AuthenticatedCaringProvider>
           </AuthenticatedActivityProvider>
           </AuthProvider>
           </I18nProvider>

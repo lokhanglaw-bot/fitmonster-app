@@ -14,6 +14,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useActivity } from "@/lib/activity-context";
+import { useCaring } from "@/lib/caring-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   useSharedValue,
@@ -341,6 +342,7 @@ export default function WorkoutTrackingScreen() {
   const router = useRouter();
   const colors = useColors();
   const { logWorkout } = useActivity();
+  const { exerciseMonster: caringExerciseMonster } = useCaring();
   const { t, tr } = useI18n();
   const insets = useSafeAreaInsets();
   const {
@@ -471,6 +473,9 @@ export default function WorkoutTrackingScreen() {
         expEarned: finalExp,
       });
 
+      // Auto-log exercise via caring system
+      caringExerciseMonster(finalMinutes, finalCalories, fMet).catch(() => {});
+
       // Show celebration instead of Alert
       setCelebrationData({
         calories: finalCalories,
@@ -482,7 +487,7 @@ export default function WorkoutTrackingScreen() {
       if (router.canDismiss()) router.dismiss();
       else router.back();
     }
-  }, [elapsedSeconds, finishWorkout, logWorkout, router, t, bodyWeight]);
+  }, [elapsedSeconds, finishWorkout, logWorkout, caringExerciseMonster, router, t, bodyWeight]);
 
   const handleCelebrationDismiss = useCallback(() => {
     setShowCelebration(false);

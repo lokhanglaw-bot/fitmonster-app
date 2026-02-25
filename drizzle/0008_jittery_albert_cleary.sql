@@ -1,0 +1,20 @@
+CREATE TABLE `monsterCaring` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`userId` int NOT NULL,
+	`fullness` int NOT NULL DEFAULT 70,
+	`energy` int NOT NULL DEFAULT 70,
+	`mood` int NOT NULL DEFAULT 70,
+	`lastDecayAt` timestamp NOT NULL DEFAULT (now()),
+	`lastFedAt` timestamp,
+	`lastExerciseAt` timestamp,
+	`dailyHpLoss` int NOT NULL DEFAULT 0,
+	`nutritionAdvice` text,
+	`nutritionAdviceDate` varchar(10),
+	`consecutiveBalancedDays` int NOT NULL DEFAULT 0,
+	`consecutiveExerciseDays` int NOT NULL DEFAULT 0,
+	`peakStateBuff` boolean NOT NULL DEFAULT false,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `monsterCaring_id` PRIMARY KEY(`id`),
+	CONSTRAINT `monsterCaring_userId_unique` UNIQUE(`userId`)
+);

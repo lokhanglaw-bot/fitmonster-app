@@ -10,6 +10,8 @@ import { storagePut } from "./storage";
 import { getFoodAnalysisPrompt, getFoodAnalysisUserPrompt } from "./food-prompt";
 import { sendToUser, getOnlineStatuses, isUserOnline } from "./websocket";
 import { sendPushNotification, sendChatPushNotification } from "./push-notifications";
+import * as caringDb from "./caring-db";
+import { getMonsterAdvicePrompt, getMonsterAdviceUserPrompt, getQuickStatusDialogue } from "./caring-prompt";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -897,6 +899,160 @@ Always return valid JSON.`;
           .catch(err => console.error("[Chat REST] Push notification failed:", err));
 
         return savedMsg;
+      }),
+  }),
+
+  // ============================================
+  // Monster Caring System (Phase 1-3)
+  // ============================================
+  caring: router({
+    // Get current caring state (applies decay automatically)
+    status: protectedProcedure.query(async ({ ctx }) => {
+      // Ensure caring record exists
+      await caringDb.upsertMonsterCaring(ctx.user.id, {});
+      // Apply time-based decay
+      const caring = await caringDb.applyFullnessDecay(ctx.user.id);
+      if (!caring) throw new Error("Failed to get caring state");
+      const status = caringDb.getMonsterStatus(caring);
+      const hpEffect = caringDb.calculateHpEffect(caring.fullness);
+      const battleMods = caringDb.calculateBattleModifiers(caring);
+      return {
+        fullness: caring.fullness,
+        energy: caring.energy,
+        mood: caring.mood,
+        peakStateBuff: caring.peakStateBuff,
+        lastFedAt: caring.lastFedAt?.toISOString() || null,
+        lastExerciseAt: caring.lastExerciseAt?.toISOString() || null,
+        consecutiveBalancedDays: caring.consecutiveBalancedDays,
+        consecutiveExerciseDays: caring.consecutiveExerciseDays,
+        ...status,
+        hpEffect,
+        battleModifiers: battleMods,
+      };
+    }),
+
+    // Feed monster (called after food log)
+    feed: protectedProcedure
+      .input(z.object({
+        calories: z.number(),
+        protein: z.number(),
+        carbs: z.number(),
+        fats: z.number(),
+        mealType: z.string().default("meal"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await caringDb.feedMonster(
+          ctx.user.id,
+          input.calories,
+          input.protein,
+          input.carbs,
+          input.fats,
+          input.mealType
+        );
+        return result;
+      }),
+
+    // Log exercise energy (called after workout)
+    exercise: protectedProcedure
+      .input(z.object({
+        duration: z.number(),
+        caloriesBurned: z.number(),
+        metValue: z.number().default(5),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await caringDb.addExerciseEnergy(
+          ctx.user.id,
+          input.duration,
+          input.caloriesBurned,
+          input.metValue
+        );
+        return result;
+      }),
+
+    // Get nutrition advice dialogue from monster (uses LLM)
+    advice: protectedProcedure
+      .input(z.object({
+        language: z.enum(["en", "zh"]).default("en"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Get caring state
+        const caring = await caringDb.getMonsterCaring(ctx.user.id);
+        if (!caring) throw new Error("No caring state found");
+
+        // Get active monster info
+        const activeMonster = await db.getActiveMonster(ctx.user.id);
+        const monsterName = activeMonster?.name || "Monster";
+        const monsterType = activeMonster?.monsterType || "bodybuilder";
+
+        // Analyze recent nutrition
+        const nutritionData = await caringDb.analyzeRecentNutrition(ctx.user.id);
+
+        // If no data, return quick status dialogue
+        if (nutritionData.daysAnalyzed === 0) {
+          const dialogue = getQuickStatusDialogue(
+            input.language, monsterName, monsterType,
+            caring.fullness, caring.energy, caring.mood
+          );
+          return { dialogue, source: "quick" as const };
+        }
+
+        // Call LLM for personalized advice
+        try {
+          const response = await invokeLLM({
+            messages: [
+              {
+                role: "system",
+                content: getMonsterAdvicePrompt(input.language, monsterName, monsterType),
+              },
+              {
+                role: "user",
+                content: getMonsterAdviceUserPrompt(input.language, nutritionData, {
+                  fullness: caring.fullness,
+                  energy: caring.energy,
+                  mood: caring.mood,
+                }),
+              },
+            ],
+          });
+
+          const content = response.choices[0]?.message?.content;
+          const dialogue = typeof content === "string" ? content.trim() : "";
+
+          // Save advice to DB
+          const today = new Date().toISOString().split("T")[0];
+          await caringDb.updateMonsterCaring(ctx.user.id, {
+            nutritionAdvice: JSON.stringify({ dialogue, nutritionData }),
+            nutritionAdviceDate: today,
+          });
+
+          return { dialogue: dialogue || getQuickStatusDialogue(input.language, monsterName, monsterType, caring.fullness, caring.energy, caring.mood), source: "llm" as const };
+        } catch (err) {
+          console.error("[Caring] LLM advice failed:", err);
+          const dialogue = getQuickStatusDialogue(
+            input.language, monsterName, monsterType,
+            caring.fullness, caring.energy, caring.mood
+          );
+          return { dialogue, source: "fallback" as const };
+        }
+      }),
+
+    // Get quick status dialogue (no LLM, instant)
+    quickDialogue: protectedProcedure
+      .input(z.object({
+        language: z.enum(["en", "zh"]).default("en"),
+      }))
+      .query(async ({ ctx, input }) => {
+        const caring = await caringDb.getMonsterCaring(ctx.user.id);
+        const activeMonster = await db.getActiveMonster(ctx.user.id);
+        const monsterName = activeMonster?.name || "Monster";
+        const monsterType = activeMonster?.monsterType || "bodybuilder";
+        const fullness = caring?.fullness ?? 70;
+        const energy = caring?.energy ?? 70;
+        const mood = caring?.mood ?? 70;
+        const dialogue = getQuickStatusDialogue(
+          input.language, monsterName, monsterType, fullness, energy, mood
+        );
+        return { dialogue };
       }),
   }),
 

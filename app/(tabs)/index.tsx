@@ -27,6 +27,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useActivity } from "@/lib/activity-context";
 import { useI18n } from "@/lib/i18n-context";
 import { trpc } from "@/lib/trpc";
+import { MonsterCaringPanel } from "@/components/monster-caring-panel";
+import { useCaring } from "@/lib/caring-context";
 
 // MONSTER_TYPES is built inside the component to use i18n
 
@@ -73,6 +75,7 @@ export default function HomeScreen() {
   const { user, logout } = useAuth();
 
   const { state: activity, setSteps, logFood, addRecordFood, addRecordWorkout, addMonster, setMonsters: setMonstersCtx, removeMonster, evolveMonster, checkEvolution, setActiveMonster } = useActivity();
+  const { state: caringState, feedMonster: caringFeedMonster, exerciseMonster: caringExerciseMonster, refresh: refreshCaring } = useCaring();
   const isFocused = useIsFocused();
   const { language, setLanguage, t, tr } = useI18n();
 
@@ -393,6 +396,12 @@ export default function HomeScreen() {
       const fat = aiAnalysisResult.totalFat || 0;
       const exp = Math.round(calories * 0.05);
       logFood({ name: recordName.trim(), calories, protein, carbs, fat, expEarned: exp });
+      // Auto-feed monster via caring system
+      caringFeedMonster(calories, protein, carbs, fat, "meal").then((result) => {
+        if (result) {
+          console.log(`[Caring] Fed monster: +${result.fullnessGain} fullness`);
+        }
+      }).catch(() => {});
       setShowAddRecord(false);
       Alert.alert(`${t.recordSaved} \u2705`, `${recordName}\n${calories} kcal \u2022 ${protein}g ${t.totalProtein} \u2022 ${carbs}g ${t.totalCarbs} \u2022 ${fat}g ${t.totalFat}\n${t.statsUpdated}`);
     } else {
@@ -604,7 +613,13 @@ export default function HomeScreen() {
       )}
 
       {/* Active Monster Card */}
-      {activeMonster ? renderMonsterCard(activeMonster, activeMonsterIdx) : (
+      {activeMonster ? (
+        <>
+          {renderMonsterCard(activeMonster, activeMonsterIdx)}
+          {/* Monster Caring Panel */}
+          <MonsterCaringPanel monsterName={activeMonster.name} />
+        </>
+      ) : (
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={handleHatchEgg}

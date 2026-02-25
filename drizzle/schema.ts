@@ -236,7 +236,32 @@ export const pushTokens = mysqlTable("pushTokens", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+// ============================================
+// Monster Caring System
+// ============================================
+export const monsterCaring = mysqlTable("monsterCaring", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  fullness: int("fullness").default(70).notNull(), // 0-100 satiety
+  energy: int("energy").default(70).notNull(), // 0-100 vitality
+  mood: int("mood").default(70).notNull(), // 0-100 mood
+  lastDecayAt: timestamp("lastDecayAt").defaultNow().notNull(), // last time decay was applied
+  lastFedAt: timestamp("lastFedAt"), // last time monster was fed
+  lastExerciseAt: timestamp("lastExerciseAt"), // last time exercise was logged
+  dailyHpLoss: int("dailyHpLoss").default(0).notNull(), // HP lost today from hunger (cap at 20)
+  nutritionAdvice: text("nutritionAdvice"), // current nutrition advice text (JSON)
+  nutritionAdviceDate: varchar("nutritionAdviceDate", { length: 10 }), // date of last advice
+  consecutiveBalancedDays: int("consecutiveBalancedDays").default(0).notNull(),
+  consecutiveExerciseDays: int("consecutiveExerciseDays").default(0).notNull(),
+  peakStateBuff: boolean("peakStateBuff").default(false).notNull(), // fullness >= 70 && energy >= 70
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 // Type Exports
+export type MonsterCaring = typeof monsterCaring.$inferSelect;
+export type InsertMonsterCaring = typeof monsterCaring.$inferInsert;
+
 export type Profile = typeof profiles.$inferSelect;
 export type InsertProfile = typeof profiles.$inferInsert;
 

@@ -24,6 +24,7 @@ import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import { useActivity } from "@/lib/activity-context";
 import { useI18n } from "@/lib/i18n-context";
+import { useCaring } from "@/lib/caring-context";
 
 type FoodItem = {
   name: string;
@@ -178,6 +179,7 @@ export default function CameraScreen() {
   );
 
   const { logFood } = useActivity();
+  const { feedMonster: caringFeedMonster } = useCaring();
 
   const handleSaveLog = useCallback(async () => {
     if (analysisState.status !== "done") return;
@@ -199,6 +201,15 @@ export default function CameraScreen() {
     setSaved(true);
     setIsSaving(false);
     playFeedAnimation(expEarned);
+
+    // Auto-feed monster via caring system
+    caringFeedMonster(
+      analysis.totalCalories,
+      analysis.totalProtein,
+      analysis.totalCarbs,
+      analysis.totalFat,
+      analysis.mealType || "meal"
+    ).catch(() => {});
 
     // Try to save to database in background (non-blocking)
     try {
