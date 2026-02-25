@@ -112,6 +112,7 @@ export default function NearbyMapScreen() {
   const mapRef = useRef<any>(null);
   const [locationGranted, setLocationGranted] = useState(false);
   const [sharingLocation, setSharingLocation] = useState(false);
+  const [sharingStatusLoaded, setSharingStatusLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
@@ -142,6 +143,15 @@ export default function NearbyMapScreen() {
       setSliderValue(saved);
     }
   }, [matchRadiusQuery.data]);
+
+  // Load sharing status from server on mount
+  const sharingStatusQuery = trpc.location.status.useQuery(undefined, { retry: 1 });
+  useEffect(() => {
+    if (sharingStatusQuery.data && !sharingStatusLoaded) {
+      setSharingLocation(sharingStatusQuery.data.isSharing);
+      setSharingStatusLoaded(true);
+    }
+  }, [sharingStatusQuery.data, sharingStatusLoaded]);
 
   // Query nearby users (including friends) — uses radiusKm and genderFilter
   const nearbyQuery = trpc.location.nearby.useQuery(

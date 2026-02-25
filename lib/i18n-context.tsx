@@ -385,6 +385,11 @@ const en = {
   noNearbyTrainersMatchDesc: "Enable location sharing on the Map to find nearby trainers to battle!",
   openMap: "Open Map",
   wildMonster: "Wild Monster",
+  genderFilterLabel: "Filter",
+  genderAll: "All",
+  genderMaleShort: "♂ Male",
+  genderFemaleShort: "♀ Female",
+  friendLabel: "Friend",
 
   // Dashboard
   dashboardTitle: "Dashboard",
@@ -711,6 +716,7 @@ const en = {
   profileCompleted: "Profile setup complete!",
   gettingLocation: "Getting your location...",
   refreshingNearby: "Refreshing...",
+  refreshNearby: "Refresh Search",
   nearbyHint: "Try increasing your match radius or check back later!",
   enableSharingHint: "Enable location sharing and invite friends to see them here!",
   refreshNow: "Refresh Now",
@@ -1153,6 +1159,11 @@ const zh: Translations = {
   noNearbyTrainersMatchDesc: "在地圖上開啟位置分享，尋找附近的訓練師來對戰！",
   openMap: "開啟地圖",
   wildMonster: "野生怪獸",
+  genderFilterLabel: "篩選",
+  genderAll: "全部",
+  genderMaleShort: "♂ 男",
+  genderFemaleShort: "♀ 女",
+  friendLabel: "好友",
 
   // Dashboard
   dashboardTitle: "數據面板",
@@ -1479,6 +1490,7 @@ const zh: Translations = {
   profileCompleted: "個人資料設定完成！",
   gettingLocation: "正在取得你的位置...",
   refreshingNearby: "重新整理中...",
+  refreshNearby: "重新搜尋",
   nearbyHint: "試試增加配對半徑或稍後再來！",
   enableSharingHint: "啟用位置分享並邀請朋友，就能在這裡看到他們！",
   refreshNow: "立即刷新",

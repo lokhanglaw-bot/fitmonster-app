@@ -1,0 +1,40 @@
+{
+  "query": "SELECT u.id, p.trainerName, p.gender FROM users u LEFT JOIN profiles p ON u.id = p.userId WHERE u.id IN (SELECT userId FROM userLocations WHERE isSharing = true) ORDER BY u.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT u.id, p.trainerName, p.gender FROM users u LEFT JOIN profiles p ON u.id = p.userId WHERE u.id IN (SELECT userId FROM userLocations WHERE isSharing = true) ORDER BY u.id;",
+  "rows": [
+    {
+      "id": "30029",
+      "trainerName": "NULL",
+      "gender": "male"
+    },
+    {
+      "id": "90001",
+      "trainerName": "NULL",
+      "gender": "NULL"
+    },
+    {
+      "id": "300001",
+      "trainerName": "NULL",
+      "gender": "NULL"
+    },
+    {
+      "id": "2280453",
+      "trainerName": "NULL",
+      "gender": "NULL"
+    },
+    {
+      "id": "2312305",
+      "trainerName": "NULL",
+      "gender": "NULL"
+    },
+    {
+      "id": "2313494",
+      "trainerName": "NULL",
+      "gender": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttrainerName\tgender\n30029\tNULL\tmale\n90001\tNULL\tNULL\n300001\tNULL\tNULL\n2280453\tNULL\tNULL\n2312305\tNULL\tNULL\n2313494\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1571
+}

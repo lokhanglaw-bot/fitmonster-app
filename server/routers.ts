@@ -518,6 +518,9 @@ Always return valid JSON.`;
 
   // Location & Friend System
   location: router({
+    status: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserSharingStatus(ctx.user.id);
+    }),
     update: protectedProcedure
       .input(z.object({
         latitude: z.number(),
@@ -599,7 +602,7 @@ Always return valid JSON.`;
         const genderFilter = input.genderFilter ?? await db.getUserGenderPreference(ctx.user.id);
         if (genderFilter === 'all') return results;
         return results.filter(u => {
-          if (!u.gender) return true; // Show users without gender set
+          if (!u.gender) return false; // Hide users without gender when filtering by male/female
           return u.gender === genderFilter;
         });
       }),

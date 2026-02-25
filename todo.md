@@ -951,3 +951,8 @@
 
 ## Round 84: Web 預覽崩潰
 - [x] use-push-notifications.ts 中 Notifications.getLastNotificationResponseAsync 在 Web 上不可用導致崩潰 — 加平台檢查
+
+## Round 85: 地圖篩選 + 隱藏按鈕 + 配對更新
+- [x] 性別篩選不生效 — 選了男/女後地圖和列表仍顯示全部用戶
+- [x] 隱藏按鈕不持久 — 離開頁面再回來會自動恢復，應保存狀態直到用戶手動取消
+- [x] 配對頁面加更新按鈕 — 滑完所有用戶後可手動刷新找新用戶

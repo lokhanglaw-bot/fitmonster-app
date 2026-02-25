@@ -723,13 +723,39 @@ export default function BattleScreen() {
                     {t.noNearbyTrainersMatchDesc || "Enable location sharing on the Map to find nearby trainers to battle!"}
                   </Text>
                   <TouchableOpacity
-                    style={[styles.mapLinkBtn, { backgroundColor: colors.primary }]}
+                    style={[styles.refreshMatchBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => {
+                      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setCurrentOpponent(0);
+                      nearbyQuery.refetch();
+                    }}
+                  >
+                    <IconSymbol name="arrow.clockwise" size={16} color="#fff" />
+                    <Text style={styles.mapLinkText}>{t.refreshNearby || "重新搜尋"}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.mapLinkBtn, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
                     onPress={() => router.push("/nearby-map" as any)}
                   >
-                    <IconSymbol name="map.fill" size={16} color="#fff" />
-                    <Text style={styles.mapLinkText}>{t.openMap || "Open Map"}</Text>
+                    <IconSymbol name="map.fill" size={16} color={colors.primary} />
+                    <Text style={[styles.mapLinkText, { color: colors.primary }]}>{t.openMap || "Open Map"}</Text>
                   </TouchableOpacity>
                 </View>
+              )}
+
+              {/* Refresh button when all opponents have been swiped */}
+              {nearbyOpponents.length > 0 && currentOpponent >= nearbyOpponents.length && (
+                <TouchableOpacity
+                  style={[styles.refreshBannerBtn, { backgroundColor: colors.surface, borderColor: colors.primary, borderWidth: 1.5 }]}
+                  onPress={() => {
+                    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setCurrentOpponent(0);
+                    nearbyQuery.refetch();
+                  }}
+                >
+                  <IconSymbol name="arrow.clockwise" size={18} color={colors.primary} />
+                  <Text style={[styles.refreshBannerText, { color: colors.primary }]}>{t.refreshNearby || "重新搜尋"}</Text>
+                </TouchableOpacity>
               )}
 
               {/* Random Wild Battle */}
@@ -1164,6 +1190,9 @@ const styles = StyleSheet.create({
   mapBtnText: { fontSize: 13, fontWeight: "600" },
   mapLinkBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, marginTop: 8 },
   mapLinkText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  refreshMatchBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, marginTop: 12 },
+  refreshBannerBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 14, marginTop: 4 },
+  refreshBannerText: { fontSize: 15, fontWeight: "700" },
   genderIcon: { fontSize: 16, marginLeft: 4 },
   unreadBadge: {
     position: "absolute" as const,

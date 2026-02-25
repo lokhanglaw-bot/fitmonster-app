@@ -1,0 +1,8 @@
+{
+  "query": "SELECT u.id, p.trainerName, p.gender FROM users u LEFT JOIN profiles p ON u.id = p.userId WHERE u.id IN (SELECT userId FROM user_locations WHERE isSharing = true) ORDER BY u.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT u.id, p.trainerName, p.gender FROM users u LEFT JOIN profiles p ON u.id = p.userId WHERE u.id IN (SELECT userId FROM user_locations WHERE isSharing = true) ORDER BY u.id;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'dzlsnmxz8tkivpztppaju7.user_locations' doesn't exist"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "query": "SELECT u.id, p.\"trainerName\", p.gender FROM users u LEFT JOIN profiles p ON u.id = p.\"userId\" WHERE u.id IN (SELECT \"userId\" FROM user_locations WHERE \"isSharing\" = true) ORDER BY u.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT u.id, p.\"trainerName\", p.gender FROM users u LEFT JOIN profiles p ON u.id = p.\"userId\" WHERE u.id IN (SELECT \"userId\" FROM user_locations WHERE \"isSharing\" = true) ORDER BY u.id;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 1 column 28 near \"\"trainerName\", p.gender FROM users u LEFT JOIN profiles p ON u.id = p.\"userId\" WHERE u.id IN (SELECT \"userId\" FROM user_locations WHERE \"isSharing\" = true) ORDER BY u.id\""
+  ]
+}

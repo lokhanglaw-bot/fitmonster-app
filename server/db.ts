@@ -329,6 +329,13 @@ export async function upsertUserLocation(userId: number, latitude: number, longi
   }
 }
 
+export async function getUserSharingStatus(userId: number): Promise<{ isSharing: boolean }> {
+  const db = await getDb();
+  if (!db) return { isSharing: false };
+  const result = await db.select({ isSharing: userLocations.isSharing }).from(userLocations).where(eq(userLocations.userId, userId)).limit(1);
+  return { isSharing: result[0]?.isSharing ?? false };
+}
+
 export async function getNearbyUsers(userId: number, latitude: number, longitude: number, radiusKm: number = 5) {
   const db = await getDb();
   if (!db) return [];
