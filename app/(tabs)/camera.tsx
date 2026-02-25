@@ -25,6 +25,7 @@ import { trpc } from "@/lib/trpc";
 import { useActivity } from "@/lib/activity-context";
 import { useI18n } from "@/lib/i18n-context";
 import { useCaring } from "@/lib/caring-context";
+import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
 
 type FoodItem = {
   name: string;
@@ -178,8 +179,9 @@ export default function CameraScreen() {
     [analyzeMutation]
   );
 
-  const { logFood } = useActivity();
-  const { feedMonster: caringFeedMonster } = useCaring();
+  const { logFood, state: activityState } = useActivity();
+  const { state: caringState, feedMonster: caringFeedMonster } = useCaring();
+  const cameraMonster = activityState.monsters?.find((m: any) => m.isActive) || activityState.monsters?.[0];
 
   const handleSaveLog = useCallback(async () => {
     if (analysisState.status !== "done") return;
@@ -654,7 +656,7 @@ export default function CameraScreen() {
 
             {/* Monster */}
             <LinearGradient colors={["#DCFCE7", "#BBF7D0"]} style={styles.feedMonsterBg}>
-              <Image source={require("@/assets/monsters/bodybuilder-stage1.png")} style={styles.feedMonsterImg} contentFit="contain" />
+              <Image source={getMonsterImageForCaringState(cameraMonster?.type || 'bodybuilder', cameraMonster?.stage || 1, caringState.fullness, caringState.energy, caringState.mood, caringState.peakStateBuff)} style={styles.feedMonsterImg} contentFit="contain" />
             </LinearGradient>
 
             {/* Floating EXP text */}

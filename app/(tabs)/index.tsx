@@ -29,6 +29,7 @@ import { useI18n } from "@/lib/i18n-context";
 import { trpc } from "@/lib/trpc";
 import { MonsterCaringPanel } from "@/components/monster-caring-panel";
 import { useCaring } from "@/lib/caring-context";
+import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
 
 // MONSTER_TYPES is built inside the component to use i18n
 
@@ -466,7 +467,7 @@ export default function HomeScreen() {
 
         <View style={styles.monsterImageContainer}>
           <LinearGradient colors={[gradient[0], gradient[1]]} style={styles.monsterGradientBg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <Image source={MONSTER_IMAGES[`${monster.type}-${monster.stage}`]} style={styles.monsterImage} contentFit="contain" />
+            <Image source={getMonsterImageForCaringState(monster.type, monster.stage, caringState.fullness, caringState.energy, caringState.mood, caringState.peakStateBuff)} style={styles.monsterImage} contentFit="contain" />
           </LinearGradient>
           <Text style={[styles.monsterName, { color: colors.foreground }]}>{monster.name}</Text>
         </View>

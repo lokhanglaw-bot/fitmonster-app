@@ -22,6 +22,8 @@ import { trpc } from "@/lib/trpc";
 import { useActivity } from "@/lib/activity-context";
 import { useAuthContext } from "@/lib/auth-context";
 import * as Location from "expo-location";
+import { useCaring } from "@/lib/caring-context";
+import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
 
 // Opponent type used for battle system
 type Opponent = {
@@ -139,6 +141,7 @@ export default function BattleScreen() {
   const router = useRouter();
   const { t, tr } = useI18n();
   const { state: activityState } = useActivity();
+  const { state: caringState } = useCaring();
   const { user } = useAuthContext();
   const myId = user?.id || 0;
   const [activeTab, setActiveTab] = useState<"match" | "requests" | "friends">("match");
@@ -968,7 +971,7 @@ export default function BattleScreen() {
                 <View style={styles.battleSide}>
                   <RNAnimated.View style={[styles.battleMonsterRow, { transform: [{ translateX: playerShake }] }]}>
                     <LinearGradient colors={playerMonster ? getGradientForType(playerMonster.type) : ["#DCFCE7", "#BBF7D0"]} style={styles.battleGradient}>
-                      <Image source={playerMonster ? getMonsterImage(playerMonster.type, playerMonster.stage) : require("@/assets/monsters/bodybuilder-stage1.png")} style={styles.battleMonster} contentFit="contain" />
+                      <Image source={playerMonster ? getMonsterImageForCaringState(playerMonster.type, playerMonster.stage, caringState.fullness, caringState.energy, caringState.mood, caringState.peakStateBuff) : require("@/assets/monsters/bodybuilder-stage1.png")} style={styles.battleMonster} contentFit="contain" />
                     </LinearGradient>
                     <View style={styles.battleInfo}>
                       <Text style={[styles.battleName, { color: colors.foreground }]}>{playerMonster?.name || 'Flexo'}</Text>

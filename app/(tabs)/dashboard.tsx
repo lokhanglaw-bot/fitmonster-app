@@ -8,6 +8,8 @@ import { useColors } from "@/hooks/use-colors";
 import { useI18n } from "@/lib/i18n-context";
 import { useActivity } from "@/lib/activity-context";
 import { useProfileData } from "@/hooks/use-profile-data";
+import { useCaring } from "@/lib/caring-context";
+import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
 
 function WeeklyWorkoutStatsCard() {
   const colors = useColors();
@@ -87,6 +89,7 @@ export default function DashboardScreen() {
   const { t } = useI18n();
   const router = useRouter();
   const { state: activity } = useActivity();
+  const { state: dashCaring } = useCaring();
 
   // Read from shared activity context — no hardcoded values
   const todaySteps = activity.todaySteps;
@@ -275,7 +278,7 @@ export default function DashboardScreen() {
               <View style={styles.monsterGrowthRow}>
                 <LinearGradient colors={["#DCFCE7", "#BBF7D0"]} style={styles.monsterThumbGradient}>
                   <Image
-                    source={require("@/assets/monsters/bodybuilder-stage1.png")}
+                    source={getMonsterImageForCaringState(activeMonster.type, activeMonster.stage, dashCaring.fullness, dashCaring.energy, dashCaring.mood, dashCaring.peakStateBuff)}
                     style={styles.monsterThumb}
                     contentFit="contain"
                   />
