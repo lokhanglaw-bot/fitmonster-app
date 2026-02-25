@@ -909,3 +909,11 @@
 - [x] 圖片上傳 uploadAndSendImage 加 uploadingImage guard
 - [x] TypeScript 0 errors
 - [x] 84 個測試全部通過（Round 76 + 77 + 78）
+
+## Round 79: 通知重複進入 + 配對排除好友
+- [x] 重寫 use-push-notifications.ts：4 層防護（identifier dedup + global lock + same-chat cooldown + global time cooldown）
+- [x] 點擊通知後立即 dismissAllNotificationsAsync 防止重複點擊
+- [x] nearby API 加入好友 + 待處理請求過濾（getUserFriends + getSentFriendRequests + getPendingFriendRequests）
+- [x] 建立 excludeIds Set 過濾已是好友或有待處理請求的用戶
+- [x] TypeScript 0 errors
+- [x] 104 個測試全部通過（Round 76-79）

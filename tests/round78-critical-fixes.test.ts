@@ -66,29 +66,29 @@ describe("Round 78: Critical UX Bug Fixes", () => {
 
   // === 3. Client notification handler dedup + debounce ===
   describe("Client notification handler", () => {
-    it("should have isNavigating debounce flag", () => {
-      expect(usePushContent).toContain("let isNavigating = false");
+    it("should have _isNavigating debounce flag", () => {
+      expect(usePushContent).toContain("let _isNavigating = false");
     });
 
-    it("should have handledNotificationIds dedup set", () => {
-      expect(usePushContent).toContain("const handledNotificationIds = new Set");
+    it("should have _handledIdentifiers dedup set", () => {
+      expect(usePushContent).toContain("const _handledIdentifiers = new Set");
     });
 
-    it("should have NAVIGATION_COOLDOWN_MS", () => {
-      expect(usePushContent).toContain("NAVIGATION_COOLDOWN_MS");
+    it("should have cooldown constants", () => {
+      expect(usePushContent).toContain("GLOBAL_COOLDOWN_MS");
+      expect(usePushContent).toContain("SAME_CHAT_COOLDOWN_MS");
     });
 
-    it("should check isNavigating before navigating", () => {
-      expect(usePushContent).toContain("if (isNavigating)");
+    it("should check _isNavigating before navigating", () => {
+      expect(usePushContent).toContain("if (_isNavigating)");
     });
 
-    it("should check handledNotificationIds before handling", () => {
-      expect(usePushContent).toContain("handledNotificationIds.has(notifId)");
+    it("should check _handledIdentifiers before handling", () => {
+      expect(usePushContent).toContain("_handledIdentifiers.has(identifier)");
     });
 
-    it("should have getNotificationId that uses messageId", () => {
-      expect(usePushContent).toContain("data?.messageId");
-      expect(usePushContent).toContain("`msg-${data.messageId}`");
+    it("should have canNavigate function with multi-layer checks", () => {
+      expect(usePushContent).toContain("function canNavigate");
     });
 
     it("should clean up existing listeners before adding new ones", () => {
@@ -123,11 +123,11 @@ describe("Round 78: Critical UX Bug Fixes", () => {
     });
 
     it("should pass isColdStart=true for getLastNotificationResponseAsync", () => {
-      expect(usePushContent).toContain("handleNotificationResponse(response, true)");
+      expect(usePushContent).toContain("handleNotificationTap(response, true)");
     });
 
     it("should pass isColdStart=false for live notification taps", () => {
-      expect(usePushContent).toContain("handleNotificationResponse(response, false)");
+      expect(usePushContent).toContain("handleNotificationTap(response, false)");
     });
   });
 

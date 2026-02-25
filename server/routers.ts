@@ -538,27 +538,51 @@ Always return valid JSON.`;
         // Use provided radius or fetch user's saved match radius
         const radiusKm = input.radiusKm ?? await db.getUserMatchRadius(ctx.user.id);
         console.log(`[Nearby] Radius: ${radiusKm} km, user: ${ctx.user.id}`);
+
         // Get the caller's gender preference
         const genderPref = await db.getUserGenderPreference(ctx.user.id);
+
+        // Get existing friends + pending requests to exclude from matching
+        const [existingFriends, sentRequests, pendingRequests] = await Promise.all([
+          db.getUserFriends(ctx.user.id),
+          db.getSentFriendRequests(ctx.user.id),
+          db.getPendingFriendRequests(ctx.user.id),
+        ]);
+
+        // Build a set of user IDs to exclude (friends + pending in either direction)
+        const excludeIds = new Set<number>();
+        for (const f of existingFriends) {
+          excludeIds.add(f.userId === ctx.user.id ? f.friendId : f.userId);
+        }
+        for (const r of sentRequests) {
+          excludeIds.add(r.friendId);
+        }
+        for (const r of pendingRequests) {
+          excludeIds.add(r.userId);
+        }
+        console.log(`[Nearby] Excluding ${excludeIds.size} users (friends + pending requests)`);
+
         const nearbyLocations = await db.getNearbyUsers(ctx.user.id, input.latitude, input.longitude, radiusKm);
         const userIds = nearbyLocations.map(l => l.userId);
         const usersInfo = await db.getUserInfoForNearby(userIds);
         
-        // Map and filter by gender preference
-        const results = nearbyLocations.map(loc => {
-          const info = usersInfo.find(u => u.user.id === loc.userId);
-          return {
-            ...loc,
-            name: info?.activeMonster?.name || info?.profile?.trainerName || 'Trainer',
-            gender: info?.profile?.gender || null,
-            monsterType: info?.activeMonster?.monsterType || 'bodybuilder',
-            monsterName: info?.activeMonster?.name || null,
-            monsterLevel: info?.activeMonster?.level || 1,
-            monsterStage: info?.activeMonster?.evolutionStage || 1,
-            monsterImageUrl: info?.activeMonster?.imageUrl || null,
-            totalExp: info?.profile?.totalExp || 0,
-          };
-        });
+        // Map and filter: exclude friends/pending, then apply gender preference
+        const results = nearbyLocations
+          .filter(loc => !excludeIds.has(loc.userId))
+          .map(loc => {
+            const info = usersInfo.find(u => u.user.id === loc.userId);
+            return {
+              ...loc,
+              name: info?.activeMonster?.name || info?.profile?.trainerName || 'Trainer',
+              gender: info?.profile?.gender || null,
+              monsterType: info?.activeMonster?.monsterType || 'bodybuilder',
+              monsterName: info?.activeMonster?.name || null,
+              monsterLevel: info?.activeMonster?.level || 1,
+              monsterStage: info?.activeMonster?.evolutionStage || 1,
+              monsterImageUrl: info?.activeMonster?.imageUrl || null,
+              totalExp: info?.profile?.totalExp || 0,
+            };
+          });
         
         // Apply gender preference filter
         if (genderPref === 'all') return results;
