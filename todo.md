@@ -928,3 +928,8 @@
 - [x] 鍵盤彈出時自動滾到底部
 - [x] TypeScript 0 errors
 - [x] 14 個測試全部通過
+
+## Round 81: 推播 Debug Log
+- [x] Server 端 sendChatPushNotification 加入詳細 debug log（messageId, recipientUserId, tokensCount, tokens, dedupCacheSize, alreadyInCache）
+- [x] Client 端 notification tap handler 加入 Alert.alert 彈窗（顯示 messageId, notificationId, alreadyHandled, handledSetSize）
+- [x] Client 端 foreground notification listener 加入 console.log debug

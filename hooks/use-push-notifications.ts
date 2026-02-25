@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Platform } from "react-native";
+import { Platform, Alert } from "react-native";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { trpc } from "@/lib/trpc";
@@ -202,11 +202,28 @@ export function usePushNotifications(userId: number | null) {
     // Listen for incoming notifications (foreground)
     notificationListener.current = Notifications.addNotificationReceivedListener((notif) => {
       setNotification(notif);
-      console.log("[Push] Notification received in foreground:", notif.request.content.title);
+      const data = notif.request.content.data || {};
+      const msgId = data.messageId || data.id || 'unknown';
+      console.log(`[CLIENT DEBUG] ${new Date().toISOString()} | FOREGROUND notification | messageId=${msgId} | title=${notif.request.content.title} | identifier=${notif.request.identifier}`);
     });
 
     // Listen for notification taps
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data || {};
+      const messageId = data.messageId || data.id || 'unknown';
+      const identifier = response.notification.request.identifier;
+      const alreadyHandled = _handledIdentifiers.has(identifier);
+
+      console.log(`[CLIENT DEBUG] ${new Date().toISOString()} | TAP notification | messageId=${messageId} | notificationId=${identifier} | alreadyHandled=${alreadyHandled}`);
+
+      if (Platform.OS !== 'web') {
+        Alert.alert(
+          "\uD83D\uDEE0\uFE0F PUSH DEBUG",
+          `messageId: ${messageId}\nnotificationId: ${identifier}\nalreadyHandled: ${alreadyHandled}\nhandledSetSize: ${_handledIdentifiers.size}`,
+          [{ text: "OK" }]
+        );
+      }
+
       handleNotificationTap(response, false);
     });
 
