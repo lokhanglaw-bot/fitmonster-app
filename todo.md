@@ -956,3 +956,9 @@
 - [x] 性別篩選不生效 — 選了男/女後地圖和列表仍顯示全部用戶
 - [x] 隱藏按鈕不持久 — 離開頁面再回來會自動恢復，應保存狀態直到用戶手動取消
 - [x] 配對頁面加更新按鈕 — 滑完所有用戶後可手動刷新找新用戶
+
+## Round 86: 性別篩選 + 分享狀態持久化（徹底修復）
+- [x] 性別篩選：client 端加 displayedUsers 過濾 + genderFilter 改變時重新 fetch
+- [x] 分享狀態：確認 server 端 location.status / toggle API 正確讀寫 isSharing
+- [x] 分享狀態：client 端初始化時從 server 讀取 isSharing，toggle 時同步寫入 server
+- [x] 確認 profile 頁面設定的 gender 是否正確寫入 DB 並被 nearby API 讀取

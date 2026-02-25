@@ -166,10 +166,17 @@ export default function NearbyMapScreen() {
   // Update nearby users when query data changes
   useEffect(() => {
     if (nearbyQuery.data) {
-      console.log("Radius: " + radiusKm + " km");
+      console.log("Radius: " + radiusKm + " km, genderFilter: " + genderFilter + ", results: " + (nearbyQuery.data as any[]).length);
       setNearbyUsers(nearbyQuery.data as NearbyUser[]);
     }
   }, [nearbyQuery.data]);
+
+  // Client-side gender filter (double safety — server also filters, but this ensures UI updates immediately)
+  const displayedUsers = nearbyUsers.filter((user) => {
+    if (genderFilter === 'all') return true;
+    if (!user.gender) return false; // Hide users without gender when filtering
+    return user.gender === genderFilter;
+  });
 
   // On mount: request location
   useEffect(() => {
@@ -267,16 +274,31 @@ export default function NearbyMapScreen() {
 
     // Optimistically set the toggle
     setSharingLocation(value);
+    console.log(`[NearbyMap] Toggle sharing: ${value}, userLocation: ${!!userLocation}`);
 
-    if (userLocation) {
-      const success = await shareLocationToServer(userLocation.lat, userLocation.lng, value);
-      if (!success) {
-        // Retry once
-        const retrySuccess = await shareLocationToServer(userLocation.lat, userLocation.lng, value);
-        if (!retrySuccess) {
-          setLastError(t.locationShareRetry || "Location sharing may be delayed. Will retry automatically.");
-          setRetryCount(prev => prev + 1);
-        }
+    // Always write to server — use current location or fallback to last known / default
+    const loc = userLocationRef.current || userLocation || { lat: 22.3193, lng: 114.1694 };
+    try {
+      await locationUpdateMutation.mutateAsync({
+        latitude: loc.lat,
+        longitude: loc.lng,
+        isSharing: value,
+      });
+      console.log(`[NearbyMap] Server updated isSharing=${value} successfully`);
+      setLastError(null);
+    } catch (err: any) {
+      console.warn(`[NearbyMap] Failed to update sharing to server:`, err?.message || err);
+      // Retry once
+      try {
+        await locationUpdateMutation.mutateAsync({
+          latitude: loc.lat,
+          longitude: loc.lng,
+          isSharing: value,
+        });
+        console.log(`[NearbyMap] Retry succeeded`);
+      } catch {
+        setLastError(t.locationShareRetry || "Location sharing may be delayed. Will retry automatically.");
+        setRetryCount(prev => prev + 1);
       }
     }
 
@@ -417,7 +439,7 @@ export default function NearbyMapScreen() {
                   showsUserLocation={true}
                   showsMyLocationButton={false}
                   showsCompass={false}
-                  markers={nearbyUsers.map((user) => {
+                  markers={displayedUsers.map((user) => {
                     const timeInfo = getTimeAgo(user.lastUpdated, t);
                     const displayName = user.monsterName || 'Monster';
                     const genderIcon = user.gender === 'male' ? ' ♂' : user.gender === 'female' ? ' ♀' : '';
@@ -551,9 +573,9 @@ export default function NearbyMapScreen() {
 
             {/* People list header */}
             <View style={styles.listHeader}>
-              {nearbyUsers.length > 0 && (
+              {displayedUsers.length > 0 && (
                 <Text style={[styles.listTitle, { color: colors.foreground }]}>
-                  🏃 {nearbyUsers.length} {t.trainersActiveNearby || "trainers nearby"}
+                  🏃 {displayedUsers.length} {t.trainersActiveNearby || "trainers nearby"}
                 </Text>
               )}
             </View>
@@ -568,7 +590,7 @@ export default function NearbyMapScreen() {
                   {t.enableSharingHint || "Turn on location sharing to discover nearby trainers!"}
                 </Text>
               </View>
-            ) : nearbyUsers.length === 0 ? (
+            ) : displayedUsers.length === 0 ? (
               <View style={styles.emptyNearby}>
                 <Text style={{ fontSize: 40 }}>🔍</Text>
                 <Text style={[styles.emptyNearbyTitle, { color: colors.foreground }]}>
@@ -589,7 +611,7 @@ export default function NearbyMapScreen() {
               </View>
             ) : (
               <FlatList
-                data={nearbyUsers}
+                data={displayedUsers}
                 keyExtractor={(item) => `${item.userId}`}
                 renderItem={({ item }) => {
                   const timeInfo = getTimeAgo(item.lastUpdated, t);

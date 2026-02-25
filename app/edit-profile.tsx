@@ -276,34 +276,47 @@ export default function EditProfileScreen() {
         // Non-critical, saved locally
       }
 
-      // Sync profile to backend DB (for social features)
+      // Sync profile to backend DB (for social features like gender filter)
+      // Use tRPC mutation directly for reliability instead of raw fetch
       try {
-        const apiBase = getApiBaseUrl();
-        if (apiBase) {
-          const hdrs: Record<string, string> = { "Content-Type": "application/json" };
-          if (Platform.OS !== "web") {
-            const tok = await AuthModule.getSessionToken();
-            if (tok) hdrs["Authorization"] = `Bearer ${tok}`;
-          }
-          await fetch(`${apiBase}/api/trpc/profile.updateProfileData?batch=1`, {
-            method: "POST",
-            headers: hdrs,
-            credentials: "include",
-            body: JSON.stringify({
-              "0": {
-                json: {
-                  birthday,
-                  gender: gender!,
-                  height: heightNum,
-                  weight: weightNum,
-                },
-              },
-            }),
-          });
-          console.log("[EditProfile] Profile synced to backend");
-        }
+        await trpcUtils.client.profile.updateProfileData.mutate({
+          birthday,
+          gender: gender!,
+          height: heightNum,
+          weight: weightNum,
+        });
+        console.log("[EditProfile] Profile synced to backend via tRPC");
       } catch (syncErr) {
-        console.log("[EditProfile] Backend sync failed (non-critical):", syncErr);
+        console.warn("[EditProfile] tRPC sync failed, trying raw fetch fallback:", syncErr);
+        // Fallback to raw fetch if tRPC fails
+        try {
+          const apiBase = getApiBaseUrl();
+          if (apiBase) {
+            const hdrs: Record<string, string> = { "Content-Type": "application/json" };
+            if (Platform.OS !== "web") {
+              const tok = await AuthModule.getSessionToken();
+              if (tok) hdrs["Authorization"] = `Bearer ${tok}`;
+            }
+            await fetch(`${apiBase}/api/trpc/profile.updateProfileData?batch=1`, {
+              method: "POST",
+              headers: hdrs,
+              credentials: "include",
+              body: JSON.stringify({
+                "0": {
+                  json: {
+                    birthday,
+                    gender: gender!,
+                    height: heightNum,
+                    weight: weightNum,
+                  },
+                },
+              }),
+            });
+            console.log("[EditProfile] Profile synced via raw fetch fallback");
+          }
+        } catch (fetchErr) {
+          console.warn("[EditProfile] Both sync methods failed:", fetchErr);
+        }
       }
 
       // Auto-navigate back to dashboard immediately after save
