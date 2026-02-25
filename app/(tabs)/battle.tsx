@@ -915,27 +915,7 @@ export default function BattleScreen() {
                             return null;
                           })()}
                         </TouchableOpacity>
-                        <View>
-                          <TouchableOpacity
-                            style={[styles.hideLocBtn, { backgroundColor: friend.hideLocation ? colors.error : colors.border }]}
-                            onPress={() => handleToggleHideLocation(friend)}
-                          >
-                            <Text style={{ fontSize: 12, color: friend.hideLocation ? "#fff" : colors.muted }}>
-                              {friend.hideLocation ? "📍" : "👁"}
-                            </Text>
-                          </TouchableOpacity>
-                          <Text style={[styles.hideLocLabel, { color: colors.muted }]}>
-                            {friend.hideLocation ? t.hideFriendLocation : t.showFriendLocation}
-                          </Text>
-                        </View>
                       </View>
-                      {locationTooltip?.friendId === friend.id && (
-                        <View style={[styles.tooltipBubble, { backgroundColor: colors.foreground }]}>
-                          <Text style={[styles.tooltipText, { color: colors.background }]}>
-                            {locationTooltip.text}
-                          </Text>
-                        </View>
-                      )}
                     </View>
                   ))}
                 </>

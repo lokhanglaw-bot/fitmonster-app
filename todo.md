@@ -962,3 +962,6 @@
 - [x] 分享狀態：確認 server 端 location.status / toggle API 正確讀寫 isSharing
 - [x] 分享狀態：client 端初始化時從 server 讀取 isSharing，toggle 時同步寫入 server
 - [x] 確認 profile 頁面設定的 gender 是否正確寫入 DB 並被 nearby API 讀取
+
+## Round 87: 刪除好友列表的「顯示位置」按鈕
+- [x] 移除好友列表中的眼睛圖標「顯示位置」按鈕
