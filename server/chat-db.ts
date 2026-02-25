@@ -156,11 +156,14 @@ export async function getConversationPreviews(userId: number) {
 }
 
 // Push token management
+// IMPORTANT: Each user should only have ONE active push token at a time.
+// When a new token is registered, all old tokens for that user are deleted.
+// This prevents duplicate notifications (e.g., 22x) caused by stale tokens accumulating.
 export async function savePushToken(userId: number, token: string, platform: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  // Check if token already exists for this user
+  // Check if this exact token already exists for this user
   const existing = await db
     .select()
     .from(pushTokens)
@@ -168,10 +171,18 @@ export async function savePushToken(userId: number, token: string, platform: str
     .limit(1);
 
   if (existing.length > 0) {
-    // Update lastUsed
+    // Token already registered - delete all OTHER tokens for this user, keep this one
+    await db.delete(pushTokens).where(
+      and(eq(pushTokens.userId, userId), sql`${pushTokens.token} != ${token}`)
+    );
     await db.update(pushTokens).set({ updatedAt: new Date() }).where(eq(pushTokens.id, existing[0].id));
+    console.log(`[Push] Token already exists for user ${userId}, cleaned up old tokens`);
     return existing[0].id;
   }
+
+  // New token - delete ALL old tokens for this user first
+  await db.delete(pushTokens).where(eq(pushTokens.userId, userId));
+  console.log(`[Push] Deleted all old tokens for user ${userId}, registering new token`);
 
   const result = await db.insert(pushTokens).values({ userId, token, platform: platform as "ios" | "android" | "web" }) as any;
   return Number(result.insertId ?? result[0]?.insertId);

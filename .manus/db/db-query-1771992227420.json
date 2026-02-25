@@ -1,0 +1,18 @@
+{
+  "query": "SELECT userId, COUNT(*) as cnt FROM pushTokens GROUP BY userId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT userId, COUNT(*) as cnt FROM pushTokens GROUP BY userId;",
+  "rows": [
+    {
+      "userId": "30029",
+      "cnt": "1"
+    },
+    {
+      "userId": "90001",
+      "cnt": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "userId\tcnt\n30029\t1\n90001\t1\n",
+  "stderr": "",
+  "execution_time_ms": 1576
+}

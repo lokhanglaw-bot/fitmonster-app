@@ -917,3 +917,14 @@
 - [x] 建立 excludeIds Set 過濾已是好友或有待處理請求的用戶
 - [x] TypeScript 0 errors
 - [x] 104 個測試全部通過（Round 76-79）
+
+## Round 80: 重複推播根因修復 + 聊天捲動修正
+- [x] 根因：pushTokens 表累積大量重複 token（同一用戶 22 個 token）
+- [x] savePushToken 改為每次註冊新 token 先刪除該用戶所有舊 token（一用戶一 token 政策）
+- [x] 清理 DB 中重複 token
+- [x] FlatList 改為 inverted 模式，新訊息永遠在底部可見
+- [x] invertedMessages useMemo 反轉訊息陣列
+- [x] scrollToBottom 改用 scrollToOffset(0) 適配 inverted list
+- [x] 鍵盤彈出時自動滾到底部
+- [x] TypeScript 0 errors
+- [x] 14 個測試全部通過

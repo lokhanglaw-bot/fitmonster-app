@@ -1,0 +1,20 @@
+{
+  "query": "SELECT userId, COUNT(*) as token_count, GROUP_CONCAT(SUBSTRING(token, 1, 30)) as token_prefixes FROM pushTokens GROUP BY userId ORDER BY token_count DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT userId, COUNT(*) as token_count, GROUP_CONCAT(SUBSTRING(token, 1, 30)) as token_prefixes FROM pushTokens GROUP BY userId ORDER BY token_count DESC;",
+  "rows": [
+    {
+      "userId": "90001",
+      "token_count": "22",
+      "token_prefixes": "ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7"
+    },
+    {
+      "userId": "30029",
+      "token_count": "2",
+      "token_prefixes": "ExponentPushToken[Qrwb3ZAmh5Pl,ExponentPushToken[Qrwb3ZAmh5Pl"
+    }
+  ],
+  "messages": [],
+  "stdout": "userId\ttoken_count\ttoken_prefixes\n90001\t22\tExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7,ExponentPushToken[LZqrT6Dejd_7\n30029\t2\tExponentPushToken[Qrwb3ZAmh5Pl,ExponentPushToken[Qrwb3ZAmh5Pl\n",
+  "stderr": "",
+  "execution_time_ms": 1616
+}

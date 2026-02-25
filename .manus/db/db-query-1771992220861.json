@@ -1,0 +1,9 @@
+{
+  "query": "DELETE t1 FROM pushTokens t1 INNER JOIN pushTokens t2 ON t1.userId = t2.userId AND t1.id < t2.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute DELETE t1 FROM pushTokens t1 INNER JOIN pushTokens t2 ON t1.userId = t2.userId AND t1.id < t2.id;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1595
+}

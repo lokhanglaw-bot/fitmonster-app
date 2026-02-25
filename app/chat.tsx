@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   Text,
   View,
@@ -85,6 +85,9 @@ export default function ChatScreen() {
   const sendMessageMutation = trpc.chat.sendMessage.useMutation();
   const markReadMutation = trpc.chat.markRead.useMutation();
 
+  // Inverted FlatList: reverse message order so newest is at index 0
+  const invertedMessages = useMemo(() => [...messages].reverse(), [messages]);
+
   // ========== REST API: load chat history on mount ==========
   const historyQuery = trpc.chat.history.useQuery(
     { friendId: friendIdNum, limit: 50 },
@@ -95,10 +98,10 @@ export default function ChatScreen() {
     }
   );
 
-  // Helper: scroll to bottom immediately
+  // Helper: scroll to top of inverted list (which is visually the bottom)
   const scrollToBottom = useCallback((animated = true) => {
     requestAnimationFrame(() => {
-      flatListRef.current?.scrollToEnd({ animated });
+      flatListRef.current?.scrollToOffset({ offset: 0, animated });
     });
   }, []);
 
@@ -186,12 +189,9 @@ export default function ChatScreen() {
     return () => clearTimeout(timeout);
   }, [loading]);
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom(true);
-    }
-  }, [messages.length, scrollToBottom]);
+  // With inverted FlatList, new messages at the top are automatically visible.
+  // We only need to scroll to top (visual bottom) when the user sends a message.
+  // This is handled in handleSend/uploadAndSendImage/sendAudioMessage directly.
 
   // Close emoji picker when keyboard shows, and scroll to bottom
   useEffect(() => {
@@ -815,21 +815,18 @@ export default function ChatScreen() {
         <View style={[styles.flex, { backgroundColor: colors.background }]}>
           <FlatList
             ref={flatListRef}
-            data={messages}
+            data={invertedMessages}
             renderItem={renderMessage}
             keyExtractor={(item) => String(item.id)}
+            inverted
             contentContainerStyle={[
               styles.messagesList,
               messages.length === 0 && styles.messagesListEmpty,
             ]}
             ListEmptyComponent={renderEmpty}
-            onContentSizeChange={() => {
-              if (messages.length > 0) {
-                flatListRef.current?.scrollToEnd({ animated: false });
-              }
-            }}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
+            maintainVisibleContentPosition={Platform.OS === "ios" ? { minIndexForVisible: 0 } : undefined}
           />
         </View>
 
