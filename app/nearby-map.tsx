@@ -71,7 +71,11 @@ interface NearbyUser {
   lastUpdated: Date | string;
   latitude: number;
   longitude: number;
+  isFriend?: boolean;
+  isPending?: boolean;
 }
+
+type GenderFilter = 'all' | 'male' | 'female';
 
 function getTimeAgo(lastUpdated: Date | string, t: any): { text: string; isOnline: boolean } {
   const now = Date.now();
@@ -117,6 +121,7 @@ export default function NearbyMapScreen() {
   const [retryCount, setRetryCount] = useState(0);
   const [radiusKm, setRadiusKm] = useState(5);
   const [sliderValue, setSliderValue] = useState(5);
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
   const locationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const userLocationRef = useRef<{ lat: number; lng: number } | null>(null);
   const sharingRef = useRef(false);
@@ -138,9 +143,9 @@ export default function NearbyMapScreen() {
     }
   }, [matchRadiusQuery.data]);
 
-  // Query nearby users (non-friends) — uses radiusKm
+  // Query nearby users (including friends) — uses radiusKm and genderFilter
   const nearbyQuery = trpc.location.nearby.useQuery(
-    { latitude: userLocation?.lat ?? 0, longitude: userLocation?.lng ?? 0, radiusKm },
+    { latitude: userLocation?.lat ?? 0, longitude: userLocation?.lng ?? 0, radiusKm, includeFriends: true, genderFilter },
     { enabled: !!userLocation && sharingLocation, refetchInterval: REFRESH_INTERVAL_MS }
   );
 
@@ -392,7 +397,7 @@ export default function NearbyMapScreen() {
           </View>
         ) : (
           <>
-            {/* Real Map — only nearby users (no friends) */}
+            {/* Map showing all nearby users (friends + non-friends) */}
             <View style={[styles.mapContainer, { borderColor: colors.border }]}>
               {initialRegion ? (
                 <MapViewWrapper
@@ -404,13 +409,15 @@ export default function NearbyMapScreen() {
                   showsCompass={false}
                   markers={nearbyUsers.map((user) => {
                     const timeInfo = getTimeAgo(user.lastUpdated, t);
-                    const displayName = user.monsterName || user.name || 'Trainer';
+                    const displayName = user.monsterName || 'Monster';
+                    const genderIcon = user.gender === 'male' ? ' ♂' : user.gender === 'female' ? ' ♀' : '';
+                    const friendLabel = user.isFriend ? ` ⭐` : '';
                     return {
                       id: `nearby-${user.userId}`,
                       coordinate: { latitude: user.latitude, longitude: user.longitude },
-                      title: displayName,
+                      title: `${displayName}${genderIcon}${friendLabel}`,
                       description: `Lv.${user.monsterLevel || 1} · ${user.distanceKm} km · ${timeInfo.text}`,
-                      pinColor: "#3B82F6",
+                      pinColor: user.isFriend ? "#22C55E" : "#3B82F6",
                     };
                   })}
                 />
@@ -472,6 +479,42 @@ export default function NearbyMapScreen() {
                     thumbTintColor={colors.primary}
                   />
                   <Text style={[styles.sliderMax, { color: colors.muted }]}>50</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Gender Filter */}
+            {sharingLocation && (
+              <View style={[styles.genderFilterRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.genderFilterLabel, { color: colors.foreground }]}>
+                  {t.genderFilterLabel || "Filter"}
+                </Text>
+                <View style={styles.genderFilterBtns}>
+                  {(['all', 'male', 'female'] as GenderFilter[]).map((g) => {
+                    const isActive = genderFilter === g;
+                    const label = g === 'all' ? (t.genderAll || '全部')
+                      : g === 'male' ? (t.genderMaleShort || '♂ 男')
+                      : (t.genderFemaleShort || '♀ 女');
+                    return (
+                      <TouchableOpacity
+                        key={g}
+                        style={[
+                          styles.genderFilterBtn,
+                          { borderColor: isActive ? colors.primary : colors.border,
+                            backgroundColor: isActive ? colors.primary + '15' : 'transparent' },
+                        ]}
+                        onPress={() => setGenderFilter(g)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.genderFilterBtnText,
+                          { color: isActive ? colors.primary : colors.muted },
+                        ]}>
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
             )}
@@ -546,7 +589,7 @@ export default function NearbyMapScreen() {
                     <TouchableOpacity
                       style={[styles.userCard, {
                         backgroundColor: colors.surface,
-                        borderColor: colors.border,
+                        borderColor: item.isFriend ? colors.primary + '40' : colors.border,
                         borderWidth: 1,
                       }]}
                       onPress={() => {
@@ -573,20 +616,38 @@ export default function NearbyMapScreen() {
                       <View style={styles.userInfo}>
                         <View style={styles.userNameRow}>
                           <Text style={[styles.userName, { color: colors.foreground }]}>
-                            {item.monsterName || item.name || 'Trainer'} {genderLabel}
+                            {item.monsterName || 'Monster'} {genderLabel}
                           </Text>
+                          {item.isFriend && (
+                            <View style={[styles.friendBadge, { backgroundColor: colors.primary + '20' }]}>
+                              <Text style={[styles.friendBadgeText, { color: colors.primary }]}>
+                                {t.friendLabel || '好友'}
+                              </Text>
+                            </View>
+                          )}
                           {timeInfo.isOnline && <View style={styles.onlineDot} />}
                         </View>
                         <Text style={[styles.userDistance, { color: colors.muted }]}>
                           {EMOJI_BY_TYPE[item.monsterType] || '💪'} Lv.{item.monsterLevel} · 📍 {item.distanceKm} km · {timeInfo.text}
                         </Text>
                       </View>
-                      <TouchableOpacity
-                        style={[styles.addBtn, { backgroundColor: colors.primary }]}
-                        onPress={() => handleSendRequest(item)}
-                      >
-                        <IconSymbol name="person.badge.plus" size={18} color="#fff" />
-                      </TouchableOpacity>
+                      {/* Show add friend button only for non-friends and non-pending */}
+                      {!item.isFriend && !item.isPending ? (
+                        <TouchableOpacity
+                          style={[styles.addBtn, { backgroundColor: colors.primary }]}
+                          onPress={() => handleSendRequest(item)}
+                        >
+                          <IconSymbol name="person.badge.plus" size={18} color="#fff" />
+                        </TouchableOpacity>
+                      ) : item.isPending ? (
+                        <View style={[styles.addBtn, { backgroundColor: colors.muted + '30' }]}>
+                          <IconSymbol name="clock" size={18} color={colors.muted} />
+                        </View>
+                      ) : (
+                        <View style={[styles.addBtn, { backgroundColor: colors.primary + '20' }]}>
+                          <IconSymbol name="checkmark" size={18} color={colors.primary} />
+                        </View>
+                      )}
                     </TouchableOpacity>
                   );
                 }}
@@ -741,5 +802,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
+  },
+  genderFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 8,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  genderFilterLabel: { fontSize: 14, fontWeight: "600" },
+  genderFilterBtns: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  genderFilterBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1.5,
+  },
+  genderFilterBtnText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  friendBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  friendBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
   },
 });

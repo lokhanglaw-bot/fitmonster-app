@@ -941,3 +941,10 @@
 - [x] 移除 server push-notifications.ts 的 [PUSH DEBUG] log
 - [x] 移除 client use-push-notifications.ts 的 Alert.alert 和 [CLIENT DEBUG] log
 - [x] TypeScript 0 errors
+
+## Round 83: 聊天空白頁文字倒轉 + 地圖找不到用戶
+- [x] 聊天室 ListEmptyComponent 文字上下顛倒（inverted FlatList 導致）
+- [x] 地圖頁面找不到附近用戶 — 原因：所有附近用戶都是好友被排除了
+- [x] 地圖同時顯示好友和非好友（移除好友排除邏輯）
+- [x] 地圖顯示 Monster Name 而非用戶 username
+- [x] 地圖加性別篩選按鈕（全部 / 只顯示男 / 只顯示女）

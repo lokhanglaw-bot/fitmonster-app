@@ -533,40 +533,49 @@ Always return valid JSON.`;
         latitude: z.number(),
         longitude: z.number(),
         radiusKm: z.number().optional(),
+        includeFriends: z.boolean().optional(), // When true, don't exclude friends (for map view)
+        genderFilter: z.enum(['all', 'male', 'female']).optional(), // Client-side gender filter override
       }))
       .query(async ({ ctx, input }) => {
         // Use provided radius or fetch user's saved match radius
         const radiusKm = input.radiusKm ?? await db.getUserMatchRadius(ctx.user.id);
-        console.log(`[Nearby] Radius: ${radiusKm} km, user: ${ctx.user.id}`);
+        console.log(`[Nearby] Radius: ${radiusKm} km, user: ${ctx.user.id}, includeFriends: ${input.includeFriends ?? false}`);
 
-        // Get the caller's gender preference
-        const genderPref = await db.getUserGenderPreference(ctx.user.id);
-
-        // Get existing friends + pending requests to exclude from matching
+        // Get existing friends + pending requests
         const [existingFriends, sentRequests, pendingRequests] = await Promise.all([
           db.getUserFriends(ctx.user.id),
           db.getSentFriendRequests(ctx.user.id),
           db.getPendingFriendRequests(ctx.user.id),
         ]);
 
-        // Build a set of user IDs to exclude (friends + pending in either direction)
-        const excludeIds = new Set<number>();
+        // Build friend/pending sets
+        const friendIds = new Set<number>();
         for (const f of existingFriends) {
-          excludeIds.add(f.userId === ctx.user.id ? f.friendId : f.userId);
+          friendIds.add(f.userId === ctx.user.id ? f.friendId : f.userId);
         }
+        const pendingIds = new Set<number>();
         for (const r of sentRequests) {
-          excludeIds.add(r.friendId);
+          pendingIds.add(r.friendId);
         }
         for (const r of pendingRequests) {
-          excludeIds.add(r.userId);
+          pendingIds.add(r.userId);
         }
-        console.log(`[Nearby] Excluding ${excludeIds.size} users (friends + pending requests)`);
+
+        // Build exclude set: only exclude friends/pending when includeFriends is false (default)
+        const excludeIds = new Set<number>();
+        if (!input.includeFriends) {
+          for (const id of friendIds) excludeIds.add(id);
+          for (const id of pendingIds) excludeIds.add(id);
+          console.log(`[Nearby] Excluding ${excludeIds.size} users (friends + pending requests)`);
+        } else {
+          console.log(`[Nearby] Including friends in results (map mode)`);
+        }
 
         const nearbyLocations = await db.getNearbyUsers(ctx.user.id, input.latitude, input.longitude, radiusKm);
         const userIds = nearbyLocations.map(l => l.userId);
         const usersInfo = await db.getUserInfoForNearby(userIds);
         
-        // Map and filter: exclude friends/pending, then apply gender preference
+        // Map and filter
         const results = nearbyLocations
           .filter(loc => !excludeIds.has(loc.userId))
           .map(loc => {
@@ -581,14 +590,17 @@ Always return valid JSON.`;
               monsterStage: info?.activeMonster?.evolutionStage || 1,
               monsterImageUrl: info?.activeMonster?.imageUrl || null,
               totalExp: info?.profile?.totalExp || 0,
+              isFriend: friendIds.has(loc.userId),
+              isPending: pendingIds.has(loc.userId),
             };
           });
         
-        // Apply gender preference filter
-        if (genderPref === 'all') return results;
+        // Apply gender filter: use client-provided filter if available, otherwise use user's saved preference
+        const genderFilter = input.genderFilter ?? await db.getUserGenderPreference(ctx.user.id);
+        if (genderFilter === 'all') return results;
         return results.filter(u => {
           if (!u.gender) return true; // Show users without gender set
-          return u.gender === genderPref;
+          return u.gender === genderFilter;
         });
       }),
   }),

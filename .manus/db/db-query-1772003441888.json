@@ -1,0 +1,55 @@
+{
+  "query": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE();",
+  "rows": [
+    {
+      "TABLE_NAME": "workouts"
+    },
+    {
+      "TABLE_NAME": "users"
+    },
+    {
+      "TABLE_NAME": "userQuests"
+    },
+    {
+      "TABLE_NAME": "userLocations"
+    },
+    {
+      "TABLE_NAME": "quests"
+    },
+    {
+      "TABLE_NAME": "pushTokens"
+    },
+    {
+      "TABLE_NAME": "profiles"
+    },
+    {
+      "TABLE_NAME": "monsters"
+    },
+    {
+      "TABLE_NAME": "matchSwipes"
+    },
+    {
+      "TABLE_NAME": "friendships"
+    },
+    {
+      "TABLE_NAME": "foodLogs"
+    },
+    {
+      "TABLE_NAME": "dailyStats"
+    },
+    {
+      "TABLE_NAME": "chatMessages"
+    },
+    {
+      "TABLE_NAME": "battles"
+    },
+    {
+      "TABLE_NAME": "__drizzle_migrations"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\nworkouts\nusers\nuserQuests\nuserLocations\nquests\npushTokens\nprofiles\nmonsters\nmatchSwipes\nfriendships\nfoodLogs\ndailyStats\nchatMessages\nbattles\n__drizzle_migrations\n",
+  "stderr": "",
+  "execution_time_ms": 1561
+}

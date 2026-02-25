@@ -736,9 +736,11 @@ export default function ChatScreen() {
   }, [colors, myId, formatTime, formatDuration, handlePlayAudio, playingAudioId]);
 
   const renderEmpty = useCallback(() => {
+    // Inverted FlatList flips everything including ListEmptyComponent,
+    // so we apply scaleY: -1 to flip the empty state back to normal orientation.
     if (loading) {
       return (
-        <View style={styles.emptyContainer}>
+        <View style={[styles.emptyContainer, { transform: [{ scaleY: -1 }] }]}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.emptyDesc, { color: colors.muted, marginTop: 12 }]}>
             {(t as any).chatLoading || "Loading..."}
@@ -748,7 +750,7 @@ export default function ChatScreen() {
     }
     if (messages.length === 0) {
       return (
-        <View style={styles.emptyContainer}>
+        <View style={[styles.emptyContainer, { transform: [{ scaleY: -1 }] }]}>
           <Text style={styles.emptyEmoji}>💬</Text>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
             {(t as any).chatNoMessages || "No messages yet"}

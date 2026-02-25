@@ -1,0 +1,8 @@
+{
+  "query": "SELECT ul.id, ul.user_id, ul.latitude, ul.longitude, ul.is_sharing, ul.last_updated, p.trainer_name FROM user_locations ul LEFT JOIN profiles p ON ul.user_id = p.user_id ORDER BY ul.last_updated DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT ul.id, ul.user_id, ul.latitude, ul.longitude, ul.is_sharing, ul.last_updated, p.trainer_name FROM user_locations ul LEFT JOIN profiles p ON ul.user_id = p.user_id ORDER BY ul.last_updated DESC LIMIT 20;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'dzlsnmxz8tkivpztppaju7.user_locations' doesn't exist"
+  ]
+}
