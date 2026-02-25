@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Platform, Alert } from "react-native";
+import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { trpc } from "@/lib/trpc";
@@ -16,38 +16,30 @@ Notifications.setNotificationHandler({
 });
 
 // ========== MODULE-LEVEL SINGLETON NAVIGATION GUARD ==========
-// These are module-level (outside the hook) so they survive re-renders and
-// even multiple hook instances. Only ONE navigation can happen at a time.
 let _isNavigating = false;
 let _lastNavigatedChatId: string | null = null;
 let _lastNavigatedTime = 0;
 
-// Minimum 5 seconds between navigations to the same chat
 const SAME_CHAT_COOLDOWN_MS = 5000;
-// Minimum 3 seconds between any navigation
 const GLOBAL_COOLDOWN_MS = 3000;
 
-// Track which notification identifiers have been handled (by request.identifier)
 const _handledIdentifiers = new Set<string>();
 
 function canNavigate(chatId: string): boolean {
   const now = Date.now();
 
-  // Global cooldown
   if (_isNavigating) {
-    console.log("[Push] Global navigation lock active, skipping");
+    console.log("[Push] Navigation lock active, skipping");
     return false;
   }
 
-  // Same chat cooldown
   if (_lastNavigatedChatId === chatId && now - _lastNavigatedTime < SAME_CHAT_COOLDOWN_MS) {
-    console.log(`[Push] Same chat cooldown active for ${chatId}, skipping`);
+    console.log(`[Push] Same chat cooldown for ${chatId}, skipping`);
     return false;
   }
 
-  // Global time cooldown
   if (now - _lastNavigatedTime < GLOBAL_COOLDOWN_MS) {
-    console.log("[Push] Global time cooldown active, skipping");
+    console.log("[Push] Global cooldown active, skipping");
     return false;
   }
 
@@ -58,7 +50,6 @@ function markNavigated(chatId: string) {
   _isNavigating = true;
   _lastNavigatedChatId = chatId;
   _lastNavigatedTime = Date.now();
-  // Release the lock after cooldown
   setTimeout(() => { _isNavigating = false; }, GLOBAL_COOLDOWN_MS);
 }
 
@@ -100,7 +91,7 @@ export function usePushNotifications(userId: number | null) {
       if (userId) {
         const platform = Platform.OS as "ios" | "android" | "web";
         registerMutation.mutate({ token, platform });
-        console.log("[Push] Registered token with server for userId:", userId);
+        console.log("[Push] Registered token for userId:", userId);
       }
 
       if (Platform.OS === "android") {
@@ -121,31 +112,22 @@ export function usePushNotifications(userId: number | null) {
 
   /**
    * Navigate to chat screen from a notification tap.
-   * Uses multiple layers of protection against duplicate navigation:
-   * 1. Notification identifier dedup (same notification can't trigger twice)
-   * 2. Global navigation lock (only one navigation at a time)
-   * 3. Same-chat cooldown (5s between navigations to same chat)
-   * 4. Global time cooldown (3s between any navigations)
+   * ALWAYS uses router.navigate to the tabs first, then replace to chat.
+   * This ensures Back button returns to app home, not to a previous chat.
    */
   const handleNotificationTap = useCallback((response: Notifications.NotificationResponse, isColdStart: boolean) => {
-    // Layer 1: Notification identifier dedup
     const identifier = response.notification.request.identifier;
     if (_handledIdentifiers.has(identifier)) {
-      console.log(`[Push] Notification ${identifier} already handled, skipping`);
       return;
     }
     _handledIdentifiers.add(identifier);
-    // Clean up old identifiers (keep set small)
     if (_handledIdentifiers.size > 100) {
       _handledIdentifiers.clear();
       _handledIdentifiers.add(identifier);
     }
 
     const data = response.notification.request.content.data;
-    console.log("[Push] Notification tapped, data:", JSON.stringify(data), "coldStart:", isColdStart);
-
     if (data?.type !== "chat_message" || !data?.senderId) {
-      console.log("[Push] Not a chat notification, ignoring");
       return;
     }
 
@@ -153,7 +135,6 @@ export function usePushNotifications(userId: number | null) {
     const senderName = String(data.senderName || "Friend");
     const chatId = `chat-${senderId}`;
 
-    // Layer 2-4: Navigation guards
     if (!canNavigate(chatId)) {
       return;
     }
@@ -166,17 +147,26 @@ export function usePushNotifications(userId: number | null) {
     const delay = isColdStart ? 1500 : 300;
     setTimeout(() => {
       try {
-        console.log(`[Push] Executing navigation to chat - senderId: ${senderId}, name: ${senderName}, coldStart: ${isColdStart}`);
+        // Strategy: First navigate to tabs home to reset the stack,
+        // then push the chat screen on top. This way Back goes to home.
         if (isColdStart) {
+          // Cold start: app just opened, stack is empty. Replace to chat directly.
           router.replace({
             pathname: "/chat" as any,
             params: { friendId: senderId, friendName: senderName },
           });
         } else {
-          router.push({
-            pathname: "/chat" as any,
-            params: { friendId: senderId, friendName: senderName },
-          });
+          // Warm start: app is already open, might have other screens stacked.
+          // First dismiss any existing chat screens by going to tabs home,
+          // then navigate to the new chat.
+          router.dismissAll();
+          // Small delay to let dismissAll complete before pushing new screen
+          setTimeout(() => {
+            router.push({
+              pathname: "/chat" as any,
+              params: { friendId: senderId, friendName: senderName },
+            });
+          }, 100);
         }
       } catch (err) {
         console.error("[Push] Navigation failed:", err);
@@ -202,28 +192,10 @@ export function usePushNotifications(userId: number | null) {
     // Listen for incoming notifications (foreground)
     notificationListener.current = Notifications.addNotificationReceivedListener((notif) => {
       setNotification(notif);
-      const data = notif.request.content.data || {};
-      const msgId = data.messageId || data.id || 'unknown';
-      console.log(`[CLIENT DEBUG] ${new Date().toISOString()} | FOREGROUND notification | messageId=${msgId} | title=${notif.request.content.title} | identifier=${notif.request.identifier}`);
     });
 
     // Listen for notification taps
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data || {};
-      const messageId = data.messageId || data.id || 'unknown';
-      const identifier = response.notification.request.identifier;
-      const alreadyHandled = _handledIdentifiers.has(identifier);
-
-      console.log(`[CLIENT DEBUG] ${new Date().toISOString()} | TAP notification | messageId=${messageId} | notificationId=${identifier} | alreadyHandled=${alreadyHandled}`);
-
-      if (Platform.OS !== 'web') {
-        Alert.alert(
-          "\uD83D\uDEE0\uFE0F PUSH DEBUG",
-          `messageId: ${messageId}\nnotificationId: ${identifier}\nalreadyHandled: ${alreadyHandled}\nhandledSetSize: ${_handledIdentifiers.size}`,
-          [{ text: "OK" }]
-        );
-      }
-
       handleNotificationTap(response, false);
     });
 

@@ -108,17 +108,10 @@ export async function sendChatPushNotification(
   messagePreview: string,
   messageId?: number
 ): Promise<boolean> {
-  // Fetch tokens early for debug logging
-  const expoPushTokens = await chatDb.getUserPushTokens(receiverId);
-  console.log(`[PUSH DEBUG] ${new Date().toISOString()} | messageId=${messageId || 'no-id'} | recipientUserId=${receiverId} | senderId=${senderId} | senderName=${senderName} | tokensCount=${expoPushTokens?.length || 0} | tokens=${expoPushTokens?.join(',') || 'none'} | dedupCacheSize=${recentPushes.size} | alreadyInCache=${messageId ? recentPushes.has(messageId) : 'no-id'}`);
-
   // Dedup check: skip if this messageId was already pushed
   if (messageId && isDuplicate(messageId)) {
-    console.log(`[PUSH DEBUG] SKIPPED (duplicate) messageId=${messageId}`);
     return false;
   }
-
-  console.log(`[PUSH DEBUG] SENDING push for messageId=${messageId || 'no-id'} to ${expoPushTokens?.length || 0} tokens`);
 
   return sendPushNotification(receiverId, {
     title: `💬 ${senderName}`,

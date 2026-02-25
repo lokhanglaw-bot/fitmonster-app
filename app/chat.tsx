@@ -976,7 +976,7 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 12 },
-  messagesList: { padding: 16, gap: 4 },
+  messagesList: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16, gap: 4 },
   messagesListEmpty: { flex: 1 },
   msgRow: { alignItems: "flex-start", marginBottom: 8 },
   msgRowMe: { alignItems: "flex-end" },

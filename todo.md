@@ -933,3 +933,11 @@
 - [x] Server 端 sendChatPushNotification 加入詳細 debug log（messageId, recipientUserId, tokensCount, tokens, dedupCacheSize, alreadyInCache）
 - [x] Client 端 notification tap handler 加入 Alert.alert 彈窗（顯示 messageId, notificationId, alreadyHandled, handledSetSize）
 - [x] Client 端 foreground notification listener 加入 console.log debug
+
+## Round 82: 通知返回修正 + 最後訊息被截 + 移除 debug
+- [x] Warm start 從通知進入：先 dismissAll 清除 stack，再 push 新聊天室，Back 回到首頁
+- [x] Cold start 從通知進入：用 replace 確保 stack 乾淨
+- [x] FlatList messagesList 改為 paddingHorizontal + paddingTop + paddingBottom 分開設定
+- [x] 移除 server push-notifications.ts 的 [PUSH DEBUG] log
+- [x] 移除 client use-push-notifications.ts 的 Alert.alert 和 [CLIENT DEBUG] log
+- [x] TypeScript 0 errors
