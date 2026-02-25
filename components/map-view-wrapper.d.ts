@@ -32,6 +32,8 @@ interface MapViewWrapperProps {
   showsCompass?: boolean;
   markers?: MapMarkerProps[];
   mapRef?: React.RefObject<any>;
+  /** Enable marker clustering. Defaults to false. */
+  clustering?: boolean;
 }
 
 export function MapViewWrapper(props: MapViewWrapperProps): React.JSX.Element;

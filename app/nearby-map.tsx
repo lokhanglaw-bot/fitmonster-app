@@ -439,6 +439,7 @@ export default function NearbyMapScreen() {
                   showsUserLocation={true}
                   showsMyLocationButton={false}
                   showsCompass={false}
+                  clustering={true}
                   markers={displayedUsers.map((user) => {
                     const timeInfo = getTimeAgo(user.lastUpdated, t);
                     const displayName = user.monsterName || 'Monster';

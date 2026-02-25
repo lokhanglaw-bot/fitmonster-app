@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import MapView, { Marker, Callout } from "react-native-maps";
+import MapView, { Marker, Callout, Region } from "react-native-maps";
 
 export type MapRegion = {
   latitude: number;
@@ -29,6 +29,21 @@ export interface MapMarkerProps {
   actions?: CalloutAction[];
 }
 
+interface ClusterItem {
+  type: "cluster";
+  id: string;
+  coordinate: { latitude: number; longitude: number };
+  count: number;
+  markers: MapMarkerProps[];
+}
+
+interface SingleItem {
+  type: "single";
+  marker: MapMarkerProps;
+}
+
+type ClusteredItem = ClusterItem | SingleItem;
+
 interface MapViewWrapperProps {
   style?: any;
   initialRegion?: MapRegion;
@@ -37,6 +52,62 @@ interface MapViewWrapperProps {
   showsCompass?: boolean;
   markers?: MapMarkerProps[];
   mapRef?: React.RefObject<any>;
+  /** Enable marker clustering. Defaults to false. */
+  clustering?: boolean;
+}
+
+/**
+ * Simple distance-based clustering algorithm.
+ * Groups markers that are within `threshold` degrees of each other.
+ */
+function clusterMarkers(
+  markers: MapMarkerProps[],
+  latDelta: number,
+): ClusteredItem[] {
+  if (markers.length === 0) return [];
+
+  // Clustering threshold scales with zoom level
+  // Smaller latDelta = more zoomed in = smaller threshold
+  const threshold = latDelta * 0.08;
+
+  const used = new Set<number>();
+  const result: ClusteredItem[] = [];
+
+  for (let i = 0; i < markers.length; i++) {
+    if (used.has(i)) continue;
+
+    const group: MapMarkerProps[] = [markers[i]];
+    used.add(i);
+
+    for (let j = i + 1; j < markers.length; j++) {
+      if (used.has(j)) continue;
+
+      const dLat = Math.abs(markers[i].coordinate.latitude - markers[j].coordinate.latitude);
+      const dLng = Math.abs(markers[i].coordinate.longitude - markers[j].coordinate.longitude);
+
+      if (dLat < threshold && dLng < threshold) {
+        group.push(markers[j]);
+        used.add(j);
+      }
+    }
+
+    if (group.length === 1) {
+      result.push({ type: "single", marker: group[0] });
+    } else {
+      // Calculate centroid
+      const avgLat = group.reduce((sum, m) => sum + m.coordinate.latitude, 0) / group.length;
+      const avgLng = group.reduce((sum, m) => sum + m.coordinate.longitude, 0) / group.length;
+      result.push({
+        type: "cluster",
+        id: `cluster-${i}`,
+        coordinate: { latitude: avgLat, longitude: avgLng },
+        count: group.length,
+        markers: group,
+      });
+    }
+  }
+
+  return result;
 }
 
 export function MapViewWrapper({
@@ -47,7 +118,41 @@ export function MapViewWrapper({
   showsCompass,
   markers = [],
   mapRef,
+  clustering = false,
 }: MapViewWrapperProps) {
+  const [currentRegion, setCurrentRegion] = useState<MapRegion | undefined>(initialRegion);
+
+  const handleRegionChange = useCallback((region: Region) => {
+    setCurrentRegion(region);
+  }, []);
+
+  const clusteredItems = useMemo(() => {
+    if (!clustering || !currentRegion) {
+      return markers.map((m): ClusteredItem => ({ type: "single", marker: m }));
+    }
+    return clusterMarkers(markers, currentRegion.latitudeDelta);
+  }, [markers, clustering, currentRegion?.latitudeDelta]);
+
+  const handleClusterPress = useCallback((cluster: ClusterItem) => {
+    if (!mapRef?.current?.animateToRegion) return;
+    // Calculate bounding box of cluster markers
+    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+    for (const m of cluster.markers) {
+      minLat = Math.min(minLat, m.coordinate.latitude);
+      maxLat = Math.max(maxLat, m.coordinate.latitude);
+      minLng = Math.min(minLng, m.coordinate.longitude);
+      maxLng = Math.max(maxLng, m.coordinate.longitude);
+    }
+    const latDelta = Math.max((maxLat - minLat) * 2, 0.005);
+    const lngDelta = Math.max((maxLng - minLng) * 2, 0.005);
+    mapRef.current.animateToRegion({
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLng + maxLng) / 2,
+      latitudeDelta: latDelta,
+      longitudeDelta: lngDelta,
+    }, 400);
+  }, [mapRef]);
+
   return (
     <MapView
       ref={mapRef}
@@ -56,48 +161,69 @@ export function MapViewWrapper({
       showsUserLocation={showsUserLocation}
       showsMyLocationButton={showsMyLocationButton ?? false}
       showsCompass={showsCompass ?? false}
+      onRegionChangeComplete={clustering ? handleRegionChange : undefined}
     >
-      {markers.map((m, i) => (
-        <Marker
-          key={m.id ?? i}
-          coordinate={m.coordinate}
-          title={m.showActions ? undefined : m.title}
-          description={m.showActions ? undefined : m.description}
-          pinColor={m.pinColor}
-        >
-          {m.showActions && m.actions && m.actions.length > 0 ? (
-            <Callout tooltip>
-              <View style={calloutStyles.container}>
-                <Text style={calloutStyles.title} numberOfLines={1}>
-                  {m.title}
-                </Text>
-                {m.description ? (
-                  <Text style={calloutStyles.description} numberOfLines={2}>
-                    {m.description}
-                  </Text>
-                ) : null}
-                <View style={calloutStyles.actionsRow}>
-                  {m.actions.map((action, ai) => (
-                    <TouchableOpacity
-                      key={ai}
-                      style={[
-                        calloutStyles.actionBtn,
-                        { backgroundColor: action.color || "#3B82F6" },
-                      ]}
-                      onPress={action.onPress}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={calloutStyles.actionEmoji}>{action.emoji}</Text>
-                      <Text style={calloutStyles.actionLabel}>{action.label}</Text>
-                    </TouchableOpacity>
-                  ))}
+      {clusteredItems.map((item, i) => {
+        if (item.type === "cluster") {
+          return (
+            <Marker
+              key={item.id}
+              coordinate={item.coordinate}
+              onPress={() => handleClusterPress(item)}
+              tracksViewChanges={false}
+            >
+              <View style={clusterStyles.container}>
+                <View style={clusterStyles.circle}>
+                  <Text style={clusterStyles.count}>{item.count}</Text>
                 </View>
-                <View style={calloutStyles.arrow} />
               </View>
-            </Callout>
-          ) : null}
-        </Marker>
-      ))}
+            </Marker>
+          );
+        }
+
+        const m = item.marker;
+        return (
+          <Marker
+            key={m.id ?? `single-${i}`}
+            coordinate={m.coordinate}
+            title={m.showActions ? undefined : m.title}
+            description={m.showActions ? undefined : m.description}
+            pinColor={m.pinColor}
+          >
+            {m.showActions && m.actions && m.actions.length > 0 ? (
+              <Callout tooltip>
+                <View style={calloutStyles.container}>
+                  <Text style={calloutStyles.title} numberOfLines={1}>
+                    {m.title}
+                  </Text>
+                  {m.description ? (
+                    <Text style={calloutStyles.description} numberOfLines={2}>
+                      {m.description}
+                    </Text>
+                  ) : null}
+                  <View style={calloutStyles.actionsRow}>
+                    {m.actions.map((action, ai) => (
+                      <TouchableOpacity
+                        key={ai}
+                        style={[
+                          calloutStyles.actionBtn,
+                          { backgroundColor: action.color || "#3B82F6" },
+                        ]}
+                        onPress={action.onPress}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={calloutStyles.actionEmoji}>{action.emoji}</Text>
+                        <Text style={calloutStyles.actionLabel}>{action.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View style={calloutStyles.arrow} />
+                </View>
+              </Callout>
+            ) : null}
+          </Marker>
+        );
+      })}
     </MapView>
   );
 }
@@ -111,6 +237,33 @@ export function animateMapToRegion(
     mapRef.current.animateToRegion(region, duration);
   }
 }
+
+const clusterStyles = StyleSheet.create({
+  container: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  circle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#22C55E",
+    borderWidth: 3,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  count: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#fff",
+  },
+});
 
 const calloutStyles = StyleSheet.create({
   container: {
