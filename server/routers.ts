@@ -847,29 +847,15 @@ Always return valid JSON.`;
           throw new Error("Failed to save message");
         }
 
-        // Try to deliver via WebSocket to receiver
-        const receiverOnline = sendToUser(receiverId, {
-          type: "new_message",
-          message: savedMsg,
-        });
-
-        // Also send to sender's other devices
-        sendToUser(senderId, {
-          type: "new_message",
-          message: savedMsg,
-        });
-
-        // If receiver is offline, send push notification
-        if (!receiverOnline) {
-          console.log(`[Chat REST] Receiver ${receiverId} is offline, sending push notification`);
-          const senderMonster = await db.getActiveMonster(senderId);
-          const senderName = senderMonster?.name || "Someone";
-          const preview = (messageType === "image") ? "📷 Photo"
-            : (messageType === "audio") ? "🎤 Voice message"
-            : message.trim().substring(0, 100);
-          sendChatPushNotification(senderId, receiverId, senderName, preview)
-            .catch(err => console.error("[Chat REST] Push notification failed:", err));
-        }
+        // Send push notification to receiver (REST-only, no WS)
+        console.log(`[Chat REST] Sending push notification to user ${receiverId} for message ${savedMsg.id}`);
+        const senderMonster = await db.getActiveMonster(senderId);
+        const senderName = senderMonster?.name || "Someone";
+        const preview = (messageType === "image") ? "📷 Photo"
+          : (messageType === "audio") ? "🎤 Voice message"
+          : message.trim().substring(0, 100);
+        sendChatPushNotification(senderId, receiverId, senderName, preview, savedMsg.id)
+          .catch(err => console.error("[Chat REST] Push notification failed:", err));
 
         return savedMsg;
       }),

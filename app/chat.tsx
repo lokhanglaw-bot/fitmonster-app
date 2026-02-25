@@ -304,6 +304,9 @@ export default function ChatScreen() {
 
   // Upload and send image via REST
   const uploadAndSendImage = useCallback(async (asset: ImagePicker.ImagePickerAsset) => {
+    // Guard: prevent duplicate uploads
+    if (uploadingImage) return;
+
     if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
       Alert.alert(
         (t as any).error || "Error",
@@ -356,7 +359,7 @@ export default function ChatScreen() {
     } finally {
       setUploadingImage(false);
     }
-  }, [friendIdNum, t, uploadImageMutation, sendMessageMutation, myId, scrollToBottom, activateAcceleratedPolling]);
+  }, [friendIdNum, t, uploadImageMutation, sendMessageMutation, myId, scrollToBottom, activateAcceleratedPolling, uploadingImage]);
 
   // Pick image from gallery
   const handlePickImage = useCallback(async () => {

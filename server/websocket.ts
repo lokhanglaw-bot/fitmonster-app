@@ -209,7 +209,7 @@ export function setupWebSocket(server: HttpServer) {
               const preview = (messageType === "image") ? "📷 Photo"
                 : (messageType === "audio") ? "🎤 Voice message"
                 : message.trim().substring(0, 100);
-              await sendChatPushNotification(userId, Number(receiverId), senderName, preview);
+              await sendChatPushNotification(userId, Number(receiverId), senderName, preview, savedMsg.id);
               console.log(`[WS] Push notification sent to user ${receiverId}`);
             } catch (err) {
               console.error("[WS] Push notification failed:", err);

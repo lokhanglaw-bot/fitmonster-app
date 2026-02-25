@@ -44,7 +44,7 @@ describe("Round 76: REST-only Chat (WebSocket Removed)", () => {
       // Image upload should go through REST
       const imageSection = chatContent.substring(
         chatContent.indexOf("uploadAndSendImage"),
-        chatContent.indexOf("uploadAndSendImage") + 800
+        chatContent.indexOf("uploadAndSendImage") + 1200
       );
       expect(imageSection).toContain("sendMessageMutation.mutateAsync");
     });

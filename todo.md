@@ -896,3 +896,16 @@
 - [x] 加入 [Chat] Polling mode log
 - [x] TypeScript 0 errors
 - [x] 58 個測試全部通過（Round 76 + 77）
+
+## Round 78: 嚴重 UX Bug 修復（上線阻礙）
+- [x] Server 端 push-notifications.ts 加入 recentPushes Map 去重快取（同一 messageId 只發一次，60s TTL）
+- [x] REST sendMessage 移除 sendToUser() WS 呼叫（不再發給 sender 自己）
+- [x] WS + REST 都傳入 savedMsg.id 給 sendChatPushNotification
+- [x] Client use-push-notifications.ts 加入 handledNotificationIds Set 去重
+- [x] 加入 isNavigating debounce 鎖（2s cooldown）防止重複導航
+- [x] useEffect 先清理舊 listener 再註冊新的（防重複註冊）
+- [x] Cold start 用 router.replace，warm start 用 router.push
+- [x] coldStartHandled ref 確保只處理一次
+- [x] 圖片上傳 uploadAndSendImage 加 uploadingImage guard
+- [x] TypeScript 0 errors
+- [x] 84 個測試全部通過（Round 76 + 77 + 78）

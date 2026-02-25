@@ -6,6 +6,38 @@ interface PushNotificationPayload {
   data?: Record<string, any>;
 }
 
+// ========== DEDUPLICATION CACHE ==========
+// Prevents the same message from triggering multiple push notifications.
+// Key: messageId, Value: timestamp when it was sent.
+// Entries expire after 60 seconds to avoid unbounded memory growth.
+const recentPushes = new Map<number, number>();
+const DEDUP_TTL_MS = 60_000; // 60 seconds
+
+function cleanupDedup() {
+  const now = Date.now();
+  for (const [id, ts] of recentPushes) {
+    if (now - ts > DEDUP_TTL_MS) {
+      recentPushes.delete(id);
+    }
+  }
+}
+
+// Run cleanup every 30 seconds
+setInterval(cleanupDedup, 30_000);
+
+/**
+ * Check if a push for this messageId was already sent recently.
+ * Returns true if it's a duplicate (should skip).
+ */
+function isDuplicate(messageId: number): boolean {
+  if (recentPushes.has(messageId)) {
+    console.log(`[Push] Skipping duplicate push for messageId ${messageId}`);
+    return true;
+  }
+  recentPushes.set(messageId, Date.now());
+  return false;
+}
+
 /**
  * Send push notification to a user via Expo Push Notification Service.
  * This uses the Expo Push API which works with Expo Go and standalone builds.
@@ -67,13 +99,20 @@ export async function sendPushNotification(
 
 /**
  * Send push notification for a new chat message.
+ * Includes deduplication: the same messageId will only trigger one push.
  */
 export async function sendChatPushNotification(
   senderId: number,
   receiverId: number,
   senderName: string,
-  messagePreview: string
+  messagePreview: string,
+  messageId?: number
 ): Promise<boolean> {
+  // Dedup check: skip if this messageId was already pushed
+  if (messageId && isDuplicate(messageId)) {
+    return false;
+  }
+
   return sendPushNotification(receiverId, {
     title: `💬 ${senderName}`,
     body: messagePreview.length > 100 ? messagePreview.substring(0, 100) + "..." : messagePreview,
@@ -81,6 +120,7 @@ export async function sendChatPushNotification(
       type: "chat_message",
       senderId,
       senderName,
+      messageId: messageId || 0,
     },
   });
 }
