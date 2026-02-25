@@ -5,15 +5,18 @@ import { useRouter } from "expo-router";
 import { trpc } from "@/lib/trpc";
 
 // Configure notification handler - show notifications even when app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Only set on native platforms; expo-notifications APIs may throw on web
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 // ========== MODULE-LEVEL SINGLETON NAVIGATION GUARD ==========
 let _isNavigating = false;
@@ -200,7 +203,8 @@ export function usePushNotifications(userId: number | null) {
     });
 
     // Cold start: check if app was opened from a notification — only once ever
-    if (!coldStartHandled.current) {
+    // Note: getLastNotificationResponseAsync is not available on web
+    if (!coldStartHandled.current && Platform.OS !== "web") {
       coldStartHandled.current = true;
       Notifications.getLastNotificationResponseAsync().then((response) => {
         if (response) {

@@ -948,3 +948,6 @@
 - [x] 地圖同時顯示好友和非好友（移除好友排除邏輯）
 - [x] 地圖顯示 Monster Name 而非用戶 username
 - [x] 地圖加性別篩選按鈕（全部 / 只顯示男 / 只顯示女）
+
+## Round 84: Web 預覽崩潰
+- [x] use-push-notifications.ts 中 Notifications.getLastNotificationResponseAsync 在 Web 上不可用導致崩潰 — 加平台檢查
