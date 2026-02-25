@@ -50,6 +50,13 @@
       "when": 1771830474865,
       "tag": "0006_magical_landau",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1772014037757,
+      "tag": "0007_fantastic_kingpin",
+      "breakpoints": true
     }
   ]
 }
