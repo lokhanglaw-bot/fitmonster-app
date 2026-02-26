@@ -137,7 +137,7 @@ export default function DashboardScreen() {
   const quests = [
     { title: t.questProteinChampion, desc: t.questProteinDescFull, progress: proteinIntake, target: 100, reward: 50, color: "#EF4444" },
     { title: t.questWalkingMaster, desc: t.questWalkingDescFull, progress: todaySteps, target: 20000, reward: 50, color: "#3B82F6" },
-    { title: t.feedingExpert, desc: t.logThreeMeals, progress: activity.todayMealCount, target: 3, reward: 75, color: "#22C55E" },
+    { title: t.questStrengthTraining, desc: t.questStrengthDescFull, progress: activity.todayWorkoutMinutes, target: 30, reward: 100, color: "#F59E0B" },
   ];
 
   return (

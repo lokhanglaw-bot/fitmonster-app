@@ -282,24 +282,24 @@ export function MonsterCaringPanel({ monsterName }: MonsterCaringPanelProps) {
 
   return (
     <View style={[caringStyles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      {/* Header with Guide Button */}
+      {/* Header: 狀態 + 良好 badge on left, 照顧指南 on right */}
       <View style={caringStyles.header}>
         <View style={caringStyles.headerLeft}>
           <Text style={[caringStyles.headerTitle, { color: colors.foreground }]}>
             {t.caringStatus}
           </Text>
-          <TouchableOpacity
-            onPress={() => setShowGuide(true)}
-            style={[caringStyles.guideBtn, { backgroundColor: colors.border + "80" }]}
-          >
-            <Text style={[caringStyles.guideBtnText, { color: colors.muted }]}>❓</Text>
-          </TouchableOpacity>
+          <View style={[caringStyles.overallBadge, { backgroundColor: overallInfo.color + "20", borderColor: overallInfo.color }]}>
+            <Text style={[caringStyles.overallBadgeText, { color: overallInfo.color }]}>
+              {overallInfo.label}
+            </Text>
+          </View>
         </View>
-        <View style={[caringStyles.overallBadge, { backgroundColor: overallInfo.color + "20", borderColor: overallInfo.color }]}>
-          <Text style={[caringStyles.overallBadgeText, { color: overallInfo.color }]}>
-            {overallInfo.label}
-          </Text>
-        </View>
+        <TouchableOpacity
+          onPress={() => setShowGuide(true)}
+          style={[caringStyles.guideBtn, { backgroundColor: colors.border + "40" }]}
+        >
+          <Text style={[caringStyles.guideBtnText, { color: colors.muted }]}>❓ {t.caringGuide}</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Monster Dialogue — always visible */}
@@ -434,14 +434,15 @@ const caringStyles = StyleSheet.create({
     fontWeight: "700",
   },
   guideBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
   guideBtnText: {
     fontSize: 12,
+    fontWeight: "500",
   },
   overallBadge: {
     paddingHorizontal: 12,
