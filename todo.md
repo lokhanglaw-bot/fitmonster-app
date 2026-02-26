@@ -1019,3 +1019,9 @@
 
 ## Round 95: 運動頁面自動滾動
 - [x] 選擇運動項目後，頁面自動滾動到「開始訓練」按鈕位置（scrollToEnd + 150ms delay）
+
+## Round 96: 多項 UI Bug 修復
+- [x] 命名怪獸時鍵盤遮擋輸入框 — 加 KeyboardAvoidingView + ScrollView
+- [x] 飽食度衰減邏輯 bug — 加入衰減上限（每次最多 -8 飽食度 / -4 活力值），最少 30 分鐘間隔，修復 status route 初始化邏輯
+- [x] 怪獸隊伍列表縮圖要使用表情系統 — 改用 getMonsterImageForCaringState
+- [x] 「獲取飲食建議」按下後，建議文字顯示在按鈕下方 — 新增 adviceResult 狀態，對話氣泡保持原有快速對話

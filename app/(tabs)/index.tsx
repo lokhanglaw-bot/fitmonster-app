@@ -588,7 +588,7 @@ export default function HomeScreen() {
                 }]}
               >
                 <LinearGradient colors={[gradient[0], gradient[1]]} style={styles.teamSlotGradient}>
-                  <Image source={MONSTER_IMAGES[`${m.type}-${m.stage}`]} style={styles.teamSlotImage} contentFit="contain" />
+                  <Image source={getMonsterImageForCaringState(m.type, m.stage, caringState.fullness, caringState.energy, caringState.mood, caringState.peakStateBuff)} style={styles.teamSlotImage} contentFit="contain" />
                 </LinearGradient>
                 <Text style={[styles.teamSlotName, { color: colors.foreground }]} numberOfLines={1}>{m.name}</Text>
                 <Text style={[styles.teamSlotLevel, { color: isSelected ? "#22C55E" : colors.muted }]}>
@@ -1088,7 +1088,9 @@ export default function HomeScreen() {
 
       {/* Hatch Egg Modal */}
       <Modal visible={showHatchModal} animationType="slide" transparent>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0}>
         <View style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-end" }} keyboardShouldPersistTaps="handled">
           <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
             {hatchStep === "select" && (
               <>
@@ -1158,7 +1160,9 @@ export default function HomeScreen() {
               </View>
             )}
           </View>
+          </ScrollView>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Add Record Modal */}

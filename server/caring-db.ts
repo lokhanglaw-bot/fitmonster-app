@@ -46,6 +46,7 @@ export async function updateMonsterCaring(userId: number, data: Partial<InsertMo
 /**
  * Calculate and apply fullness decay based on time elapsed since lastDecayAt.
  * Decay rate: ~3.5 points per hour (configurable).
+ * Cap: max 8 points per application to prevent large jumps after long offline periods.
  * Returns the updated caring state.
  */
 export async function applyFullnessDecay(userId: number): Promise<MonsterCaring | null> {
@@ -56,15 +57,24 @@ export async function applyFullnessDecay(userId: number): Promise<MonsterCaring 
   const lastDecay = new Date(caring.lastDecayAt);
   const hoursElapsed = (now.getTime() - lastDecay.getTime()) / (1000 * 60 * 60);
 
-  // Only decay if at least 10 minutes have passed
-  if (hoursElapsed < 1 / 6) return caring;
+  // Safety: if hoursElapsed is negative or unreasonably large (>168h = 1 week), reset lastDecayAt
+  if (hoursElapsed < 0 || hoursElapsed > 168) {
+    await updateMonsterCaring(userId, { lastDecayAt: now });
+    return { ...caring, lastDecayAt: now };
+  }
 
-  // Fullness decay: ~3.5 per hour
-  const fullnessDecay = Math.floor(hoursElapsed * 3.5);
+  // Only decay if at least 30 minutes have passed (was 10 min, increased to reduce frequency)
+  if (hoursElapsed < 0.5) return caring;
+
+  // Fullness decay: ~3.5 per hour, but cap at 8 points per application
+  // This prevents large drops when user hasn't opened app for a while
+  const rawFullnessDecay = Math.floor(hoursElapsed * 3.5);
+  const fullnessDecay = Math.min(rawFullnessDecay, 8);
   const newFullness = Math.max(0, caring.fullness - fullnessDecay);
 
-  // Energy decay: ~0.8 per hour (slower natural decay, main loss is daily -15~20)
-  const energyDecay = Math.floor(hoursElapsed * 0.8);
+  // Energy decay: ~0.8 per hour, cap at 4 points per application
+  const rawEnergyDecay = Math.floor(hoursElapsed * 0.8);
+  const energyDecay = Math.min(rawEnergyDecay, 4);
   const newEnergy = Math.max(0, caring.energy - energyDecay);
 
   // Calculate mood based on fullness and energy

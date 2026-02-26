@@ -1,0 +1,36 @@
+{
+  "query": "SELECT id, userId, fullness, energy, mood, lastDecayAt, lastFedAt, lastExerciseAt, peakStateBuff, createdAt, updatedAt FROM monsterCaring ORDER BY updatedAt DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT id, userId, fullness, energy, mood, lastDecayAt, lastFedAt, lastExerciseAt, peakStateBuff, createdAt, updatedAt FROM monsterCaring ORDER BY updatedAt DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "userId": "30029",
+      "fullness": "100",
+      "energy": "100",
+      "mood": "90",
+      "lastDecayAt": "2026-02-26 04:39:32",
+      "lastFedAt": "2026-02-26 04:39:32",
+      "lastExerciseAt": "2026-02-26 04:24:09",
+      "peakStateBuff": "1",
+      "createdAt": "2026-02-26 03:34:30",
+      "updatedAt": "2026-02-26 04:48:14"
+    },
+    {
+      "id": "2",
+      "userId": "90001",
+      "fullness": "70",
+      "energy": "70",
+      "mood": "70",
+      "lastDecayAt": "2026-02-26 03:37:41",
+      "lastFedAt": "NULL",
+      "lastExerciseAt": "NULL",
+      "peakStateBuff": "0",
+      "createdAt": "2026-02-26 03:37:41",
+      "updatedAt": "2026-02-26 03:49:38"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tfullness\tenergy\tmood\tlastDecayAt\tlastFedAt\tlastExerciseAt\tpeakStateBuff\tcreatedAt\tupdatedAt\n1\t30029\t100\t100\t90\t2026-02-26 04:39:32\t2026-02-26 04:39:32\t2026-02-26 04:24:09\t1\t2026-02-26 03:34:30\t2026-02-26 04:48:14\n2\t90001\t70\t70\t70\t2026-02-26 03:37:41\tNULL\tNULL\t0\t2026-02-26 03:37:41\t2026-02-26 03:49:38\n",
+  "stderr": "",
+  "execution_time_ms": 1682
+}

@@ -1,0 +1,34 @@
+{
+  "query": "SELECT id, userId, fullness, energy, mood, lastDecayAt, lastFedAt, createdAt, updatedAt, TIMESTAMPDIFF(MINUTE, lastDecayAt, NOW()) as minutesSinceLastDecay FROM monsterCaring;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT id, userId, fullness, energy, mood, lastDecayAt, lastFedAt, createdAt, updatedAt, TIMESTAMPDIFF(MINUTE, lastDecayAt, NOW()) as minutesSinceLastDecay FROM monsterCaring;",
+  "rows": [
+    {
+      "id": "1",
+      "userId": "30029",
+      "fullness": "100",
+      "energy": "100",
+      "mood": "90",
+      "lastDecayAt": "2026-02-26 04:39:32",
+      "lastFedAt": "2026-02-26 04:39:32",
+      "createdAt": "2026-02-26 03:34:30",
+      "updatedAt": "2026-02-26 04:48:14",
+      "minutesSinceLastDecay": "58"
+    },
+    {
+      "id": "2",
+      "userId": "90001",
+      "fullness": "70",
+      "energy": "70",
+      "mood": "70",
+      "lastDecayAt": "2026-02-26 03:37:41",
+      "lastFedAt": "NULL",
+      "createdAt": "2026-02-26 03:37:41",
+      "updatedAt": "2026-02-26 03:49:38",
+      "minutesSinceLastDecay": "120"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tfullness\tenergy\tmood\tlastDecayAt\tlastFedAt\tcreatedAt\tupdatedAt\tminutesSinceLastDecay\n1\t30029\t100\t100\t90\t2026-02-26 04:39:32\t2026-02-26 04:39:32\t2026-02-26 03:34:30\t2026-02-26 04:48:14\t58\n2\t90001\t70\t70\t70\t2026-02-26 03:37:41\tNULL\t2026-02-26 03:37:41\t2026-02-26 03:49:38\t120\n",
+  "stderr": "",
+  "execution_time_ms": 1634
+}

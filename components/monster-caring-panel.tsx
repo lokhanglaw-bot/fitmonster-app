@@ -162,6 +162,7 @@ export function MonsterCaringPanel({ monsterName }: MonsterCaringPanelProps) {
   const { language, t, tr } = useI18n();
   const [isLoadingAdvice, setIsLoadingAdvice] = useState(false);
   const [dialogue, setDialogue] = useState("");
+  const [adviceResult, setAdviceResult] = useState(""); // Advice text shown below button
   const [showGuide, setShowGuide] = useState(false);
   const hasLoadedQuickRef = useRef(false);
 
@@ -254,6 +255,7 @@ export function MonsterCaringPanel({ monsterName }: MonsterCaringPanelProps) {
   const handleAskAdvice = useCallback(async () => {
     if (isLoadingAdvice) return;
     setIsLoadingAdvice(true);
+    setAdviceResult(""); // Clear previous advice
     // Haptic feedback on press
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -261,18 +263,18 @@ export function MonsterCaringPanel({ monsterName }: MonsterCaringPanelProps) {
     try {
       const advice = await getAdvice(language as "en" | "zh");
       if (advice) {
-        setDialogue(advice);
+        setAdviceResult(advice); // Show advice below button, NOT in dialogue bubble
         if (Platform.OS !== "web") {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       } else {
-        // If no advice returned, show a fallback message
-        setDialogue(language === "zh" ? "我現在感覺還不錯！繼續保持健康飲食和運動吧！💪" : "I'm feeling good right now! Keep up the healthy eating and exercise! 💪");
+        // If no advice returned, show a fallback message below button
+        setAdviceResult(language === "zh" ? "我現在感覺還不錯！繼續保持健康飲食和運動吧！💪" : "I'm feeling good right now! Keep up the healthy eating and exercise! 💪");
       }
     } catch (err) {
       console.log("[CaringPanel] Advice error:", err);
-      // Show fallback dialogue on error
-      setDialogue(language === "zh" ? "嗯...我想想...繼續餵我吃健康的食物吧！🍎" : "Hmm... let me think... Keep feeding me healthy food! 🍎");
+      // Show fallback below button on error
+      setAdviceResult(language === "zh" ? "嗯...我想想...繼續餵我吃健康的食物吧！🍎" : "Hmm... let me think... Keep feeding me healthy food! 🍎");
     } finally {
       setIsLoadingAdvice(false);
     }
@@ -401,6 +403,13 @@ export function MonsterCaringPanel({ monsterName }: MonsterCaringPanelProps) {
           </View>
         )}
       </TouchableOpacity>
+
+      {/* Advice Result — displayed below the button */}
+      {adviceResult ? (
+        <View style={[caringStyles.adviceResultBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <Text style={[caringStyles.adviceResultText, { color: colors.foreground }]}>{adviceResult}</Text>
+        </View>
+      ) : null}
 
       {/* Care Guide Modal */}
       <CareGuideModal visible={showGuide} onClose={() => setShowGuide(false)} />
@@ -647,5 +656,17 @@ const caringStyles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     flex: 1,
+  },
+
+  // Advice result box (displayed below the button)
+  adviceResultBox: {
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    marginTop: 2,
+  },
+  adviceResultText: {
+    fontSize: 14,
+    lineHeight: 22,
   },
 });

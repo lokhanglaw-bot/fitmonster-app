@@ -908,8 +908,16 @@ Always return valid JSON.`;
   caring: router({
     // Get current caring state (applies decay automatically)
     status: protectedProcedure.query(async ({ ctx }) => {
-      // Ensure caring record exists
-      await caringDb.upsertMonsterCaring(ctx.user.id, {});
+      // Ensure caring record exists (only creates if none exists)
+      const existing = await caringDb.getMonsterCaring(ctx.user.id);
+      if (!existing) {
+        await caringDb.upsertMonsterCaring(ctx.user.id, {
+          fullness: 70,
+          energy: 70,
+          mood: 70,
+          lastDecayAt: new Date(),
+        });
+      }
       // Apply time-based decay
       const caring = await caringDb.applyFullnessDecay(ctx.user.id);
       if (!caring) throw new Error("Failed to get caring state");
