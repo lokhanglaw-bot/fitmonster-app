@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import {
   ScrollView,
   Text,
@@ -75,6 +75,8 @@ export default function WorkoutScreen() {
 
   const [selectedExercise, setSelectedExercise] = useState<typeof EXERCISES[0] | null>(null);
   const [bonus, setBonus] = useState<BonusType>("none");
+  const scrollViewRef = useRef<ScrollView>(null);
+  const detailPanelY = useRef<number>(0);
 
   // Manual Log Modal
   const [showManualLog, setShowManualLog] = useState(false);
@@ -87,6 +89,10 @@ export default function WorkoutScreen() {
   const handleExercisePress = useCallback((exercise: typeof EXERCISES[0]) => {
     setSelectedExercise(exercise);
     setBonus("none");
+    // Auto-scroll to detail panel after a short delay to let it render
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 150);
   }, []);
 
   const handleStartTraining = useCallback(() => {
@@ -186,7 +192,7 @@ export default function WorkoutScreen() {
 
   return (
     <ScreenContainer>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}>
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
