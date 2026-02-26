@@ -64,6 +64,7 @@ interface CaringContextType {
   feedMonster: (calories: number, protein: number, carbs: number, fats: number, mealType?: string) => Promise<{ fullnessGain: number; message: string } | null>;
   exerciseMonster: (duration: number, caloriesBurned: number, metValue?: number) => Promise<{ energyGain: number; message: string } | null>;
   getAdvice: (language: "en" | "zh") => Promise<string>;
+  fetchQuickDialogue: () => Promise<void>;
 }
 
 const CaringContext = createContext<CaringContextType | null>(null);
@@ -71,7 +72,7 @@ const CaringContext = createContext<CaringContextType | null>(null);
 const CARING_CACHE_KEY = "@fitmonster_caring_cache";
 const SYNC_COOLDOWN_MS = 30_000; // 30 seconds between server syncs
 
-export function CaringProvider({ children, userId }: { children: React.ReactNode; userId: string | null }) {
+export function CaringProvider({ children, userId, language = "zh" }: { children: React.ReactNode; userId: string | null; language?: "en" | "zh" }) {
   const [state, setState] = useState<CaringState>(defaultState);
   const lastSyncRef = useRef<number>(0);
   const isMountedRef = useRef(true);
@@ -147,12 +148,28 @@ export function CaringProvider({ children, userId }: { children: React.ReactNode
     }
   }, [userId, utils, state.dialogue]);
 
+  // Fetch quick dialogue from server
+  const fetchQuickDialogue = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const result = await utils.caring.quickDialogue.fetch({ language });
+      if (result.dialogue && isMountedRef.current) {
+        setState(prev => ({ ...prev, dialogue: result.dialogue }));
+      }
+    } catch (err) {
+      console.log("[Caring] Quick dialogue fetch failed:", err);
+    }
+  }, [userId, utils]);
+
   // Auto-sync on mount and periodically
   useEffect(() => {
     if (!userId) return;
 
     // Initial sync
     const timer = setTimeout(() => refresh(), 500);
+
+    // Fetch quick dialogue after initial sync
+    const dialogueTimer = setTimeout(() => fetchQuickDialogue(), 1500);
 
     // Periodic refresh every 2 minutes
     const interval = setInterval(() => {
@@ -162,9 +179,10 @@ export function CaringProvider({ children, userId }: { children: React.ReactNode
 
     return () => {
       clearTimeout(timer);
+      clearTimeout(dialogueTimer);
       clearInterval(interval);
     };
-  }, [userId, refresh]);
+  }, [userId, refresh, fetchQuickDialogue]);
 
   const feedMonster = useCallback(async (
     calories: number, protein: number, carbs: number, fats: number, mealType = "meal"
@@ -234,7 +252,7 @@ export function CaringProvider({ children, userId }: { children: React.ReactNode
   }, [userId, utils]);
 
   return (
-    <CaringContext.Provider value={{ state, refresh, feedMonster, exerciseMonster, getAdvice }}>
+    <CaringContext.Provider value={{ state, refresh, feedMonster, exerciseMonster, getAdvice, fetchQuickDialogue }}>
       {children}
     </CaringContext.Provider>
   );

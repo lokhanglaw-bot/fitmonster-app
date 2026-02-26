@@ -21,7 +21,7 @@ import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-run
 import { AuthGate } from "@/components/auth-gate";
 import { ActivityProvider } from "@/lib/activity-context";
 import { AuthProvider, useAuthContext } from "@/lib/auth-context";
-import { I18nProvider } from "@/lib/i18n-context";
+import { I18nProvider, useI18n } from "@/lib/i18n-context";
 import { WorkoutTimerProvider } from "@/lib/workout-timer-context";
 import { NotificationProvider } from "@/lib/notification-provider";
 import { CaringProvider } from "@/lib/caring-context";
@@ -38,8 +38,9 @@ function AuthenticatedActivityProvider({ children }: { children: React.ReactNode
 // Wrapper that passes userId from auth context to CaringProvider
 function AuthenticatedCaringProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuthContext();
+  const { language } = useI18n();
   const userId = user ? (user.openId || String(user.id)) : null;
-  return <CaringProvider userId={userId}>{children}</CaringProvider>;
+  return <CaringProvider userId={userId} language={language as "en" | "zh"}>{children}</CaringProvider>;
 }
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };

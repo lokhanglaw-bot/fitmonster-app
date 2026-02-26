@@ -5,7 +5,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
+  Modal,
+  ScrollView,
   Platform,
 } from "react-native";
 import * as Haptics from "expo-haptics";
@@ -68,9 +69,8 @@ function StatusBar({
 
 // ── Dialogue Bubble ──────────────────────────────────────────────────────
 
-function DialogueBubble({ text, monsterName }: { text: string; monsterName: string }) {
+function DialogueBubble({ text }: { text: string }) {
   const colors = useColors();
-  const { tr } = useI18n();
 
   // Subtle breathing animation
   const breathe = useSharedValue(1);
@@ -89,12 +89,64 @@ function DialogueBubble({ text, monsterName }: { text: string; monsterName: stri
     transform: [{ scale: breathe.value }],
   }));
 
-  if (!text) return null;
-
   return (
     <Animated.View style={[caringStyles.dialogueBubble, { backgroundColor: colors.surface, borderColor: colors.border }, animStyle]}>
       <Text style={[caringStyles.dialogueText, { color: colors.foreground }]}>{text}</Text>
     </Animated.View>
+  );
+}
+
+// ── Care Guide Modal ────────────────────────────────────────────────────
+
+function CareGuideModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const colors = useColors();
+  const { t } = useI18n();
+
+  const guideItems = [
+    { icon: "🍖", title: t.caringFullness, desc: t.caringGuideFullness, color: "#22C55E" },
+    { icon: "⚡", title: t.caringEnergy, desc: t.caringGuideEnergy, color: "#3B82F6" },
+    { icon: "😊", title: t.caringMood, desc: t.caringGuideMood, color: "#EC4899" },
+    { icon: "🔥", title: t.caringPeakState, desc: t.caringGuidePeak, color: "#F59E0B" },
+  ];
+
+  const tips = [t.caringGuideTip1, t.caringGuideTip2, t.caringGuideTip3];
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={caringStyles.modalOverlay}>
+        <View style={[caringStyles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <View style={caringStyles.modalHeader}>
+            <Text style={[caringStyles.modalTitle, { color: colors.foreground }]}>{t.caringGuideTitle}</Text>
+            <TouchableOpacity onPress={onClose} style={caringStyles.modalCloseBtn}>
+              <Text style={{ fontSize: 18, color: colors.muted }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={caringStyles.modalScroll} showsVerticalScrollIndicator={false}>
+            {guideItems.map((item, idx) => (
+              <View key={idx} style={[caringStyles.guideItem, { borderColor: colors.border }]}>
+                <View style={caringStyles.guideItemHeader}>
+                  <Text style={caringStyles.guideItemIcon}>{item.icon}</Text>
+                  <Text style={[caringStyles.guideItemTitle, { color: item.color }]}>{item.title}</Text>
+                </View>
+                <Text style={[caringStyles.guideItemDesc, { color: colors.muted }]}>{item.desc}</Text>
+              </View>
+            ))}
+
+            {/* Tips Section */}
+            <View style={[caringStyles.tipsSection, { backgroundColor: colors.surface }]}>
+              <Text style={[caringStyles.tipsTitle, { color: colors.foreground }]}>💡 {t.caringGuideTips}</Text>
+              {tips.map((tip, idx) => (
+                <View key={idx} style={caringStyles.tipRow}>
+                  <Text style={[caringStyles.tipBullet, { color: "#22C55E" }]}>✓</Text>
+                  <Text style={[caringStyles.tipText, { color: colors.foreground }]}>{tip}</Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -106,10 +158,11 @@ interface MonsterCaringPanelProps {
 
 export function MonsterCaringPanel({ monsterName }: MonsterCaringPanelProps) {
   const colors = useColors();
-  const { state, getAdvice, refresh } = useCaring();
+  const { state, getAdvice, fetchQuickDialogue } = useCaring();
   const { language, t, tr } = useI18n();
   const [isLoadingAdvice, setIsLoadingAdvice] = useState(false);
   const [dialogue, setDialogue] = useState("");
+  const [showGuide, setShowGuide] = useState(false);
   const hasLoadedQuickRef = useRef(false);
 
   // Get fullness status label
@@ -176,13 +229,27 @@ export function MonsterCaringPanel({ monsterName }: MonsterCaringPanelProps) {
     return "#6B7280";
   };
 
-  // Load quick dialogue on mount
+  // Load quick dialogue on mount — if state.dialogue is populated from server
   useEffect(() => {
     if (!hasLoadedQuickRef.current && state.dialogue) {
       setDialogue(state.dialogue);
       hasLoadedQuickRef.current = true;
     }
   }, [state.dialogue]);
+
+  // If no dialogue loaded after 3 seconds, generate a local fallback
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!dialogue && !hasLoadedQuickRef.current) {
+        const fallback = language === "zh"
+          ? `${monsterName}：今天也要一起加油喔！ 💪`
+          : `${monsterName}: Let's do our best today! 💪`;
+        setDialogue(fallback);
+        hasLoadedQuickRef.current = true;
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [dialogue, language, monsterName]);
 
   const handleAskAdvice = useCallback(async () => {
     if (isLoadingAdvice) return;
@@ -213,26 +280,30 @@ export function MonsterCaringPanel({ monsterName }: MonsterCaringPanelProps) {
 
   const overallInfo = getOverallInfo(state.overallStatus);
 
-  // Battle modifier display
-  const battleModText = state.battleModifiers.overallModifier > 1
-    ? `+${Math.round((state.battleModifiers.overallModifier - 1) * 100)}%`
-    : state.battleModifiers.overallModifier < 1
-    ? `${Math.round((state.battleModifiers.overallModifier - 1) * 100)}%`
-    : "";
-
   return (
     <View style={[caringStyles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      {/* Header */}
+      {/* Header with Guide Button */}
       <View style={caringStyles.header}>
-        <Text style={[caringStyles.headerTitle, { color: colors.foreground }]}>
-          {t.caringStatus}
-        </Text>
+        <View style={caringStyles.headerLeft}>
+          <Text style={[caringStyles.headerTitle, { color: colors.foreground }]}>
+            {t.caringStatus}
+          </Text>
+          <TouchableOpacity
+            onPress={() => setShowGuide(true)}
+            style={[caringStyles.guideBtn, { backgroundColor: colors.border + "80" }]}
+          >
+            <Text style={[caringStyles.guideBtnText, { color: colors.muted }]}>❓</Text>
+          </TouchableOpacity>
+        </View>
         <View style={[caringStyles.overallBadge, { backgroundColor: overallInfo.color + "20", borderColor: overallInfo.color }]}>
           <Text style={[caringStyles.overallBadgeText, { color: overallInfo.color }]}>
             {overallInfo.label}
           </Text>
         </View>
       </View>
+
+      {/* Monster Dialogue — always visible */}
+      <DialogueBubble text={dialogue || (language === "zh" ? "..." : "...")} />
 
       {/* Status Bars */}
       <StatusBar
@@ -260,7 +331,7 @@ export function MonsterCaringPanel({ monsterName }: MonsterCaringPanelProps) {
         statusText={getMoodLabel(state.moodStatus)}
       />
 
-      {/* Battle Modifier Indicator */}
+      {/* Battle Modifier / Peak State Indicator */}
       {state.peakStateBuff && (
         <View style={[caringStyles.buffBanner, { backgroundColor: "#FEF3C7", borderColor: "#FDE68A" }]}>
           <Text style={caringStyles.buffText}>🔥 {t.caringPeakBuff}</Text>
@@ -313,14 +384,9 @@ export function MonsterCaringPanel({ monsterName }: MonsterCaringPanelProps) {
         </View>
       )}
 
-      {/* Monster Dialogue */}
-      {dialogue ? (
-        <DialogueBubble text={dialogue} monsterName={monsterName} />
-      ) : null}
-
-      {/* Ask Advice Button */}
+      {/* Ask Diet Tips Button */}
       <TouchableOpacity
-        style={[caringStyles.adviceBtn, { backgroundColor: isLoadingAdvice ? colors.muted : "#8B5CF6" }]}
+        style={[caringStyles.adviceBtn, { backgroundColor: isLoadingAdvice ? colors.muted : "#22C55E" }]}
         onPress={handleAskAdvice}
         disabled={isLoadingAdvice}
       >
@@ -331,11 +397,13 @@ export function MonsterCaringPanel({ monsterName }: MonsterCaringPanelProps) {
           </View>
         ) : (
           <View style={caringStyles.adviceBtnInner}>
-            <Text style={caringStyles.adviceBtnIcon}>💬</Text>
             <Text style={caringStyles.adviceBtnText}>{t.caringAskAdvice}</Text>
           </View>
         )}
       </TouchableOpacity>
+
+      {/* Care Guide Modal */}
+      <CareGuideModal visible={showGuide} onClose={() => setShowGuide(false)} />
     </View>
   );
 }
@@ -356,9 +424,24 @@ const caringStyles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   headerTitle: {
     fontSize: 16,
     fontWeight: "700",
+  },
+  guideBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  guideBtnText: {
+    fontSize: 12,
   },
   overallBadge: {
     paddingHorizontal: 12,
@@ -453,7 +536,7 @@ const caringStyles = StyleSheet.create({
     padding: 12,
     borderRadius: 14,
     borderWidth: 1,
-    marginTop: 4,
+    marginBottom: 2,
   },
   dialogueText: {
     fontSize: 13,
@@ -472,12 +555,96 @@ const caringStyles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  adviceBtnIcon: {
-    fontSize: 16,
-  },
   adviceBtnText: {
     color: "#fff",
     fontSize: 14,
     fontWeight: "700",
+  },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: "80%",
+    borderWidth: 1,
+    borderBottomWidth: 0,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalScroll: {
+    paddingBottom: 20,
+  },
+
+  // Guide items
+  guideItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    gap: 6,
+  },
+  guideItemHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  guideItemIcon: {
+    fontSize: 18,
+  },
+  guideItemTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  guideItemDesc: {
+    fontSize: 13,
+    lineHeight: 20,
+    paddingLeft: 26,
+  },
+
+  // Tips section
+  tipsSection: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    gap: 8,
+  },
+  tipsTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  tipRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  tipBullet: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 1,
+  },
+  tipText: {
+    fontSize: 13,
+    lineHeight: 20,
+    flex: 1,
   },
 });
