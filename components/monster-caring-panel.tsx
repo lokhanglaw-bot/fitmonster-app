@@ -5,7 +5,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Alert,
+  Platform,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -182,14 +185,31 @@ export function MonsterCaringPanel({ monsterName }: MonsterCaringPanelProps) {
   }, [state.dialogue]);
 
   const handleAskAdvice = useCallback(async () => {
+    if (isLoadingAdvice) return;
     setIsLoadingAdvice(true);
+    // Haptic feedback on press
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     try {
       const advice = await getAdvice(language as "en" | "zh");
-      if (advice) setDialogue(advice);
+      if (advice) {
+        setDialogue(advice);
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      } else {
+        // If no advice returned, show a fallback message
+        setDialogue(language === "zh" ? "我現在感覺還不錯！繼續保持健康飲食和運動吧！💪" : "I'm feeling good right now! Keep up the healthy eating and exercise! 💪");
+      }
+    } catch (err) {
+      console.log("[CaringPanel] Advice error:", err);
+      // Show fallback dialogue on error
+      setDialogue(language === "zh" ? "嗯...我想想...繼續餵我吃健康的食物吧！🍎" : "Hmm... let me think... Keep feeding me healthy food! 🍎");
     } finally {
       setIsLoadingAdvice(false);
     }
-  }, [getAdvice, language]);
+  }, [getAdvice, language, isLoadingAdvice]);
 
   const overallInfo = getOverallInfo(state.overallStatus);
 
