@@ -398,8 +398,9 @@ export default function NearbyMapScreen() {
         <View style={[styles.header, { paddingTop: Math.max(insets.top, 44) + 8 }]}>
           <TouchableOpacity
             onPress={() => {
-              if (router.canDismiss()) router.dismiss();
-              else router.back();
+              if (router.canGoBack()) router.back();
+              else if (router.canDismiss()) router.dismiss();
+              else router.replace('/(tabs)');
             }}
             style={[styles.backBtn, { backgroundColor: colors.surface }]}
             activeOpacity={0.7}

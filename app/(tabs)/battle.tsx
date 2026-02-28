@@ -227,7 +227,7 @@ export default function BattleScreen() {
 
   // Sync real pending requests from backend
   useEffect(() => {
-    if (pendingQuery.data && pendingQuery.data.length > 0) {
+    if (pendingQuery.data) {
       const realRequests: FriendRequest[] = pendingQuery.data.map((r: any) => {
         const mType = (r.monsterType || 'bodybuilder').toLowerCase();
         const mName = r.monsterName || (mType.charAt(0).toUpperCase() + mType.slice(1));
@@ -255,9 +255,13 @@ export default function BattleScreen() {
         timestamp: new Date(r.createdAt || Date.now()),
       };
       });
+      // Build a set of IDs that backend still has as pending
+      const backendPendingIds = new Set(realRequests.map(r => r.id));
       setFriendRequests(prev => {
-        // Merge: keep sent requests, replace incoming with real ones
+        // Keep sent requests unchanged
         const sentOnly = prev.filter(p => p.sentByMe);
+        // For incoming: only keep those that are still pending in backend
+        // (removes accepted/rejected ones that backend no longer returns)
         return [...realRequests, ...sentOnly];
       });
     }

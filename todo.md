@@ -1033,3 +1033,11 @@
 
 ## Round 97.1: Fix weekly average calculation
 - [x] Weekly average should divide by number of days with data (non-zero values) instead of fixed 7 days
+
+## Android Bug Fix - Round 98
+- [x] Android: 修復登出按鈕圖示消失（只顯示紅色圓圈）— icon-symbol.tsx 中 exit-to-app 已正確映射
+- [x] Android: 修復好友邀請接受後仍顯示「等待中」— pendingQuery.data useEffect 改為無條件更新
+- [x] Android: 修復對話頁面發送鍵不顯示（只有綠色圓圈無圖示）— KeyboardAvoidingView 改為 padding 行為
+- [x] Android: 修復對話頁面套餐圖示顯示異常 — 同上
+- [x] Android: 修復每個頁面的返回鍵消失 — fullScreenModal 改為 Android 上使用 card，back handler 優先 canGoBack
+- [x] Android: 修復對戰地圖一開啟就崩潰（彈出 app）— 新增 react-native.config.js 加入 unstable_reactLegacyComponentNames

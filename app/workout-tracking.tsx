@@ -484,16 +484,18 @@ export default function WorkoutTrackingScreen() {
       });
       setShowCelebration(true);
     } else {
-      if (router.canDismiss()) router.dismiss();
-      else router.back();
+      if (router.canGoBack()) router.back();
+      else if (router.canDismiss()) router.dismiss();
+      else router.replace('/(tabs)');
     }
   }, [elapsedSeconds, finishWorkout, logWorkout, caringExerciseMonster, router, t, bodyWeight]);
 
   const handleCelebrationDismiss = useCallback(() => {
     setShowCelebration(false);
     setTimeout(() => {
-      if (router.canDismiss()) router.dismiss();
-      else router.back();
+      if (router.canGoBack()) router.back();
+      else if (router.canDismiss()) router.dismiss();
+      else router.replace('/(tabs)');
     }, 100);
   }, [router]);
 
@@ -508,8 +510,9 @@ export default function WorkoutTrackingScreen() {
           style: "destructive",
           onPress: () => {
             cancelWorkout();
-            if (router.canDismiss()) router.dismiss();
-            else router.back();
+            if (router.canGoBack()) router.back();
+            else if (router.canDismiss()) router.dismiss();
+            else router.replace('/(tabs)');
           },
         },
       ]

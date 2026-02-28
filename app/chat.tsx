@@ -770,10 +770,10 @@ export default function ChatScreen() {
 
   // Back button handler: try dismiss first (modal), then back, then navigate to tabs
   const handleBack = useCallback(() => {
-    if (router.canDismiss()) {
-      router.dismiss();
-    } else if (router.canGoBack()) {
+    if (router.canGoBack()) {
       router.back();
+    } else if (router.canDismiss()) {
+      router.dismiss();
     } else {
       // Fallback: navigate to the main tab
       router.replace("/(tabs)");
@@ -781,17 +781,17 @@ export default function ChatScreen() {
   }, [router]);
 
   return (
-    <ScreenContainer edges={["left", "right", "bottom"]}>
+    <ScreenContainer edges={["top", "left", "right"]}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : insets.top}
       >
         {/* Header */}
         <View
           style={[
             styles.chatHeader,
-            { backgroundColor: colors.background, borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 44) + 8 },
+            { backgroundColor: colors.background, borderBottomColor: colors.border, paddingTop: 8 },
           ]}
         >
           <TouchableOpacity
@@ -864,7 +864,7 @@ export default function ChatScreen() {
 
         {/* Input Bar */}
         {!isRecording && (
-          <View style={[styles.inputBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+          <View style={[styles.inputBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 8) : 8 }]}>
             {/* Emoji toggle button */}
             <TouchableOpacity
               onPress={toggleEmojiPicker}
@@ -1074,7 +1074,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     gap: 4,
   },

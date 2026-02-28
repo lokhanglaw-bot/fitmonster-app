@@ -126,13 +126,13 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="auth" options={{ presentation: "fullScreenModal" }} />
-              <Stack.Screen name="chat" options={{ presentation: "fullScreenModal" }} />
+              <Stack.Screen name="chat" options={{ presentation: Platform.OS === 'ios' ? 'fullScreenModal' : 'card', gestureEnabled: true }} />
               <Stack.Screen name="oauth/callback" />
-              <Stack.Screen name="workout-tracking" options={{ presentation: "fullScreenModal" }} />
-              <Stack.Screen name="nearby-map" options={{ presentation: "fullScreenModal" }} />
-              <Stack.Screen name="health-sync" options={{ presentation: "fullScreenModal" }} />
-              <Stack.Screen name="profile-setup" options={{ presentation: "fullScreenModal" }} />
-              <Stack.Screen name="edit-profile" options={{ presentation: "fullScreenModal" }} />
+              <Stack.Screen name="workout-tracking" options={{ presentation: Platform.OS === 'ios' ? 'fullScreenModal' : 'card', gestureEnabled: true }} />
+              <Stack.Screen name="nearby-map" options={{ presentation: Platform.OS === 'ios' ? 'fullScreenModal' : 'card', gestureEnabled: true }} />
+              <Stack.Screen name="health-sync" options={{ presentation: Platform.OS === 'ios' ? 'fullScreenModal' : 'card', gestureEnabled: true }} />
+              <Stack.Screen name="profile-setup" options={{ presentation: Platform.OS === 'ios' ? 'fullScreenModal' : 'card', gestureEnabled: true }} />
+              <Stack.Screen name="edit-profile" options={{ presentation: Platform.OS === 'ios' ? 'fullScreenModal' : 'card', gestureEnabled: true }} />
             </Stack>
             <StatusBar style="auto" />
           </AuthGate>
