@@ -159,7 +159,7 @@ export function CaringProvider({ children, userId, language = "zh" }: { children
     } catch (err) {
       console.log("[Caring] Quick dialogue fetch failed:", err);
     }
-  }, [userId, utils]);
+  }, [userId, utils, language]);
 
   // Auto-sync on mount and periodically
   useEffect(() => {

@@ -1025,3 +1025,11 @@
 - [x] 飽食度衰減邏輯 bug — 加入衰減上限（每次最多 -8 飽食度 / -4 活力值），最少 30 分鐘間隔，修復 status route 初始化邏輯
 - [x] 怪獸隊伍列表縮圖要使用表情系統 — 改用 getMonsterImageForCaringState
 - [x] 「獲取飲食建議」按下後，建議文字顯示在按鈕下方 — 新增 adviceResult 狀態，對話氣泡保持原有快速對話
+
+## User Feedback - Round 97
+- [x] Fix nutrition stats cards (protein/carbs/fat) to show weekly average instead of today's values
+- [x] Change workout duration unit from "分鐘" to "min" in dashboard stats
+- [x] Add Chinese translations for monster dialogue text (currently showing English in Chinese app version)
+
+## Round 97.1: Fix weekly average calculation
+- [x] Weekly average should divide by number of days with data (non-zero values) instead of fixed 7 days

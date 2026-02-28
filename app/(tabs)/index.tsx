@@ -186,9 +186,16 @@ export default function HomeScreen() {
   const caloriesIn = activity.todayCaloriesIn;
   const caloriesBurned = activity.todayCaloriesBurned;
   const workoutDuration = activity.todayWorkoutMinutes;
-  const avgProtein = activity.todayProtein;
-  const avgCarbs = activity.todayCarbs || 0;
-  const avgFat = activity.todayFat || 0;
+  // Calculate weekly averages for macros (divide by number of days with data, not fixed 7)
+  const weeklyProteinArray = activity.weeklyProtein || [0,0,0,0,0,0,0];
+  const weeklyCarbsArray = activity.weeklyCarbs || [0,0,0,0,0,0,0];
+  const weeklyFatArray = activity.weeklyFat || [0,0,0,0,0,0,0];
+  const proteinDaysWithData = weeklyProteinArray.filter(v => v > 0).length || 1;
+  const carbsDaysWithData = weeklyCarbsArray.filter(v => v > 0).length || 1;
+  const fatDaysWithData = weeklyFatArray.filter(v => v > 0).length || 1;
+  const avgProtein = Math.round(weeklyProteinArray.reduce((sum, val) => sum + val, 0) / proteinDaysWithData);
+  const avgCarbs = Math.round(weeklyCarbsArray.reduce((sum, val) => sum + val, 0) / carbsDaysWithData);
+  const avgFat = Math.round(weeklyFatArray.reduce((sum, val) => sum + val, 0) / fatDaysWithData);
 
   // Evolution modal
   const [showEvolutionModal, setShowEvolutionModal] = useState(false);

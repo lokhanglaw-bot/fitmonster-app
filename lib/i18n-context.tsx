@@ -1251,7 +1251,7 @@ const zh: Translations = {
   workoutCount: "運動次數",
   totalDuration: "總時長",
   totalCaloriesBurned: "消耗卡路里",
-  weeklyStatsMinUnit: "分鐘",
+  weeklyStatsMinUnit: "min",
   weeklyStatsKcalUnit: "千卡",
   weeklyStatsSessions: "次",
   noWorkoutsThisWeek: "本週還沒有運動紀錄，開始訓練吧！",
