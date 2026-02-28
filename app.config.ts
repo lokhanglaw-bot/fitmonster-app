@@ -57,6 +57,8 @@ const config: ExpoConfig = {
       NSHealthUpdateUsageDescription: "FitMonster may save workout data to Apple Health.",
       // Location usage descriptions for nearby users feature
       NSLocationWhenInUseUsageDescription: "FitMonster uses your location to find nearby trainers for battles and friend matching.",
+      NSCameraUsageDescription: "FitMonster uses your camera to take photos of your meals for AI-powered nutritional analysis. For example, you can photograph your lunch to automatically calculate calories, protein, carbs, and fat content.",
+      NSPhotoLibraryUsageDescription: "FitMonster accesses your photo library so you can select meal photos for AI-powered nutritional analysis.",
     },
     entitlements: {
       "com.apple.developer.healthkit": true,
@@ -116,9 +118,9 @@ const config: ExpoConfig = {
     [
       "expo-video",
       {
-        supportsBackgroundPlayback: true,
-        supportsPictureInPicture: true,
-      },
+        supportsBackgroundPlayback: false,
+        supportsPictureInPicture: false,
+      }
     ],
     [
       "expo-splash-screen",

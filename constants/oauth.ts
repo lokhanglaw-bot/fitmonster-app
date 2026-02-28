@@ -1,5 +1,6 @@
 import * as Linking from "expo-linking";
 import * as ReactNative from "react-native";
+import * as WebBrowser from "expo-web-browser";
 
 // Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
 // e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
@@ -112,20 +113,30 @@ export async function startOAuthLogin(): Promise<string | null> {
     return null;
   }
 
-  const supported = await Linking.canOpenURL(loginUrl);
-  if (!supported) {
-    console.warn("[OAuth] Cannot open login URL: URL scheme not supported");
-    // 可考虑抛出错误或返回错误状态，让调用方处理
-    return null;
-  }
-
+  // Use WebBrowser.openAuthSessionAsync for in-app browser (SFSafariViewController on iOS,
+  // Chrome Custom Tabs on Android) — required by Apple Guideline 4.0
+  const redirectUri = getRedirectUri();
   try {
-    await Linking.openURL(loginUrl);
+    console.log("[OAuth] Opening auth session with WebBrowser...");
+    const result = await WebBrowser.openAuthSessionAsync(loginUrl, redirectUri);
+    console.log("[OAuth] WebBrowser result:", result);
+    if (result.type === "success" && result.url) {
+      // The URL contains the OAuth callback params — Expo Router will handle the deep link
+      console.log("[OAuth] Auth session succeeded, URL:", result.url);
+      // Manually handle the redirect URL by navigating to the callback
+      await Linking.openURL(result.url);
+    } else if (result.type === "cancel" || result.type === "dismiss") {
+      console.log("[OAuth] Auth session was cancelled/dismissed by user");
+    }
   } catch (error) {
-    console.error("[OAuth] Failed to open login URL:", error);
-    // 可考虑抛出错误让调用方处理
+    console.error("[OAuth] Failed to open auth session:", error);
+    // Fallback to Linking.openURL if WebBrowser fails
+    try {
+      await Linking.openURL(loginUrl);
+    } catch (fallbackError) {
+      console.error("[OAuth] Fallback Linking.openURL also failed:", fallbackError);
+    }
   }
 
-  // The OAuth callback will reopen the app via deep link.
   return null;
 }

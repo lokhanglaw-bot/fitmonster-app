@@ -680,6 +680,8 @@ const en = {
   foodUpdated: "Food item updated",
   editTotalNutrition: "Edit Totals",
   aiMayBeWrong: "AI result not right? Tap to edit",
+  nutritionDataSource: "Data Sources",
+  nutritionCitationText: "Nutritional values are estimated by AI based on the following references. Results may vary depending on portion size and preparation method.",
   workoutRecovered: "Workout recovered",
 
   // Profile Setup
@@ -1518,6 +1520,8 @@ const zh: Translations = {
   foodUpdated: "食物項目已更新",
   editTotalNutrition: "修改總計",
   aiMayBeWrong: "AI 辨識有誤？點擊修改",
+  nutritionDataSource: "資料來源",
+  nutritionCitationText: "營養數值由 AI 根據以下參考資料估算。實際數值可能因份量大小和烹調方式而異。",
   workoutRecovered: "運動已恢復",
 
   // Profile Setup

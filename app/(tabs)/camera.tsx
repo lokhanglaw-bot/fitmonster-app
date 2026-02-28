@@ -26,6 +26,7 @@ import { useActivity } from "@/lib/activity-context";
 import { useI18n } from "@/lib/i18n-context";
 import { useCaring } from "@/lib/caring-context";
 import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
+import * as Linking from "expo-linking";
 
 type FoodItem = {
   name: string;
@@ -455,6 +456,30 @@ export default function CameraScreen() {
               scrollEnabled={false}
               ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
             />
+
+            {/* Nutrition Data Citation - Required by Apple Guideline 1.4.1 */}
+            <View style={[styles.citationCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.citationTitle, { color: colors.muted }]}>{t.nutritionDataSource}</Text>
+              <Text style={[styles.citationText, { color: colors.muted }]}>
+                {t.nutritionCitationText}
+              </Text>
+              <TouchableOpacity
+                onPress={() => Linking.openURL("https://fdc.nal.usda.gov/")}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.citationLink, { color: colors.primary }]}>
+                  USDA FoodData Central (fdc.nal.usda.gov)
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => Linking.openURL("https://www.who.int/news-room/fact-sheets/detail/healthy-diet")}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.citationLink, { color: colors.primary }]}>
+                  WHO Healthy Diet Guidelines
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.resultActions}>
               {!saved ? (
@@ -901,5 +926,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#fff",
+  },
+  citationCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    marginTop: 8,
+  },
+  citationTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  citationText: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  citationLink: {
+    fontSize: 12,
+    fontWeight: "600",
+    textDecorationLine: "underline" as const,
+    marginBottom: 4,
   },
 });

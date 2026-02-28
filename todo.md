@@ -1047,3 +1047,10 @@
 - [x] 在 app 設定頁面加入「刪除帳戶」按鈕和確認流程 — Home 頁 modal + Edit Profile 頁底部按鈕
 - [x] 建立符合 Google Play 規定的刪除帳戶說明網頁 — /delete-account 路由，含步驟說明、資料刪除表格、保留政策
 - [x] 添加中英文翻譯（deleteAccount 系列翻譯鍵）
+
+## Apple App Store 審核修復（Round 99）
+- [x] Guideline 4.0：OAuth 登入改用 in-app browser（WebBrowser.openAuthSessionAsync / SFSafariViewController）
+- [x] Guideline 5.1.1：Camera purpose string 改為具體說明（拍攝食物進行 AI 營養分析）+ 新增 NSPhotoLibraryUsageDescription
+- [x] Guideline 1.4.1：Food Scanner 添加營養資訊來源引用（USDA FoodData Central + WHO Healthy Diet Guidelines）
+- [x] Guideline 2.5.4：移除 UIBackgroundModes audio（expo-video supportsBackgroundPlayback 設為 false）
+- [x] Guideline 5.1.1(v)：帳號刪除功能已在 Edit Profile 頁面和 Home 頁面內建
