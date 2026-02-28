@@ -255,6 +255,11 @@ export default function HomeScreen() {
   // Logout confirmation modal
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  // Delete account modal
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const deleteAccountMutation = trpc.auth.deleteAccount.useMutation();
+
   // Add Record modal
   const [showAddRecord, setShowAddRecord] = useState(false);
   const [recordType, setRecordType] = useState<"food" | "workout">("food");
@@ -357,6 +362,25 @@ export default function HomeScreen() {
     await logout();
     router.replace("/auth");
   }, [logout, router]);
+
+  const handleDeleteAccount = useCallback(() => {
+    setShowDeleteAccountModal(true);
+  }, []);
+
+  const confirmDeleteAccount = useCallback(async () => {
+    setIsDeletingAccount(true);
+    try {
+      await deleteAccountMutation.mutateAsync();
+      setShowDeleteAccountModal(false);
+      await logout();
+      router.replace("/auth");
+    } catch (err) {
+      console.error("[DeleteAccount] Error:", err);
+      Alert.alert(t.deleteAccountError);
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  }, [deleteAccountMutation, logout, router, t.deleteAccountError]);
 
   const handleAddRecord = useCallback(() => {
     setRecordType("food");
@@ -1326,6 +1350,32 @@ export default function HomeScreen() {
               style={[styles.cancelBtn, { borderColor: colors.border, width: "100%" }]}
             >
               <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal visible={showDeleteAccountModal} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border, alignItems: "center", paddingVertical: 28, paddingHorizontal: 24 }]}>
+            <Text style={{ fontSize: 48, marginBottom: 12 }}>⚠️</Text>
+            <Text style={[styles.sectionTitle, { color: "#DC2626", textAlign: "center", marginBottom: 8 }]}>{t.deleteAccountTitle}</Text>
+            <Text style={{ color: colors.muted, fontSize: 14, textAlign: "center", marginBottom: 24, lineHeight: 22 }}>{t.deleteAccountMessage}</Text>
+            <TouchableOpacity
+              onPress={confirmDeleteAccount}
+              disabled={isDeletingAccount}
+              style={{ backgroundColor: isDeletingAccount ? "#FCA5A5" : "#DC2626", paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14, width: "100%", alignItems: "center", marginBottom: 10, flexDirection: "row", justifyContent: "center" }}
+            >
+              {isDeletingAccount && <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />}
+              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>{isDeletingAccount ? "..." : t.deleteAccountConfirm}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowDeleteAccountModal(false)}
+              disabled={isDeletingAccount}
+              style={[styles.cancelBtn, { borderColor: colors.border, width: "100%" }]}
+            >
+              <Text style={[styles.cancelText, { color: colors.muted }]}>{t.deleteAccountCancel}</Text>
             </TouchableOpacity>
           </View>
         </View>

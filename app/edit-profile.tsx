@@ -589,6 +589,71 @@ export default function EditProfileScreen() {
                 </Text>
               )}
             </TouchableOpacity>
+
+            {/* Delete Account Section */}
+            <View style={{ marginTop: 40, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.border }}>
+              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12, textAlign: "center", lineHeight: 20 }}>
+                {t.deleteAccountMessage}
+              </Text>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "transparent",
+                  borderWidth: 1.5,
+                  borderColor: "#DC2626",
+                  paddingVertical: 14,
+                  borderRadius: 14,
+                  alignItems: "center",
+                }}
+                onPress={() => {
+                  // Navigate back to home and trigger delete account modal
+                  router.back();
+                  // Use a small delay to let navigation complete
+                  setTimeout(() => {
+                    // We'll use a global event or just show alert here
+                    Alert.alert(
+                      t.deleteAccountTitle,
+                      t.deleteAccountMessage,
+                      [
+                        { text: t.deleteAccountCancel, style: "cancel" },
+                        {
+                          text: t.deleteAccountConfirm,
+                          style: "destructive",
+                          onPress: async () => {
+                            try {
+                              const baseUrl = getApiBaseUrl();
+                              const token = await AuthModule.getSessionToken();
+                              const res = await fetch(`${baseUrl}/api/trpc/auth.deleteAccount`, {
+                                method: "POST",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                  ...(token ? { Cookie: `session=${token}` } : {}),
+                                },
+                                body: JSON.stringify({}),
+                                credentials: "include",
+                              });
+                              if (res.ok) {
+                                await AsyncStorage.clear();
+                                await AuthModule.removeSessionToken();
+                                await AuthModule.clearUserInfo();
+                                router.replace("/auth");
+                              } else {
+                                Alert.alert(t.deleteAccountError);
+                              }
+                            } catch (err) {
+                              console.error("[DeleteAccount] Error:", err);
+                              Alert.alert(t.deleteAccountError);
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }, 100);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: "#DC2626", fontSize: 16, fontWeight: "700" }}>{t.deleteAccount}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

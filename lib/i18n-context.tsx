@@ -134,6 +134,15 @@ const en = {
   logoutMessage: "Your monsters will miss you! 🥺",
   logoutConfirm: "Log Out",
 
+  // Delete Account
+  deleteAccount: "Delete Account",
+  deleteAccountTitle: "Delete Account?",
+  deleteAccountMessage: "This will permanently delete your account and all associated data, including your monsters, workout history, food logs, and friend connections. This action cannot be undone.",
+  deleteAccountConfirm: "Delete Permanently",
+  deleteAccountCancel: "Cancel",
+  deleteAccountSuccess: "Account deleted successfully.",
+  deleteAccountError: "Failed to delete account. Please try again.",
+
   // Language
   language: "Language",
   english: "English",
@@ -962,6 +971,15 @@ const zh: Translations = {
   logoutTitle: "確定登出？",
   logoutMessage: "你的怪獸們會想你的！🥺",
   logoutConfirm: "登出",
+
+  // Delete Account
+  deleteAccount: "刪除帳號",
+  deleteAccountTitle: "確定刪除帳號？",
+  deleteAccountMessage: "這將永久刪除你的帳號及所有相關資料，包括你的怪獸、運動紀錄、飲食紀錄和好友關係。此操作無法復原。",
+  deleteAccountConfirm: "永久刪除",
+  deleteAccountCancel: "取消",
+  deleteAccountSuccess: "帳號已成功刪除。",
+  deleteAccountError: "刪除帳號失敗，請重試。",
 
   // Language
   language: "語言",

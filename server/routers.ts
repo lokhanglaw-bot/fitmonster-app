@@ -49,6 +49,17 @@ export const appRouter = router({
         }
         return { id: user.id, openId: user.openId };
       }),
+    deleteAccount: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        const userId = ctx.user.id;
+        console.log(`[Auth] Deleting account for user ${userId}`);
+        await db.deleteUserAccount(userId);
+        // Clear session cookie
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+        console.log(`[Auth] Account deleted successfully for user ${userId}`);
+        return { success: true };
+      }),
   }),
 
   // FitMonster API Routers

@@ -1041,3 +1041,9 @@
 - [x] Android: 修復對話頁面套餐圖示顯示異常 — 同上
 - [x] Android: 修復每個頁面的返回鍵消失 — fullScreenModal 改為 Android 上使用 card，back handler 優先 canGoBack
 - [x] Android: 修復對戰地圖一開啟就崩潰（彈出 app）— 新增 react-native.config.js 加入 unstable_reactLegacyComponentNames
+
+## Google Play 上架需求 - 刪除帳戶功能
+- [x] 建立 server 端刪除帳戶 API（刪除用戶所有資料）— deleteUserAccount() in db.ts + auth.deleteAccount tRPC route
+- [x] 在 app 設定頁面加入「刪除帳戶」按鈕和確認流程 — Home 頁 modal + Edit Profile 頁底部按鈕
+- [x] 建立符合 Google Play 規定的刪除帳戶說明網頁 — /delete-account 路由，含步驟說明、資料刪除表格、保留政策
+- [x] 添加中英文翻譯（deleteAccount 系列翻譯鍵）

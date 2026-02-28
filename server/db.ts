@@ -659,3 +659,38 @@ export async function getFriendsWithInfo(userId: number) {
   const friendsInfo = await getUserInfoForNearby(friendIds);
   return friendsInfo;
 }
+
+// Delete user account and all associated data
+export async function deleteUserAccount(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Import additional tables not in the default imports
+  const { chatMessages, pushTokens, monsterCaring } = await import("../drizzle/schema");
+  
+  // Delete in order to respect foreign key constraints
+  await db.delete(chatMessages).where(
+    sql`${chatMessages.senderId} = ${userId} OR ${chatMessages.receiverId} = ${userId}`
+  );
+  await db.delete(pushTokens).where(eq(pushTokens.userId, userId));
+  await db.delete(monsterCaring).where(eq(monsterCaring.userId, userId));
+  await db.delete(userQuests).where(eq(userQuests.userId, userId));
+  await db.delete(foodLogs).where(eq(foodLogs.userId, userId));
+  await db.delete(workouts).where(eq(workouts.userId, userId));
+  await db.delete(dailyStats).where(eq(dailyStats.userId, userId));
+  await db.delete(battles).where(
+    sql`${battles.challengerId} = ${userId} OR ${battles.opponentId} = ${userId}`
+  );
+  await db.delete(matchSwipes).where(
+    sql`${matchSwipes.userId} = ${userId} OR ${matchSwipes.targetUserId} = ${userId}`
+  );
+  await db.delete(friendships).where(
+    sql`${friendships.userId} = ${userId} OR ${friendships.friendId} = ${userId}`
+  );
+  await db.delete(userLocations).where(eq(userLocations.userId, userId));
+  await db.delete(monsters).where(eq(monsters.userId, userId));
+  await db.delete(profiles).where(eq(profiles.userId, userId));
+  await db.delete(users).where(eq(users.id, userId));
+  
+  return { success: true };
+}
