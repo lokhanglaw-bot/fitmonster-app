@@ -62,7 +62,8 @@ async function startServer() {
   });
 
   // Account deletion page (Google Play compliance)
-  app.get("/delete-account", (_req, res) => {
+  // Use /api/ prefix so the deployed proxy routes it to the Express server
+  app.get("/api/delete-account", (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(getDeleteAccountPage());
   });
