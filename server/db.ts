@@ -1,5 +1,6 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { createHash, randomBytes } from "crypto";
 import {
   users,
   profiles,
@@ -119,6 +120,80 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+// ============================================
+// Password Hashing Helpers
+// ============================================
+
+function hashPassword(password: string, salt: string): string {
+  return createHash("sha256").update(password + salt).digest("hex");
+}
+
+function generateSalt(): string {
+  return randomBytes(32).toString("hex");
+}
+
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createLocalUser(data: {
+  name: string;
+  email: string;
+  password: string;
+}): Promise<{ id: number; openId: string }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Check if user already exists with this email
+  const existing = await getUserByEmail(data.email);
+  if (existing) {
+    throw new Error("EMAIL_EXISTS");
+  }
+
+  const salt = generateSalt();
+  const hash = hashPassword(data.password, salt);
+  const openId = `local-${data.email.trim()}`;
+
+  await db.insert(users).values({
+    openId,
+    name: data.name,
+    email: data.email,
+    loginMethod: "local",
+    passwordHash: hash,
+    passwordSalt: salt,
+    lastSignedIn: new Date(),
+  });
+
+  const user = await getUserByOpenId(openId);
+  if (!user) throw new Error("Failed to create user");
+  return { id: user.id, openId: user.openId };
+}
+
+export async function verifyLocalUser(email: string, password: string): Promise<{ id: number; openId: string; name: string | null } | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const user = await getUserByEmail(email);
+  if (!user) return null;
+  if (!user.passwordHash || !user.passwordSalt) {
+    // Legacy user without password — deny login
+    return null;
+  }
+
+  const hash = hashPassword(password, user.passwordSalt);
+  if (hash !== user.passwordHash) {
+    return null; // Wrong password
+  }
+
+  // Update lastSignedIn
+  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
+
+  return { id: user.id, openId: user.openId, name: user.name };
 }
 
 // ============================================

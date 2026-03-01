@@ -41,8 +41,8 @@ type AuthContextType = {
   isAuthenticated: boolean;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
-  localLogin: (name: string, email: string) => Promise<void>;
-  localSignup: (name: string, email: string) => Promise<void>;
+  localLogin: (email: string, password: string) => Promise<void>;
+  localSignup: (name: string, email: string, password: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -143,27 +143,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const localLogin = useCallback(async (name: string, email: string) => {
-    const openId = `local-${email.trim()}`;
-    // Try to get real DB ID first
-    let existingId: number | null = null;
-    try {
-      const existingRaw = await AsyncStorage.getItem(LOCAL_AUTH_KEY);
-      if (existingRaw) {
-        const existing = JSON.parse(existingRaw);
-        if (existing.email === email.trim()) {
-          existingId = existing.id;
-        }
+  const localLogin = useCallback(async (email: string, password: string) => {
+    const baseUrl = getApiBaseUrl();
+    if (!baseUrl) throw new Error("Server not available");
+    const res = await fetch(`${baseUrl}/api/trpc/auth.localLogin?batch=1`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ "0": { json: { email: email.trim().toLowerCase(), password } } }),
+    });
+    const data = await res.json();
+    const result = data?.[0]?.result?.data?.json;
+    if (!result?.success) {
+      // Check for specific error messages
+      const errMsg = data?.[0]?.error?.json?.message || data?.[0]?.error?.message || "";
+      if (errMsg.includes("INVALID_CREDENTIALS")) {
+        throw new Error("INVALID_CREDENTIALS");
       }
-    } catch (_) { /* ignore */ }
-    // Sync to DB and get real DB ID (replaces Date.now() with actual auto-increment ID)
-    const dbId = await syncLocalUserToDb(openId, name, email.trim());
-    const finalId = dbId || existingId || Date.now();
+      throw new Error("INVALID_CREDENTIALS");
+    }
     const localUser = {
-      id: finalId,
-      openId,
-      name,
-      email: email.trim(),
+      id: result.id,
+      openId: result.openId,
+      name: result.name || email.split("@")[0],
+      email: email.trim().toLowerCase(),
       loginMethod: "local" as const,
       lastSignedIn: new Date().toISOString(),
     };
@@ -178,30 +180,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     setUser(userInfo);
     setLoading(false);
-    console.log("[AuthProvider] Local login successful:", name, "DB ID:", finalId);
+    console.log("[AuthProvider] Local login successful, DB ID:", result.id);
   }, []);
 
-  const localSignup = useCallback(async (name: string, email: string) => {
-    const openId = `local-${email.trim()}`;
-    // Try to get real DB ID first
-    let existingId: number | null = null;
-    try {
-      const existingRaw = await AsyncStorage.getItem(LOCAL_AUTH_KEY);
-      if (existingRaw) {
-        const existing = JSON.parse(existingRaw);
-        if (existing.email === email.trim()) {
-          existingId = existing.id;
-        }
+  const localSignup = useCallback(async (name: string, email: string, password: string) => {
+    const baseUrl = getApiBaseUrl();
+    if (!baseUrl) throw new Error("Server not available");
+    const res = await fetch(`${baseUrl}/api/trpc/auth.localSignup?batch=1`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ "0": { json: { name, email: email.trim().toLowerCase(), password } } }),
+    });
+    const data = await res.json();
+    const result = data?.[0]?.result?.data?.json;
+    if (!result?.success) {
+      const errMsg = data?.[0]?.error?.json?.message || data?.[0]?.error?.message || "";
+      if (errMsg.includes("EMAIL_EXISTS")) {
+        throw new Error("EMAIL_EXISTS");
       }
-    } catch (_) { /* ignore */ }
-    // Sync to DB and get real DB ID (replaces Date.now() with actual auto-increment ID)
-    const dbId = await syncLocalUserToDb(openId, name, email.trim());
-    const finalId = dbId || existingId || Date.now();
+      throw new Error("SIGNUP_FAILED");
+    }
     const localUser = {
-      id: finalId,
-      openId,
+      id: result.id,
+      openId: result.openId,
       name,
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       loginMethod: "local" as const,
       lastSignedIn: new Date().toISOString(),
     };
@@ -216,7 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     setUser(userInfo);
     setLoading(false);
-    console.log("[AuthProvider] Local signup successful:", name, "DB ID:", finalId);
+    console.log("[AuthProvider] Local signup successful:", name, "DB ID:", result.id);
   }, []);
 
   const logout = useCallback(async () => {

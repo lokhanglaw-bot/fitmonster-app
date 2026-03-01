@@ -68,16 +68,27 @@ export default function AuthScreen() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        await localSignup(trainerName.trim(), email.trim());
+        await localSignup(trainerName.trim(), email.trim(), password);
       } else {
-        // For sign in, use email as name if no trainer name provided
-        const displayName = email.split("@")[0];
-        await localLogin(displayName, email.trim());
+        await localLogin(email.trim(), password);
       }
       // Auth state is now set, AuthGate will redirect to home
       router.replace("/(tabs)");
-    } catch (error) {
-      Alert.alert(t.error || "Error", t.authFailed || "Authentication failed. Please try again.");
+    } catch (error: any) {
+      const msg = error?.message || "";
+      if (msg.includes("INVALID_CREDENTIALS")) {
+        Alert.alert(
+          t.error || "Error",
+          t.invalidCredentials || "Incorrect email or password. Please try again."
+        );
+      } else if (msg.includes("EMAIL_EXISTS")) {
+        Alert.alert(
+          t.error || "Error",
+          t.emailAlreadyExists || "This email is already registered. Please sign in instead."
+        );
+      } else {
+        Alert.alert(t.error || "Error", t.authFailed || "Authentication failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

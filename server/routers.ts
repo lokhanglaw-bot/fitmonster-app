@@ -25,8 +25,45 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
-    // Sync local (email/password) users to DB so they get a real DB ID
-    // This is needed because local login generates Date.now() IDs that don't exist in DB
+    // Local signup with email + password
+    localSignup: publicProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        email: z.string().email(),
+        password: z.string().min(6),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          const result = await db.createLocalUser({
+            name: input.name,
+            email: input.email.trim().toLowerCase(),
+            password: input.password,
+          });
+          return { success: true, id: result.id, openId: result.openId };
+        } catch (err: any) {
+          if (err.message === "EMAIL_EXISTS") {
+            throw new Error("EMAIL_EXISTS");
+          }
+          throw err;
+        }
+      }),
+    // Local login with email + password verification
+    localLogin: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        const user = await db.verifyLocalUser(
+          input.email.trim().toLowerCase(),
+          input.password,
+        );
+        if (!user) {
+          throw new Error("INVALID_CREDENTIALS");
+        }
+        return { success: true, id: user.id, openId: user.openId, name: user.name };
+      }),
+    // Legacy sync for backward compatibility (used by existing sessions)
     syncLocalUser: publicProcedure
       .input(z.object({
         openId: z.string().min(1),
@@ -34,7 +71,7 @@ export const appRouter = router({
         email: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        // Upsert the user into the DB
+        // Upsert the user into the DB (for OAuth and legacy users)
         await db.upsertUser({
           openId: input.openId,
           name: input.name || null,
@@ -42,7 +79,6 @@ export const appRouter = router({
           loginMethod: "local",
           lastSignedIn: new Date(),
         });
-        // Get the user back to return the real DB ID
         const user = await db.getUserByOpenId(input.openId);
         if (!user) {
           throw new Error("Failed to sync local user");

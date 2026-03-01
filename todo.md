@@ -1054,3 +1054,6 @@
 - [x] Guideline 1.4.1：Food Scanner 添加營養資訊來源引用（USDA FoodData Central + WHO Healthy Diet Guidelines）
 - [x] Guideline 2.5.4：移除 UIBackgroundModes audio（expo-video supportsBackgroundPlayback 設為 false）
 - [x] Guideline 5.1.1(v)：帳號刪除功能已在 Edit Profile 頁面和 Home 頁面內建
+
+## 安全性 Bug 修復
+- [x] 密碼錯誤也能登入 — 已新增 server-side 密碼驗證（SHA-256 + salt），前端將密碼傳送至 server 驗證，錯誤密碼會顯示「電子郵件或密碼不正確」
