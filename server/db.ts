@@ -174,15 +174,15 @@ export async function createLocalUser(data: {
   return { id: user.id, openId: user.openId };
 }
 
-export async function verifyLocalUser(email: string, password: string): Promise<{ id: number; openId: string; name: string | null } | null> {
+export async function verifyLocalUser(email: string, password: string): Promise<{ id: number; openId: string; name: string | null; status: "ok" | "needs_password" } | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   const user = await getUserByEmail(email);
   if (!user) return null;
   if (!user.passwordHash || !user.passwordSalt) {
-    // Legacy user without password — deny login
-    return null;
+    // Legacy user without password — return special status
+    return { id: user.id, openId: user.openId, name: user.name, status: "needs_password" };
   }
 
   const hash = hashPassword(password, user.passwordSalt);
@@ -193,7 +193,33 @@ export async function verifyLocalUser(email: string, password: string): Promise<
   // Update lastSignedIn
   await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
 
+  return { id: user.id, openId: user.openId, name: user.name, status: "ok" };
+}
+
+// Reset/set password for a user by email (used for forgot password and legacy account migration)
+export async function resetPasswordByEmail(email: string, newPassword: string): Promise<{ id: number; openId: string; name: string | null } | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const user = await getUserByEmail(email);
+  if (!user) return null;
+
+  const salt = generateSalt();
+  const hash = hashPassword(newPassword, salt);
+
+  await db.update(users).set({
+    passwordHash: hash,
+    passwordSalt: salt,
+    lastSignedIn: new Date(),
+  }).where(eq(users.id, user.id));
+
   return { id: user.id, openId: user.openId, name: user.name };
+}
+
+// Check if a user exists by email (for forgot password validation)
+export async function checkUserExistsByEmail(email: string): Promise<boolean> {
+  const user = await getUserByEmail(email);
+  return !!user;
 }
 
 // ============================================

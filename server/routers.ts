@@ -61,6 +61,27 @@ export const appRouter = router({
         if (!user) {
           throw new Error("INVALID_CREDENTIALS");
         }
+        if (user.status === "needs_password") {
+          throw new Error("NEEDS_PASSWORD");
+        }
+        return { success: true, id: user.id, openId: user.openId, name: user.name };
+      }),
+    // Reset password (set new password for existing account by email)
+    resetPassword: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        newPassword: z.string().min(6),
+      }))
+      .mutation(async ({ input }) => {
+        const emailNorm = input.email.trim().toLowerCase();
+        const exists = await db.checkUserExistsByEmail(emailNorm);
+        if (!exists) {
+          throw new Error("USER_NOT_FOUND");
+        }
+        const user = await db.resetPasswordByEmail(emailNorm, input.newPassword);
+        if (!user) {
+          throw new Error("RESET_FAILED");
+        }
         return { success: true, id: user.id, openId: user.openId, name: user.name };
       }),
     // Legacy sync for backward compatibility (used by existing sessions)

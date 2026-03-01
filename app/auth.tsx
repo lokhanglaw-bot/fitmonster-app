@@ -37,6 +37,10 @@ export default function AuthScreen() {
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
+  const [forgotStep, setForgotStep] = useState<"email" | "newpass" | "done">("email");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
   const router = useRouter();
   const colors = useColors();
   const { localLogin, localSignup } = useAuth({ autoFetch: false });
@@ -76,7 +80,16 @@ export default function AuthScreen() {
       router.replace("/(tabs)");
     } catch (error: any) {
       const msg = error?.message || "";
-      if (msg.includes("INVALID_CREDENTIALS")) {
+      if (msg.includes("NEEDS_PASSWORD")) {
+        // Legacy account without password — open reset password modal pre-filled
+        setForgotEmail(email.trim());
+        setForgotStep("newpass");
+        setShowForgotModal(true);
+        Alert.alert(
+          t.passwordRequired || "Password Required",
+          t.legacyAccountNeedsPassword || "This account was created before password authentication was added. Please set a new password to continue."
+        );
+      } else if (msg.includes("INVALID_CREDENTIALS")) {
         Alert.alert(
           t.error || "Error",
           t.invalidCredentials || "Incorrect email or password. Please try again."
@@ -104,19 +117,70 @@ export default function AuthScreen() {
     }
   };
 
-  const handleForgotPassword = () => {
-    if (!forgotEmail.trim()) {
-      Alert.alert(t.error || "Error", t.pleaseEnterEmail || "Please enter your email address");
-      return;
+  const handleForgotPassword = async () => {
+    if (forgotStep === "email") {
+      if (!forgotEmail.trim()) {
+        Alert.alert(t.error || "Error", t.pleaseEnterEmail || "Please enter your email address");
+        return;
+      }
+      // Validate email exists on server, then go to new password step
+      setForgotLoading(true);
+      try {
+        const { getApiBaseUrl } = require("@/constants/oauth");
+        const baseUrl = getApiBaseUrl();
+        // We just move to the new password step — the actual validation happens on reset
+        setForgotStep("newpass");
+      } catch (err) {
+        Alert.alert(t.error || "Error", t.authFailed || "Something went wrong.");
+      } finally {
+        setForgotLoading(false);
+      }
+    } else if (forgotStep === "newpass") {
+      if (!newPassword || newPassword.length < 6) {
+        Alert.alert(t.error || "Error", t.passwordTooShort || "Password must be at least 6 characters");
+        return;
+      }
+      if (newPassword !== confirmNewPassword) {
+        Alert.alert(t.error || "Error", t.passwordsDoNotMatch || "Passwords do not match");
+        return;
+      }
+      setForgotLoading(true);
+      try {
+        const { getApiBaseUrl } = require("@/constants/oauth");
+        const baseUrl = getApiBaseUrl();
+        const res = await fetch(`${baseUrl}/api/trpc/auth.resetPassword?batch=1`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ "0": { json: { email: forgotEmail.trim().toLowerCase(), newPassword } } }),
+        });
+        const data = await res.json();
+        const result = data?.[0]?.result?.data?.json;
+        if (result?.success) {
+          setForgotStep("done");
+        } else {
+          const errMsg = data?.[0]?.error?.json?.message || "";
+          if (errMsg.includes("USER_NOT_FOUND")) {
+            Alert.alert(t.error || "Error", t.userNotFound || "No account found with this email address.");
+            setForgotStep("email");
+          } else {
+            Alert.alert(t.error || "Error", t.authFailed || "Something went wrong.");
+          }
+        }
+      } catch (err) {
+        Alert.alert(t.error || "Error", t.authFailed || "Something went wrong.");
+      } finally {
+        setForgotLoading(false);
+      }
     }
-    // Simulate sending reset email
-    setForgotSent(true);
   };
 
   const closeForgotModal = () => {
     setShowForgotModal(false);
     setForgotEmail("");
     setForgotSent(false);
+    setForgotStep("email");
+    setNewPassword("");
+    setConfirmNewPassword("");
   };
 
   const isSignUp = mode === "signup";
@@ -417,11 +481,11 @@ export default function AuthScreen() {
         </View>
       </ScrollView>
 
-      {/* Forgot Password Modal */}
+      {/* Forgot Password / Reset Password Modal */}
       <Modal visible={showForgotModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {!forgotSent ? (
+            {forgotStep === "email" && (
               <>
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalIcon}>🔑</Text>
@@ -447,14 +511,18 @@ export default function AuthScreen() {
                   />
                 </View>
 
-                <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.8}>
+                <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.8} disabled={forgotLoading}>
                   <LinearGradient
                     colors={["#22C55E", "#16A34A"] as const}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={styles.submitBtn}
+                    style={[styles.submitBtn, forgotLoading && { opacity: 0.6 }]}
                   >
-                    <Text style={styles.submitText}>{t.sendResetLink}</Text>
+                    {forgotLoading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.submitText}>{t.next}</Text>
+                    )}
                   </LinearGradient>
                 </TouchableOpacity>
 
@@ -465,19 +533,83 @@ export default function AuthScreen() {
                   <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
                 </TouchableOpacity>
               </>
-            ) : (
+            )}
+
+            {forgotStep === "newpass" && (
+              <>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalIcon}>🔒</Text>
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.setNewPassword}</Text>
+                </View>
+                <Text style={[styles.modalDesc, { color: colors.muted }]}>
+                  {forgotEmail}
+                </Text>
+
+                <View style={styles.inputGroup}>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.labelIcon}>🔐</Text>
+                    <Text style={[styles.label, { color: colors.foreground }]}>{t.newPasswordLabel}</Text>
+                  </View>
+                  <TextInput
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="••••••••"
+                    placeholderTextColor={colors.muted}
+                    secureTextEntry
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.labelIcon}>🔐</Text>
+                    <Text style={[styles.label, { color: colors.foreground }]}>{t.confirmNewPasswordLabel}</Text>
+                  </View>
+                  <TextInput
+                    value={confirmNewPassword}
+                    onChangeText={setConfirmNewPassword}
+                    placeholder="••••••••"
+                    placeholderTextColor={colors.muted}
+                    secureTextEntry
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                  />
+                </View>
+
+                <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.8} disabled={forgotLoading}>
+                  <LinearGradient
+                    colors={["#22C55E", "#16A34A"] as const}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.submitBtn, forgotLoading && { opacity: 0.6 }]}
+                  >
+                    {forgotLoading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.submitText}>{t.resetPassword}</Text>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.cancelBtn, { borderColor: colors.border }]}
+                  onPress={closeForgotModal}
+                >
+                  <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {forgotStep === "done" && (
               <>
                 <View style={styles.successContainer}>
                   <View style={[styles.successCircle, { backgroundColor: "#DCFCE7" }]}>
                     <Text style={styles.successIcon}>✅</Text>
                   </View>
                   <Text style={[styles.modalTitle, { color: colors.foreground, marginTop: 16 }]}>
-                    {t.checkYourEmail}
+                    {t.passwordResetSuccess}
                   </Text>
                   <Text style={[styles.modalDesc, { color: colors.muted, textAlign: "center" }]}>
-                    {t.resetLinkSent}{"\n"}
-                    <Text style={{ fontWeight: "700", color: colors.foreground }}>{forgotEmail}</Text>
-                    {"\n\n"}{t.checkInboxInstructions}
+                    {t.passwordResetSuccessDesc}
                   </Text>
                 </View>
 

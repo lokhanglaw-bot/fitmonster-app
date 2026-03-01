@@ -156,6 +156,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!result?.success) {
       // Check for specific error messages
       const errMsg = data?.[0]?.error?.json?.message || data?.[0]?.error?.message || "";
+      if (errMsg.includes("NEEDS_PASSWORD")) {
+        throw new Error("NEEDS_PASSWORD");
+      }
       if (errMsg.includes("INVALID_CREDENTIALS")) {
         throw new Error("INVALID_CREDENTIALS");
       }

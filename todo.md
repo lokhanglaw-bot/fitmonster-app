@@ -1057,3 +1057,10 @@
 
 ## 安全性 Bug 修復
 - [x] 密碼錯誤也能登入 — 已新增 server-side 密碼驗證（SHA-256 + salt），前端將密碼傳送至 server 驗證，錯誤密碼會顯示「電子郵件或密碼不正確」
+
+## 舊帳號遷移 - 重設密碼流程
+- [x] Server 端新增 resetPassword tRPC 路由（透過 email 查找帳號，設定新密碼）
+- [x] Server 端 localLogin 處理舊帳號（無 passwordHash）的情況，返回 NEEDS_PASSWORD 狀態
+- [x] 前端 auth.tsx 的「Forgot Password」改為 3 步驟實際重設密碼流程（email → 新密碼 → 完成）
+- [x] 前端登入時偵測舊帳號（NEEDS_PASSWORD），自動彈出重設密碼 Modal
+- [x] 中英文翻譯更新（9 個新翻譯鍵）
