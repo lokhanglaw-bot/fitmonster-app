@@ -175,6 +175,8 @@ export default function EditProfileScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [matchPref, setMatchPref] = useState<"all" | "male" | "female">("all");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load existing profile data
   useEffect(() => {
@@ -595,77 +597,95 @@ export default function EditProfileScreen() {
               <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12, textAlign: "center", lineHeight: 20 }}>
                 {t.deleteAccountMessage}
               </Text>
-              <TouchableOpacity
-                style={{
-                  backgroundColor: "transparent",
-                  borderWidth: 1.5,
-                  borderColor: "#DC2626",
-                  paddingVertical: 14,
-                  borderRadius: 14,
-                  alignItems: "center",
-                }}
-                onPress={() => {
-                  // Navigate back to home and trigger delete account modal
-                  router.back();
-                  // Use a small delay to let navigation complete
-                  setTimeout(() => {
-                    // We'll use a global event or just show alert here
-                    Alert.alert(
-                      t.deleteAccountTitle,
-                      t.deleteAccountMessage,
-                      [
-                        { text: t.deleteAccountCancel, style: "cancel" },
-                        {
-                          text: t.deleteAccountConfirm,
-                          style: "destructive",
-                          onPress: async () => {
-                            try {
-                              const baseUrl = getApiBaseUrl();
-                              const token = await AuthModule.getSessionToken();
-                              const headers: Record<string, string> = {
-                                "Content-Type": "application/json",
-                              };
-                              if (token) {
-                                headers["Authorization"] = `Bearer ${token}`;
-                                headers["Cookie"] = `session=${token}`;
-                              }
-                              // Fallback for local login users who don't have session tokens
-                              if (!token) {
-                                const localAuthRaw = await AsyncStorage.getItem("@fitmonster_local_auth");
-                                if (localAuthRaw) {
-                                  const localUser = JSON.parse(localAuthRaw);
-                                  if (localUser.id) headers["X-User-Id"] = String(localUser.id);
-                                  if (localUser.openId) headers["X-Open-Id"] = localUser.openId;
-                                }
-                              }
-                              const res = await fetch(`${baseUrl}/api/trpc/auth.deleteAccount?batch=1`, {
-                                method: "POST",
-                                headers,
-                                body: JSON.stringify({"0":{"json":null}}),
-                                credentials: "include",
-                              });
-                              if (res.ok) {
-                                await AsyncStorage.clear();
-                                await AuthModule.removeSessionToken();
-                                await AuthModule.clearUserInfo();
-                                router.replace("/auth");
-                              } else {
-                                Alert.alert(t.deleteAccountError);
-                              }
-                            } catch (err) {
-                              console.error("[DeleteAccount] Error:", err);
-                              Alert.alert(t.deleteAccountError);
-                            }
-                          },
-                        },
-                      ]
-                    );
-                  }, 100);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={{ color: "#DC2626", fontSize: 16, fontWeight: "700" }}>{t.deleteAccount}</Text>
-              </TouchableOpacity>
+              {!showDeleteConfirm ? (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: "transparent",
+                    borderWidth: 1.5,
+                    borderColor: "#DC2626",
+                    paddingVertical: 14,
+                    borderRadius: 14,
+                    alignItems: "center",
+                  }}
+                  onPress={() => setShowDeleteConfirm(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: "#DC2626", fontSize: 16, fontWeight: "700" }}>{t.deleteAccount}</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={{ gap: 10 }}>
+                  <Text style={{ color: "#DC2626", fontSize: 14, fontWeight: "600", textAlign: "center", marginBottom: 4 }}>
+                    {t.deleteAccountTitle}
+                  </Text>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: "#DC2626",
+                      paddingVertical: 14,
+                      borderRadius: 14,
+                      alignItems: "center",
+                      opacity: isDeleting ? 0.6 : 1,
+                    }}
+                    disabled={isDeleting}
+                    onPress={async () => {
+                      setIsDeleting(true);
+                      try {
+                        const baseUrl = getApiBaseUrl();
+                        const token = await AuthModule.getSessionToken();
+                        const headers: Record<string, string> = {
+                          "Content-Type": "application/json",
+                        };
+                        if (token) {
+                          headers["Authorization"] = `Bearer ${token}`;
+                          headers["Cookie"] = `session=${token}`;
+                        }
+                        if (!token) {
+                          const localAuthRaw = await AsyncStorage.getItem("@fitmonster_local_auth");
+                          if (localAuthRaw) {
+                            const localUser = JSON.parse(localAuthRaw);
+                            if (localUser.id) headers["X-User-Id"] = String(localUser.id);
+                            if (localUser.openId) headers["X-Open-Id"] = localUser.openId;
+                          }
+                        }
+                        const res = await fetch(`${baseUrl}/api/trpc/auth.deleteAccount?batch=1`, {
+                          method: "POST",
+                          headers,
+                          body: JSON.stringify({"0":{"json":null}}),
+                          credentials: "include",
+                        });
+                        if (res.ok) {
+                          await AsyncStorage.clear();
+                          await AuthModule.removeSessionToken();
+                          await AuthModule.clearUserInfo();
+                          router.replace("/auth");
+                        } else {
+                          Alert.alert(t.deleteAccountError);
+                          setIsDeleting(false);
+                        }
+                      } catch (err) {
+                        console.error("[DeleteAccount] Error:", err);
+                        Alert.alert(t.deleteAccountError);
+                        setIsDeleting(false);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
+                      {isDeleting ? "..." : t.deleteAccountConfirm}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      alignItems: "center",
+                    }}
+                    onPress={() => setShowDeleteConfirm(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "600" }}>{t.deleteAccountCancel}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
         </ScrollView>

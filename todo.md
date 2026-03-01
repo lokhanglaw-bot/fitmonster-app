@@ -1071,3 +1071,4 @@
 - [x] Bug 3: 新增 server 端 monster 恢復邏輯 — 當 AsyncStorage 無資料時自動從 monsters.list API 拉回
 - [x] Bug 4: 修正 KeyboardAvoidingView offset（iOS 使用 insets.top）+ input bar 使用 insets.bottom
 - [x] Bug 5: 修正 tRPC batch 格式 + 新增本地用戶 X-User-Id/X-Open-Id fallback headers
+- [x] Bug 6: Delete Account 按鈕在 web preview 中無反應 — 改為 inline 確認流程，不再依賴 router.back() + Alert.alert()
