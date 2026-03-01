@@ -54,11 +54,15 @@ export const appRouter = router({
         password: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const user = await db.verifyLocalUser(
-          input.email.trim().toLowerCase(),
-          input.password,
-        );
+        const emailNorm = input.email.trim().toLowerCase();
+        // First check if the account exists at all
+        const exists = await db.checkUserExistsByEmail(emailNorm);
+        if (!exists) {
+          throw new Error("ACCOUNT_NOT_FOUND");
+        }
+        const user = await db.verifyLocalUser(emailNorm, input.password);
         if (!user) {
+          // Account exists but password is wrong
           throw new Error("INVALID_CREDENTIALS");
         }
         if (user.status === "needs_password") {

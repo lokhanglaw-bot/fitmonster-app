@@ -1079,3 +1079,9 @@
 - [x] Bug 3: Apple ID 登入有時會死機（crash）
 - [x] Bug 4: 刪除帳戶後再登入顯示 update password，應顯示「帳號不存在」
 - [x] Bug 5: Android 版本沒有刪除帳戶按鈕
+
+## Round 104: Bug 4 殘留修復 + Auth 錯誤訊息改善
+
+- [x] Bug 4 修復: server localLogin 當 user 不存在時應拋出 ACCOUNT_NOT_FOUND 而非 INVALID_CREDENTIALS
+- [x] Bug 4 修復: app/auth.tsx handleEmailAuth 處理 ACCOUNT_NOT_FOUND 顯示「帳號不存在，請註冊」
+- [x] 改善: auth.tsx 錯誤訊息更具體（NEEDS_PASSWORD 顯示「請設定新密碼」）

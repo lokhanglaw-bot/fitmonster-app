@@ -80,14 +80,20 @@ export default function AuthScreen() {
       router.replace("/(tabs)");
     } catch (error: any) {
       const msg = error?.message || "";
-      if (msg.includes("NEEDS_PASSWORD")) {
+      if (msg.includes("ACCOUNT_NOT_FOUND")) {
+        // Account was deleted or never existed
+        Alert.alert(
+          t.noAccount || "No Account",
+          t.accountNotFound || "No account found with this email. Please sign up to create a new account."
+        );
+      } else if (msg.includes("NEEDS_PASSWORD")) {
         // Legacy account without password — open reset password modal pre-filled
         setForgotEmail(email.trim());
         setForgotStep("newpass");
         setShowForgotModal(true);
         Alert.alert(
-          t.passwordRequired || "Password Required",
-          t.legacyAccountNeedsPassword || "This account was created before password authentication was added. Please set a new password to continue."
+          t.passwordRequired || "Set New Password",
+          t.legacyAccountNeedsPassword || "This account needs a password. Please set a new password to continue."
         );
       } else if (msg.includes("INVALID_CREDENTIALS")) {
         Alert.alert(
