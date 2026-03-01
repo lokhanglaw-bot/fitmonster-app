@@ -1064,3 +1064,10 @@
 - [x] 前端 auth.tsx 的「Forgot Password」改為 3 步驟實際重設密碼流程（email → 新密碼 → 完成）
 - [x] 前端登入時偵測舊帳號（NEEDS_PASSWORD），自動彈出重設密碼 Modal
 - [x] 中英文翻譯更新（9 個新翻譯鍵）
+
+## 用戶回報 Bug 修復（2026-03-01）
+- [x] Bug 1: AuthGate 已正確實作 — 未認證用戶會被重導到 /auth，loading 時顯示 spinner
+- [x] Bug 2: 調查完成 — Apple/Google 為獨立帳戶（不同 openId），這是正常行為，未來可根據 email 合併
+- [x] Bug 3: 新增 server 端 monster 恢復邏輯 — 當 AsyncStorage 無資料時自動從 monsters.list API 拉回
+- [x] Bug 4: 修正 KeyboardAvoidingView offset（iOS 使用 insets.top）+ input bar 使用 insets.bottom
+- [x] Bug 5: 修正 tRPC batch 格式 + 新增本地用戶 X-User-Id/X-Open-Id fallback headers

@@ -424,8 +424,61 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
             dispatch({ type: "HYDRATE", payload: saved });
           }
         } else {
-          // New user — start with clean state
+          // No local data — try to recover monsters from server
           dispatch({ type: "FULL_RESET" });
+          try {
+            const apiBase = getApiBaseUrl();
+            if (apiBase) {
+              const headers: Record<string, string> = { "Content-Type": "application/json" };
+              if (Platform.OS !== "web") {
+                const token = await Auth.getSessionToken();
+                if (token) headers["Authorization"] = `Bearer ${token}`;
+              }
+              if (!headers["Authorization"]) {
+                const localAuthRaw = await AsyncStorage.getItem("@fitmonster_local_auth");
+                if (localAuthRaw) {
+                  const localUser = JSON.parse(localAuthRaw);
+                  if (localUser.id) headers["X-User-Id"] = String(localUser.id);
+                  if (localUser.openId) headers["X-Open-Id"] = localUser.openId;
+                }
+              }
+              const resp = await fetch(`${apiBase}/api/trpc/monsters.list?batch=1&input=${encodeURIComponent(JSON.stringify({"0":{json:null}}))}`, {
+                method: "GET",
+                headers,
+                credentials: "include",
+              });
+              if (resp.ok) {
+                const data = await resp.json();
+                const serverMonsters = data?.[0]?.result?.data?.json;
+                if (Array.isArray(serverMonsters) && serverMonsters.length > 0) {
+                  console.log(`[Activity] Recovered ${serverMonsters.length} monsters from server`);
+                  const recovered: MonsterData[] = serverMonsters.map((m: any) => ({
+                    name: m.name || "Monster",
+                    type: m.monsterType || m.type || "bodybuilder",
+                    level: m.level || 1,
+                    currentHp: m.currentHp || 100,
+                    maxHp: m.maxHp || 100,
+                    currentExp: m.currentExp || 0,
+                    expToNextLevel: m.expToNextLevel || 100,
+                    strength: m.strength || 10,
+                    defense: m.defense || 10,
+                    agility: m.agility || 10,
+                    evolutionProgress: m.evolutionProgress || 0,
+                    evolutionMax: 100,
+                    status: m.status || "rookie",
+                    stage: m.evolutionStage || m.stage || 1,
+                  }));
+                  dispatch({ type: "SET_MONSTERS", payload: recovered });
+                  const activeIdx = serverMonsters.findIndex((m: any) => m.isActive);
+                  if (activeIdx >= 0) {
+                    dispatch({ type: "SET_ACTIVE_MONSTER", payload: { index: activeIdx } });
+                  }
+                }
+              }
+            }
+          } catch (recoverErr) {
+            console.log("[Activity] Server monster recovery failed (non-critical):", recoverErr);
+          }
         }
       } catch (e) {
         console.log("Failed to load activity state:", e);

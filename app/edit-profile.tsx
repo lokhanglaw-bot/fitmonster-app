@@ -622,13 +622,26 @@ export default function EditProfileScreen() {
                             try {
                               const baseUrl = getApiBaseUrl();
                               const token = await AuthModule.getSessionToken();
-                              const res = await fetch(`${baseUrl}/api/trpc/auth.deleteAccount`, {
+                              const headers: Record<string, string> = {
+                                "Content-Type": "application/json",
+                              };
+                              if (token) {
+                                headers["Authorization"] = `Bearer ${token}`;
+                                headers["Cookie"] = `session=${token}`;
+                              }
+                              // Fallback for local login users who don't have session tokens
+                              if (!token) {
+                                const localAuthRaw = await AsyncStorage.getItem("@fitmonster_local_auth");
+                                if (localAuthRaw) {
+                                  const localUser = JSON.parse(localAuthRaw);
+                                  if (localUser.id) headers["X-User-Id"] = String(localUser.id);
+                                  if (localUser.openId) headers["X-Open-Id"] = localUser.openId;
+                                }
+                              }
+                              const res = await fetch(`${baseUrl}/api/trpc/auth.deleteAccount?batch=1`, {
                                 method: "POST",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                  ...(token ? { Cookie: `session=${token}` } : {}),
-                                },
-                                body: JSON.stringify({}),
+                                headers,
+                                body: JSON.stringify({"0":{"json":null}}),
                                 credentials: "include",
                               });
                               if (res.ok) {

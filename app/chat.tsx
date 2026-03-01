@@ -784,8 +784,8 @@ export default function ChatScreen() {
     <ScreenContainer edges={["top", "left", "right"]}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : insets.top}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
       >
         {/* Header */}
         <View
@@ -864,7 +864,7 @@ export default function ChatScreen() {
 
         {/* Input Bar */}
         {!isRecording && (
-          <View style={[styles.inputBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 8) : 8 }]}>
+          <View style={[styles.inputBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 8) }]}>
             {/* Emoji toggle button */}
             <TouchableOpacity
               onPress={toggleEmojiPicker}
