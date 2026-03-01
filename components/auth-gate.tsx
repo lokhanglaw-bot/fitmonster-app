@@ -1,9 +1,11 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter, useSegments } from "expo-router";
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { View, ActivityIndicator, StyleSheet, Platform } from "react-native";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getApiBaseUrl } from "@/constants/oauth";
+import * as AuthModule from "@/lib/_core/auth";
 
 const PROFILE_COMPLETED_KEY = "@fitmonster_profile_completed";
 
@@ -39,7 +41,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [profileChecked, setProfileChecked] = useState(false);
   const [profileCompleted, setProfileCompleted] = useState<boolean | null>(null);
 
-  // Check if profile is completed (from local storage cache)
+  // Check if profile is completed (from local storage cache, then server fallback)
   useEffect(() => {
     if (!isAuthenticated || !user) {
       setProfileChecked(false);
@@ -49,13 +51,57 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
     const checkProfile = async () => {
       try {
-        const key = `${PROFILE_COMPLETED_KEY}_${user.openId || user.id}`;
+        const userKey = user.openId || String(user.id);
+        const key = `${PROFILE_COMPLETED_KEY}_${userKey}`;
         const cached = await AsyncStorage.getItem(key);
         if (cached === "true") {
           setProfileCompleted(true);
           setProfileChecked(true);
           return;
         }
+
+        // Not cached locally — check server DB for profile completion
+        try {
+          const baseUrl = getApiBaseUrl();
+          if (baseUrl) {
+            const hdrs: Record<string, string> = { "Content-Type": "application/json" };
+            if (Platform.OS !== "web") {
+              const tok = await AuthModule.getSessionToken();
+              if (tok) hdrs["Authorization"] = `Bearer ${tok}`;
+            }
+            // For local login users: add X-User-Id and X-Open-Id headers
+            if (!hdrs["Authorization"]) {
+              try {
+                const localAuthRaw = await AsyncStorage.getItem("@fitmonster_local_auth");
+                if (localAuthRaw) {
+                  const localUser = JSON.parse(localAuthRaw);
+                  if (localUser.id) hdrs["X-User-Id"] = String(localUser.id);
+                  if (localUser.openId) hdrs["X-Open-Id"] = localUser.openId;
+                }
+              } catch (_) { /* ignore */ }
+            }
+            const res = await fetch(`${baseUrl}/api/trpc/profile.get?batch=1&input=${encodeURIComponent(JSON.stringify({"0":{"json":null}}))}`, {
+              method: "GET",
+              headers: hdrs,
+              credentials: "include",
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const profile = data?.[0]?.result?.data?.json;
+              if (profile && profile.profileCompleted) {
+                // Server says profile is completed — cache locally and skip setup
+                console.log("[AuthGate] Server profile found with profileCompleted=true, caching locally");
+                await AsyncStorage.setItem(key, "true");
+                setProfileCompleted(true);
+                setProfileChecked(true);
+                return;
+              }
+            }
+          }
+        } catch (serverErr) {
+          console.log("[AuthGate] Server profile check failed (non-critical):", serverErr);
+        }
+
         // Default to not completed for new users
         setProfileCompleted(false);
         setProfileChecked(true);

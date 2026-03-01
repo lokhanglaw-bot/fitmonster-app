@@ -85,6 +85,8 @@ export const appRouter = router({
         return { success: true, id: user.id, openId: user.openId, name: user.name };
       }),
     // Legacy sync for backward compatibility (used by existing sessions)
+    // IMPORTANT: Only updates existing users, does NOT create new ones.
+    // This prevents deleted accounts from being "resurrected" by the client sync.
     syncLocalUser: publicProcedure
       .input(z.object({
         openId: z.string().min(1),
@@ -92,7 +94,13 @@ export const appRouter = router({
         email: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        // Upsert the user into the DB (for OAuth and legacy users)
+        // First check if user exists — do NOT create if missing
+        const existingUser = await db.getUserByOpenId(input.openId);
+        if (!existingUser) {
+          // User was deleted or never existed — return error
+          throw new Error("ACCOUNT_NOT_FOUND");
+        }
+        // Only update existing user
         await db.upsertUser({
           openId: input.openId,
           name: input.name || null,
@@ -100,11 +108,7 @@ export const appRouter = router({
           loginMethod: "local",
           lastSignedIn: new Date(),
         });
-        const user = await db.getUserByOpenId(input.openId);
-        if (!user) {
-          throw new Error("Failed to sync local user");
-        }
-        return { id: user.id, openId: user.openId };
+        return { id: existingUser.id, openId: existingUser.openId };
       }),
     deleteAccount: protectedProcedure
       .mutation(async ({ ctx }) => {

@@ -112,7 +112,14 @@ export default function AuthScreen() {
     try {
       await startOAuthLogin();
     } catch (error) {
-      Alert.alert(t.error || "Error", `${provider} ${t.loginFailed || "login failed. Please try again."}`);
+      console.error(`[Auth] ${provider} login error:`, error);
+      if (Platform.OS === "web") {
+        alert(`${provider} login failed. Please try again.`);
+      } else {
+        Alert.alert(t.error || "Error", `${provider} ${t.loginFailed || "login failed. Please try again."}`);
+      }
+    } finally {
+      // Always reset loading state, even if OAuth flow completes or is cancelled
       setLoading(false);
     }
   };

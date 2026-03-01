@@ -1072,3 +1072,10 @@
 - [x] Bug 4: 修正 KeyboardAvoidingView offset（iOS 使用 insets.top）+ input bar 使用 insets.bottom
 - [x] Bug 5: 修正 tRPC batch 格式 + 新增本地用戶 X-User-Id/X-Open-Id fallback headers
 - [x] Bug 6: Delete Account 按鈕在 web preview 中無反應 — 改為 inline 確認流程，不再依賴 router.back() + Alert.alert()
+
+## Round 103: 用戶回報 Critical Bugs
+- [x] Bug 1: 每次開 App 都要更新 profile（身高/體重/年齡），應只在第一次註冊後彈出
+- [x] Bug 2: 刪除帳戶後沒有自動登出，應清除 session 並跳轉到登入頁
+- [x] Bug 3: Apple ID 登入有時會死機（crash）
+- [x] Bug 4: 刪除帳戶後再登入顯示 update password，應顯示「帳號不存在」
+- [x] Bug 5: Android 版本沒有刪除帳戶按鈕

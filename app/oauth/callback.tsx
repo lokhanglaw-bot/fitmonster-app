@@ -269,6 +269,12 @@ export default function OAuthCallback() {
             <Text className="text-base leading-6 text-center text-foreground">
               {errorMessage}
             </Text>
+            <Text
+              className="mt-4 text-base font-semibold text-primary"
+              onPress={() => router.replace("/auth")}
+            >
+              Back to Login
+            </Text>
           </>
         )}
       </ThemedView>

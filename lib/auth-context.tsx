@@ -8,7 +8,8 @@ import { getApiBaseUrl } from "@/constants/oauth";
 const LOCAL_AUTH_KEY = "@fitmonster_local_auth";
 
 // Sync local user to backend DB and get real DB ID
-async function syncLocalUserToDb(openId: string, name: string, email: string): Promise<number | null> {
+// Return value: positive number = DB ID, null = server unavailable (keep local), "ACCOUNT_NOT_FOUND" = deleted
+async function syncLocalUserToDb(openId: string, name: string, email: string): Promise<number | null | "ACCOUNT_NOT_FOUND"> {
   try {
     const baseUrl = getApiBaseUrl();
     if (!baseUrl) return null;
@@ -18,6 +19,15 @@ async function syncLocalUserToDb(openId: string, name: string, email: string): P
       body: JSON.stringify({ "0": { json: { openId, name, email } } }),
     });
     if (!res.ok) {
+      // Check if the error is ACCOUNT_NOT_FOUND
+      try {
+        const errData = await res.json();
+        const errMsg = errData?.[0]?.error?.json?.message || errData?.[0]?.error?.message || "";
+        if (errMsg.includes("ACCOUNT_NOT_FOUND")) {
+          console.warn("[AuthProvider] syncLocalUser: account not found (deleted)");
+          return "ACCOUNT_NOT_FOUND";
+        }
+      } catch (_) { /* ignore parse error */ }
       console.warn("[AuthProvider] syncLocalUser failed:", res.status);
       return null;
     }
@@ -67,16 +77,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const openId = localUser.openId || `local-${localUser.email}`;
           // Sync to DB to get real DB ID (fixes Date.now() IDs that don't exist in DB)
           const dbId = await syncLocalUserToDb(openId, localUser.name, localUser.email);
+
+          // If account was deleted on server, clear local auth and treat as logged out
+          if (dbId === "ACCOUNT_NOT_FOUND") {
+            console.log("[AuthProvider] Account was deleted on server, clearing local auth");
+            await AsyncStorage.removeItem(LOCAL_AUTH_KEY);
+            await Auth.removeSessionToken();
+            await Auth.clearUserInfo();
+            setUser(null);
+            return;
+          }
+
           const finalId = dbId || localUser.id || 0;
           // Update stored ID if we got a real DB ID
-          if (dbId && dbId !== localUser.id) {
+          if (dbId && typeof dbId === "number" && dbId !== localUser.id) {
             console.log(`[AuthProvider] Updating local user ID from ${localUser.id} to DB ID ${dbId}`);
             localUser.id = dbId;
             localUser.openId = openId;
             await AsyncStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(localUser));
           }
           const userInfo: Auth.User = {
-            id: finalId,
+            id: typeof finalId === "number" ? finalId : localUser.id || 0,
             openId,
             name: localUser.name,
             email: localUser.email,
@@ -249,14 +270,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (Platform.OS === "web") {
       fetchUser();
     } else {
-      // Native: check local auth first for fast startup
-      AsyncStorage.getItem(LOCAL_AUTH_KEY).then((localRaw) => {
+      // Native: check local auth first for fast startup, then verify with server
+      AsyncStorage.getItem(LOCAL_AUTH_KEY).then(async (localRaw) => {
         if (localRaw) {
           try {
             const localUser = JSON.parse(localRaw);
+            const openId = localUser.openId || `local-${localUser.email}`;
             const userInfo: Auth.User = {
               id: localUser.id || 0,
-              openId: localUser.openId || `local-${localUser.email}`,
+              openId,
               name: localUser.name,
               email: localUser.email,
               loginMethod: "local",
@@ -264,6 +286,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             };
             setUser(userInfo);
             setLoading(false);
+
+            // Background verify: check if account still exists on server
+            // If deleted, clear local auth and log out
+            const dbResult = await syncLocalUserToDb(openId, localUser.name, localUser.email);
+            if (dbResult === "ACCOUNT_NOT_FOUND") {
+              console.log("[AuthProvider] Background check: account deleted on server, logging out");
+              await AsyncStorage.removeItem(LOCAL_AUTH_KEY);
+              await Auth.removeSessionToken();
+              await Auth.clearUserInfo();
+              setUser(null);
+            } else if (dbResult && typeof dbResult === "number" && dbResult !== localUser.id) {
+              // Update local ID if server returned a different one
+              localUser.id = dbResult;
+              localUser.openId = openId;
+              await AsyncStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(localUser));
+              setUser({
+                ...userInfo,
+                id: dbResult,
+              });
+            }
             return;
           } catch (e) {
             // Fall through

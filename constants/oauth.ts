@@ -113,13 +113,22 @@ export async function startOAuthLogin(): Promise<string | null> {
     return null;
   }
 
+  // Warm up the browser first to prevent cold-start crashes on some devices
+  try {
+    await WebBrowser.warmUpAsync();
+  } catch (_) {
+    // warmUp is best-effort, ignore errors
+  }
+
   // Use WebBrowser.openAuthSessionAsync for in-app browser (SFSafariViewController on iOS,
   // Chrome Custom Tabs on Android) — required by Apple Guideline 4.0
   const redirectUri = getRedirectUri();
   try {
     console.log("[OAuth] Opening auth session with WebBrowser...");
+    console.log("[OAuth] Login URL:", loginUrl);
+    console.log("[OAuth] Redirect URI:", redirectUri);
     const result = await WebBrowser.openAuthSessionAsync(loginUrl, redirectUri);
-    console.log("[OAuth] WebBrowser result:", result);
+    console.log("[OAuth] WebBrowser result:", JSON.stringify(result));
     if (result.type === "success" && result.url) {
       // The URL contains the OAuth callback params — Expo Router will handle the deep link
       console.log("[OAuth] Auth session succeeded, URL:", result.url);
@@ -135,6 +144,13 @@ export async function startOAuthLogin(): Promise<string | null> {
       await Linking.openURL(loginUrl);
     } catch (fallbackError) {
       console.error("[OAuth] Fallback Linking.openURL also failed:", fallbackError);
+    }
+  } finally {
+    // Cool down the browser to release resources
+    try {
+      await WebBrowser.coolDownAsync();
+    } catch (_) {
+      // coolDown is best-effort, ignore errors
     }
   }
 

@@ -164,7 +164,7 @@ export default function EditProfileScreen() {
   const colors = useColors();
   const { t } = useI18n();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const [birthday, setBirthday] = useState("");
   const [gender, setGender] = useState<"male" | "female" | null>(null);
@@ -653,17 +653,32 @@ export default function EditProfileScreen() {
                           credentials: "include",
                         });
                         if (res.ok) {
+                          // Clear all local storage and auth state
                           await AsyncStorage.clear();
                           await AuthModule.removeSessionToken();
                           await AuthModule.clearUserInfo();
+                          // Call logout to clear AuthContext user state
+                          // This ensures AuthGate detects user=null and redirects to /auth
+                          await logout();
+                          // Force navigate to auth page
                           router.replace("/auth");
                         } else {
-                          Alert.alert(t.deleteAccountError);
+                          const errText = await res.text().catch(() => "");
+                          console.error("[DeleteAccount] Server error:", res.status, errText);
+                          if (Platform.OS === "web") {
+                            alert(t.deleteAccountError);
+                          } else {
+                            Alert.alert(t.deleteAccountError);
+                          }
                           setIsDeleting(false);
                         }
                       } catch (err) {
                         console.error("[DeleteAccount] Error:", err);
-                        Alert.alert(t.deleteAccountError);
+                        if (Platform.OS === "web") {
+                          alert(t.deleteAccountError);
+                        } else {
+                          Alert.alert(t.deleteAccountError);
+                        }
                         setIsDeleting(false);
                       }
                     }}
@@ -710,6 +725,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 24,
+    paddingBottom: 80,
   },
   headerRow: {
     flexDirection: "row",
