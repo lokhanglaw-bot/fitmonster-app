@@ -154,10 +154,10 @@ export default function BattleScreen() {
   const [locationTooltip, setLocationTooltip] = useState<{ friendId: number; text: string } | null>(null);
   const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Real backend queries
-  const friendsQuery = trpc.friends.list.useQuery(undefined, { retry: 1 });
-  const pendingQuery = trpc.friends.pendingRequests.useQuery(undefined, { retry: 1 });
-  const sentQuery = trpc.friends.sentRequests.useQuery(undefined, { retry: 1 });
+  // Real backend queries — poll every 10s so sender sees acceptance in near real-time
+  const friendsQuery = trpc.friends.list.useQuery(undefined, { retry: 1, refetchInterval: 10000 });
+  const pendingQuery = trpc.friends.pendingRequests.useQuery(undefined, { retry: 1, refetchInterval: 10000 });
+  const sentQuery = trpc.friends.sentRequests.useQuery(undefined, { retry: 1, refetchInterval: 10000 });
   const acceptMutation = trpc.friends.acceptRequest.useMutation();
   const rejectMutation = trpc.friends.rejectRequest.useMutation();
   const sendRequestMutation = trpc.friends.sendRequest.useMutation();
@@ -167,7 +167,7 @@ export default function BattleScreen() {
 
   // Sync real friends data from backend
   useEffect(() => {
-    if (friendsQuery.data && friendsQuery.data.length > 0) {
+    if (friendsQuery.data) {
       const realFriends: Friend[] = friendsQuery.data.map((f: any) => {
         const mType = (f.activeMonster?.monsterType || f.monsterType || 'bodybuilder').toLowerCase();
         const mName = f.activeMonster?.name || f.monsterName || (mType.charAt(0).toUpperCase() + mType.slice(1));
@@ -389,11 +389,10 @@ export default function BattleScreen() {
       },
     ]);
 
-    // Send real friend request to backend
+    // Send real friend request to backend — only refresh sent/pending, NOT friends list
+    // (friendship is still pending, should not appear in friends until accepted)
     sendRequestMutation.mutate({ targetUserId: opp.id }, {
       onSuccess: () => {
-        friendsQuery.refetch();
-        pendingQuery.refetch();
         sentQuery.refetch();
       },
     });

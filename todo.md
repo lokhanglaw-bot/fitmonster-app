@@ -1095,3 +1095,9 @@
 
 - [x] 將 Google Maps API Key 設為環境變數
 - [x] 在 app.config.ts 中設定 Android Google Maps API Key
+
+## Round 107: 交友邏輯 + 聊天文字倒轉
+
+- [x] Bug: 發送交友邀請後發送者自動加了好友（應等對方確認才加）
+- [x] Bug: 對方接受邀請後，發送者的 Sent Requests 仍顯示 Pending（應自動移除）
+- [x] Bug: 聊天頁面空狀態文字倒轉（Android 鏡像顯示）
