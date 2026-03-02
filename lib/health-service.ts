@@ -386,7 +386,6 @@ export class HealthService {
         { accessType: "read", recordType: "Steps" },
         { accessType: "read", recordType: "ExerciseSession" },
         { accessType: "read", recordType: "TotalCaloriesBurned" },
-        { accessType: "read", recordType: "HeartRate" },
         { accessType: "read", recordType: "Distance" },
       ]);
       return granted && granted.length > 0 ? "granted" : "denied";

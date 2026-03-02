@@ -1085,3 +1085,8 @@
 - [x] Bug 4 修復: server localLogin 當 user 不存在時應拋出 ACCOUNT_NOT_FOUND 而非 INVALID_CREDENTIALS
 - [x] Bug 4 修復: app/auth.tsx handleEmailAuth 處理 ACCOUNT_NOT_FOUND 顯示「帳號不存在，請註冊」
 - [x] 改善: auth.tsx 錯誤訊息更具體（NEEDS_PASSWORD 顯示「請設定新密碼」）
+
+## Round 105: 移除未使用的 READ_HEART_RATE 權限
+
+- [x] 從 app.config.ts 移除 android.permission.health.READ_HEART_RATE
+- [x] 從 health-service.ts 移除 HeartRate 權限請求
