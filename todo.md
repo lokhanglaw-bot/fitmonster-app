@@ -1090,3 +1090,8 @@
 
 - [x] 從 app.config.ts 移除 android.permission.health.READ_HEART_RATE
 - [x] 從 health-service.ts 移除 HeartRate 權限請求
+
+## Round 106: 設定 Google Maps API Key
+
+- [x] 將 Google Maps API Key 設為環境變數
+- [x] 在 app.config.ts 中設定 Android Google Maps API Key
