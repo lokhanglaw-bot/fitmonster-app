@@ -1121,3 +1121,9 @@
 
 ## Bug Fix - Round 110: Android Build Failure
 - [x] Fix Gradle build failure: minSdkVersion 22 too low for Hermes/react-native-worklets (requires 24)
+
+## Task - Round 111: Apple Review Reply Email
+- [x] Draft email reply to Apple review team addressing all their comments
+
+## Round 112: Apple App Store 重新提交
+- [x] Bump version to 1.0.7 for Apple resubmission
