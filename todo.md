@@ -1118,3 +1118,6 @@
 
 ## Bug Fix - Round 109: Unfriend Button
 - [x] Fix Unfriend button not responding - no reaction on click, no confirmation dialog appearing (especially in web preview)
+
+## Bug Fix - Round 110: Android Build Failure
+- [x] Fix Gradle build failure: minSdkVersion 22 too low for Hermes/react-native-worklets (requires 24)
