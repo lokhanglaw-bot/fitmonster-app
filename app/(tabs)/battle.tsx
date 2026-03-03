@@ -162,6 +162,7 @@ export default function BattleScreen() {
   const rejectMutation = trpc.friends.rejectRequest.useMutation();
   const sendRequestMutation = trpc.friends.sendRequest.useMutation();
   const hideLocationMutation = trpc.friends.toggleHideLocation.useMutation();
+  const unfriendMutation = trpc.friends.unfriend.useMutation();
   const conversationsQuery = trpc.chat.conversations.useQuery(undefined, { retry: 1, refetchInterval: 15000 });
 
 
@@ -549,6 +550,35 @@ export default function BattleScreen() {
     }, 500);
   }, [battle, enemyShake, playerShake, attackFlash, defendFlash, specialFlash]);
 
+  // Unfriend handler with confirmation
+  const handleUnfriend = useCallback((friend: Friend) => {
+    Alert.alert(
+      (t as any).unfriendTitle || "Remove Friend",
+      ((t as any).unfriendConfirm || "Are you sure you want to remove {name}? You will no longer be able to chat.").replace("{name}", friend.name),
+      [
+        { text: (t as any).cancel || "Cancel", style: "cancel" },
+        {
+          text: (t as any).unfriend || "Remove",
+          style: "destructive",
+          onPress: () => {
+            if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            unfriendMutation.mutate({ friendId: friend.id }, {
+              onSuccess: () => {
+                setFriends((prev) => prev.filter((f) => f.id !== friend.id));
+                friendsQuery.refetch();
+                sentQuery.refetch();
+                pendingQuery.refetch();
+              },
+              onError: (err: any) => {
+                Alert.alert((t as any).error || "Error", err?.message || "Failed to remove friend");
+              },
+            });
+          },
+        },
+      ]
+    );
+  }, [unfriendMutation, friendsQuery, sentQuery, pendingQuery, t]);
+
   const handleFriendAction = useCallback((friend: Friend, action: "battle" | "chat") => {
     if (action === "battle") {
       const friendOpp: Opponent = {
@@ -920,6 +950,12 @@ export default function BattleScreen() {
                             );
                             return null;
                           })()}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.friendActionBtn, { backgroundColor: "#FEE2E2" }]}
+                          onPress={() => handleUnfriend(friend)}
+                        >
+                          <IconSymbol name="xmark" size={16} color="#EF4444" />
                         </TouchableOpacity>
                       </View>
                     </View>

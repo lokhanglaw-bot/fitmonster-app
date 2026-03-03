@@ -1101,3 +1101,17 @@
 - [x] Bug: 發送交友邀請後發送者自動加了好友（應等對方確認才加）
 - [x] Bug: 對方接受邀請後，發送者的 Sent Requests 仍顯示 Pending（應自動移除）
 - [x] Bug: 聊天頁面空狀態文字倒轉（Android 鏡像顯示）
+
+## Round 108: 交友系統大改 + 聊天文字倒轉修復
+
+- [x] Bug: 聊天頁面空狀態文字倒轉（Android 鏡像顯示）— 再次修復
+- [x] Server: sendFriendRequest 只建 pending 記錄，不加好友
+- [x] Server: acceptFriendRequest 更新 status=accepted
+- [x] Server: rejectFriendRequest 更新 status=rejected 或刪記錄
+- [x] Server: unfriend API — 移除好友關係
+- [x] Server: sendMessage 加檢查 friendship status=accepted 才允許發訊息
+- [x] Server: getFriends 只返回 status=accepted 的好友
+- [x] Client: Pending 期間不允許發訊息，不加好友清單
+- [x] Client: 朋友列表加 Unfriend 按鈕（含確認彈窗）
+- [x] Client: 聊天頁檢查 friendship status，非好友隱藏輸入框
+- [x] Client: Accept/Reject 邀請後正確更新 UI

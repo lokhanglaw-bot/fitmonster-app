@@ -275,10 +275,18 @@ export default function ChatScreen() {
     } catch (err: any) {
       // Restore input text on failure so user can retry
       setInputText(text);
-      Alert.alert(
-        (t as any).chatNetworkUnstable || "Failed to send",
-        err?.message || "Please try again"
-      );
+      const errMsg = err?.message || "";
+      if (errMsg.includes("NOT_FRIENDS")) {
+        Alert.alert(
+          (t as any).notFriendsTitle || "Cannot Send Message",
+          (t as any).notFriendsDesc || "You need to be friends before you can chat. Send a friend request first!"
+        );
+      } else {
+        Alert.alert(
+          (t as any).chatNetworkUnstable || "Failed to send",
+          errMsg || "Please try again"
+        );
+      }
     } finally {
       setIsSending(false);
     }
@@ -352,10 +360,18 @@ export default function ChatScreen() {
         activateAcceleratedPolling();
       }
     } catch (err: any) {
-      Alert.alert(
-        (t as any).error || "Error",
-        (t as any).chatImageFailed || "Failed to send image"
-      );
+      const errMsg = err?.message || "";
+      if (errMsg.includes("NOT_FRIENDS")) {
+        Alert.alert(
+          (t as any).notFriendsTitle || "Cannot Send Message",
+          (t as any).notFriendsDesc || "You need to be friends before you can chat. Send a friend request first!"
+        );
+      } else {
+        Alert.alert(
+          (t as any).error || "Error",
+          (t as any).chatImageFailed || "Failed to send image"
+        );
+      }
     } finally {
       setUploadingImage(false);
     }
@@ -548,10 +564,18 @@ export default function ChatScreen() {
       setIsRecording(false);
       setUploadingAudio(false);
       setRecordingDuration(0);
-      Alert.alert(
-        (t as any).error || "Error",
-        (t as any).chatVoiceFailed || "Failed to send voice"
-      );
+      const errMsg = _err?.message || "";
+      if (errMsg.includes("NOT_FRIENDS")) {
+        Alert.alert(
+          (t as any).notFriendsTitle || "Cannot Send Message",
+          (t as any).notFriendsDesc || "You need to be friends before you can chat. Send a friend request first!"
+        );
+      } else {
+        Alert.alert(
+          (t as any).error || "Error",
+          (t as any).chatVoiceFailed || "Failed to send voice"
+        );
+      }
     }
   }, [recordingDuration, friendIdNum, t, uploadAudioMutation, sendMessageMutation, myId, scrollToBottom, activateAcceleratedPolling]);
 
@@ -735,34 +759,7 @@ export default function ChatScreen() {
     );
   }, [colors, myId, formatTime, formatDuration, handlePlayAudio, playingAudioId]);
 
-  const renderEmpty = useCallback(() => {
-    // Inverted FlatList flips everything including ListEmptyComponent,
-    // so we apply scaleY: -1 to flip the empty state back to normal orientation.
-    if (loading) {
-      return (
-        <View style={[styles.emptyContainer, { transform: [{ rotateX: '180deg' }] }]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.emptyDesc, { color: colors.muted, marginTop: 12 }]}>
-            {(t as any).chatLoading || "Loading..."}
-          </Text>
-        </View>
-      );
-    }
-    if (messages.length === 0) {
-      return (
-        <View style={[styles.emptyContainer, { transform: [{ rotateX: '180deg' }] }]}>
-          <Text style={styles.emptyEmoji}>💬</Text>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            {(t as any).chatNoMessages || "No messages yet"}
-          </Text>
-          <Text style={[styles.emptyDesc, { color: colors.muted }]}>
-            {(t as any).chatStartConversation || "Say hi to start the conversation!"}
-          </Text>
-        </View>
-      );
-    }
-    return null;
-  }, [loading, colors, t, messages.length]);
+  // Empty state is rendered OUTSIDE the FlatList to avoid inverted list transform issues on Android
 
   // Always show "Connected" status
   const statusText = (t as any).chatConnected || "Connected";
@@ -815,21 +812,36 @@ export default function ChatScreen() {
 
         {/* Messages */}
         <View style={[styles.flex, { backgroundColor: colors.background }]}>
-          <FlatList
-            ref={flatListRef}
-            data={invertedMessages}
-            renderItem={renderMessage}
-            keyExtractor={(item) => String(item.id)}
-            inverted
-            contentContainerStyle={[
-              styles.messagesList,
-              messages.length === 0 && styles.messagesListEmpty,
-            ]}
-            ListEmptyComponent={renderEmpty}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
-            maintainVisibleContentPosition={Platform.OS === "ios" ? { minIndexForVisible: 0 } : undefined}
-          />
+          {loading ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.emptyDesc, { color: colors.muted, marginTop: 12 }]}>
+                {(t as any).chatLoading || "Loading..."}
+              </Text>
+            </View>
+          ) : messages.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyEmoji}>💬</Text>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                {(t as any).chatNoMessages || "No messages yet"}
+              </Text>
+              <Text style={[styles.emptyDesc, { color: colors.muted }]}>
+                {(t as any).chatStartConversation || "Say hi to start the conversation!"}
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              ref={flatListRef}
+              data={invertedMessages}
+              renderItem={renderMessage}
+              keyExtractor={(item) => String(item.id)}
+              inverted
+              contentContainerStyle={styles.messagesList}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              maintainVisibleContentPosition={Platform.OS === "ios" ? { minIndexForVisible: 0 } : undefined}
+            />
+          )}
         </View>
 
         {/* Uploading indicator */}

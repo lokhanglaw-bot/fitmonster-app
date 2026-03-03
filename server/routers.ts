@@ -810,8 +810,29 @@ Always return valid JSON.`;
     rejectRequest: protectedProcedure
       .input(z.object({ friendshipId: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        await db.updateFriendship(input.friendshipId, 'blocked');
+        // Delete the friendship record entirely on reject
+        const { getDb } = await import('./db');
+        const dbInstance = await getDb();
+        if (dbInstance) {
+          const { friendships } = await import('../drizzle/schema');
+          const { eq } = await import('drizzle-orm');
+          await dbInstance.delete(friendships).where(eq(friendships.id, input.friendshipId));
+        }
         return { success: true };
+      }),
+    unfriend: protectedProcedure
+      .input(z.object({ friendId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.deleteFriendship(ctx.user.id, input.friendId);
+        return { success: true };
+      }),
+    // Check friendship status between current user and another user
+    checkStatus: protectedProcedure
+      .input(z.object({ friendId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const friendship = await db.getFriendshipBetween(ctx.user.id, input.friendId);
+        if (!friendship) return { status: 'none' as const };
+        return { status: friendship.status as 'pending' | 'accepted' | 'blocked' };
       }),
     toggleHideLocation: protectedProcedure
       .input(z.object({ friendId: z.number(), hide: z.boolean() }))
@@ -951,6 +972,12 @@ Always return valid JSON.`;
         const senderId = ctx.user.id;
         const { receiverId, message, messageType } = input;
         console.log(`[Chat REST] sendMessage from ${senderId} to ${receiverId}, type: ${messageType || "text"}`);
+
+        // Check friendship status - only allow messages between accepted friends
+        const friendship = await db.getFriendshipBetween(senderId, receiverId);
+        if (!friendship || friendship.status !== 'accepted') {
+          throw new Error("NOT_FRIENDS");
+        }
 
         // Save to database
         const savedMsg = await chatDb.saveMessage({

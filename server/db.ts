@@ -761,6 +761,25 @@ export async function getFriendsWithInfo(userId: number) {
   return friendsInfo;
 }
 
+// Get friendship between two specific users (any status)
+export async function getFriendshipBetween(userId: number, friendId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(friendships).where(
+    sql`(${friendships.userId} = ${userId} AND ${friendships.friendId} = ${friendId}) OR (${friendships.userId} = ${friendId} AND ${friendships.friendId} = ${userId})`
+  ).limit(1);
+  return result[0] || null;
+}
+
+// Delete friendship (unfriend) - removes the record entirely
+export async function deleteFriendship(userId: number, friendId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(friendships).where(
+    sql`(${friendships.userId} = ${userId} AND ${friendships.friendId} = ${friendId}) OR (${friendships.userId} = ${friendId} AND ${friendships.friendId} = ${userId})`
+  );
+}
+
 // Delete user account and all associated data
 export async function deleteUserAccount(userId: number) {
   const db = await getDb();
