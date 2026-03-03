@@ -1115,3 +1115,6 @@
 - [x] Client: 朋友列表加 Unfriend 按鈕（含確認彈窗）
 - [x] Client: 聊天頁檢查 friendship status，非好友隱藏輸入框
 - [x] Client: Accept/Reject 邀請後正確更新 UI
+
+## Bug Fix - Round 109: Unfriend Button
+- [x] Fix Unfriend button not responding - no reaction on click, no confirmation dialog appearing (especially in web preview)

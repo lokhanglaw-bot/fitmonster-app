@@ -153,6 +153,7 @@ export default function BattleScreen() {
   const [battle, setBattle] = useState<BattleState | null>(null);
   const [locationTooltip, setLocationTooltip] = useState<{ friendId: number; text: string } | null>(null);
   const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [unfriendTarget, setUnfriendTarget] = useState<Friend | null>(null);
 
   // Real backend queries — poll every 10s so sender sees acceptance in near real-time
   const friendsQuery = trpc.friends.list.useQuery(undefined, { retry: 1, refetchInterval: 10000 });
@@ -550,34 +551,31 @@ export default function BattleScreen() {
     }, 500);
   }, [battle, enemyShake, playerShake, attackFlash, defendFlash, specialFlash]);
 
-  // Unfriend handler with confirmation
+  // Unfriend handler — opens inline Modal confirmation (works on web + native)
   const handleUnfriend = useCallback((friend: Friend) => {
-    Alert.alert(
-      (t as any).unfriendTitle || "Remove Friend",
-      ((t as any).unfriendConfirm || "Are you sure you want to remove {name}? You will no longer be able to chat.").replace("{name}", friend.name),
-      [
-        { text: (t as any).cancel || "Cancel", style: "cancel" },
-        {
-          text: (t as any).unfriend || "Remove",
-          style: "destructive",
-          onPress: () => {
-            if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            unfriendMutation.mutate({ friendId: friend.id }, {
-              onSuccess: () => {
-                setFriends((prev) => prev.filter((f) => f.id !== friend.id));
-                friendsQuery.refetch();
-                sentQuery.refetch();
-                pendingQuery.refetch();
-              },
-              onError: (err: any) => {
-                Alert.alert((t as any).error || "Error", err?.message || "Failed to remove friend");
-              },
-            });
-          },
-        },
-      ]
-    );
-  }, [unfriendMutation, friendsQuery, sentQuery, pendingQuery, t]);
+    setUnfriendTarget(friend);
+  }, []);
+
+  const confirmUnfriend = useCallback(() => {
+    if (!unfriendTarget) return;
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    unfriendMutation.mutate({ friendId: unfriendTarget.id }, {
+      onSuccess: () => {
+        setFriends((prev) => prev.filter((f) => f.id !== unfriendTarget.id));
+        friendsQuery.refetch();
+        sentQuery.refetch();
+        pendingQuery.refetch();
+        setUnfriendTarget(null);
+      },
+      onError: (err: any) => {
+        setUnfriendTarget(null);
+      },
+    });
+  }, [unfriendTarget, unfriendMutation, friendsQuery, sentQuery, pendingQuery]);
+
+  const cancelUnfriend = useCallback(() => {
+    setUnfriendTarget(null);
+  }, []);
 
   const handleFriendAction = useCallback((friend: Friend, action: "battle" | "chat") => {
     if (action === "battle") {
@@ -1072,6 +1070,38 @@ export default function BattleScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Unfriend Confirmation Modal — works on all platforms including web */}
+      <Modal visible={!!unfriendTarget} transparent animationType="fade" onRequestClose={cancelUnfriend}>
+        <View style={unfriendStyles.overlay}>
+          <View style={[unfriendStyles.dialog, { backgroundColor: colors.surface }]}>
+            <Text style={[unfriendStyles.title, { color: colors.foreground }]}>
+              {(t as any).unfriendTitle || "Remove Friend"}
+            </Text>
+            <Text style={[unfriendStyles.message, { color: colors.muted }]}>
+              {((t as any).unfriendConfirm || "Are you sure you want to remove {name}? You will no longer be able to chat.").replace("{name}", unfriendTarget?.name || "")}
+            </Text>
+            <View style={unfriendStyles.buttonRow}>
+              <TouchableOpacity
+                style={[unfriendStyles.btn, { backgroundColor: colors.border }]}
+                onPress={cancelUnfriend}
+              >
+                <Text style={[unfriendStyles.btnText, { color: colors.foreground }]}>
+                  {(t as any).cancel || "Cancel"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[unfriendStyles.btn, { backgroundColor: "#EF4444" }]}
+                onPress={confirmUnfriend}
+              >
+                <Text style={[unfriendStyles.btnText, { color: "#fff" }]}>
+                  {(t as any).unfriend || "Remove"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -1249,5 +1279,52 @@ const styles = StyleSheet.create({
   tooltipText: {
     fontSize: 12,
     fontWeight: "500" as const,
+  },
+});
+
+const unfriendStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32,
+  },
+  dialog: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 20,
+    padding: 24,
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  message: {
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: "center",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 8,
+  },
+  btn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  btnText: {
+    fontSize: 15,
+    fontWeight: "700",
   },
 });
