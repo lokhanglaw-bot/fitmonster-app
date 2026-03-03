@@ -1127,3 +1127,4 @@
 
 ## Round 112: Apple App Store 重新提交
 - [x] Bump version to 1.0.7 for Apple resubmission
+- [x] Add submit profile to eas.json for EAS Submit (Windows-compatible)
