@@ -21,7 +21,8 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID"
+        "ascAppId": "6759150998",
+        "appleId": "lokhanglaw@gmail.com"
       }
     }
   }
