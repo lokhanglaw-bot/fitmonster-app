@@ -141,6 +141,74 @@ export async function getUserByEmail(email: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function createOrLoginAppleUser(data: {
+  appleUserId: string;
+  email: string | null;
+  name: string | null;
+}): Promise<{ id: number; openId: string; name: string | null; email: string | null }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const openId = `apple-${data.appleUserId}`;
+
+  // Check if user already exists with this Apple ID
+  const existing = await getUserByOpenId(openId);
+  if (existing) {
+    // Update lastSignedIn
+    await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, existing.id));
+    // If we got a name/email this time (Apple only sends on first sign-in), update it
+    const updateSet: Record<string, unknown> = {};
+    if (data.name && !existing.name) updateSet.name = data.name;
+    if (data.email && !existing.email) updateSet.email = data.email;
+    if (Object.keys(updateSet).length > 0) {
+      await db.update(users).set(updateSet).where(eq(users.id, existing.id));
+    }
+    return {
+      id: existing.id,
+      openId: existing.openId,
+      name: data.name || existing.name,
+      email: data.email || existing.email,
+    };
+  }
+
+  // Also check if a user with the same email already exists (e.g., signed up with email/password first)
+  if (data.email) {
+    const emailUser = await getUserByEmail(data.email);
+    if (emailUser) {
+      // Link Apple ID to existing account
+      await db.update(users).set({
+        openId,
+        loginMethod: "apple",
+        lastSignedIn: new Date(),
+      }).where(eq(users.id, emailUser.id));
+      return {
+        id: emailUser.id,
+        openId,
+        name: data.name || emailUser.name,
+        email: emailUser.email,
+      };
+    }
+  }
+
+  // Create new user
+  await db.insert(users).values({
+    openId,
+    name: data.name || "Apple User",
+    email: data.email,
+    loginMethod: "apple",
+    lastSignedIn: new Date(),
+  });
+
+  const newUser = await getUserByOpenId(openId);
+  if (!newUser) throw new Error("Failed to create Apple user");
+  return {
+    id: newUser.id,
+    openId: newUser.openId,
+    name: newUser.name,
+    email: newUser.email,
+  };
+}
+
 export async function createLocalUser(data: {
   name: string;
   email: string;

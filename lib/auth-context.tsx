@@ -53,6 +53,7 @@ type AuthContextType = {
   logout: () => Promise<void>;
   localLogin: (email: string, password: string) => Promise<void>;
   localSignup: (name: string, email: string, password: string) => Promise<void>;
+  appleLogin: (identityToken: string, email: string | null, name: string | null, appleUserId: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -207,6 +208,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log("[AuthProvider] Local login successful, DB ID:", result.id);
   }, []);
 
+  const appleLogin = useCallback(async (identityToken: string, email: string | null, name: string | null, appleUserId: string) => {
+    const baseUrl = getApiBaseUrl();
+    if (!baseUrl) throw new Error("Server not available");
+    const res = await fetch(`${baseUrl}/api/trpc/auth.appleLogin?batch=1`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ "0": { json: { identityToken, email, name, appleUserId } } }),
+    });
+    const data = await res.json();
+    const result = data?.[0]?.result?.data?.json;
+    if (!result?.success) {
+      const errMsg = data?.[0]?.error?.json?.message || data?.[0]?.error?.message || "Apple login failed";
+      throw new Error(errMsg);
+    }
+    const localUser = {
+      id: result.id,
+      openId: result.openId,
+      name: result.name || name || "Apple User",
+      email: result.email || email || "",
+      loginMethod: "apple" as const,
+      lastSignedIn: new Date().toISOString(),
+    };
+    await AsyncStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(localUser));
+    const userInfo: Auth.User = {
+      id: localUser.id,
+      openId: localUser.openId,
+      name: localUser.name,
+      email: localUser.email,
+      loginMethod: "apple",
+      lastSignedIn: new Date(localUser.lastSignedIn),
+    };
+    setUser(userInfo);
+    setLoading(false);
+    console.log("[AuthProvider] Apple login successful, DB ID:", result.id);
+  }, []);
+
   const localSignup = useCallback(async (name: string, email: string, password: string) => {
     const baseUrl = getApiBaseUrl();
     if (!baseUrl) throw new Error("Server not available");
@@ -324,8 +361,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchUser]);
 
   const value = useMemo(
-    () => ({ user, loading, error, isAuthenticated, refresh: fetchUser, logout, localLogin, localSignup }),
-    [user, loading, error, isAuthenticated, fetchUser, logout, localLogin, localSignup],
+    () => ({ user, loading, error, isAuthenticated, refresh: fetchUser, logout, localLogin, localSignup, appleLogin }),
+    [user, loading, error, isAuthenticated, fetchUser, logout, localLogin, localSignup, appleLogin],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

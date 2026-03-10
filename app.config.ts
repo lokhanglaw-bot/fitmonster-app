@@ -49,6 +49,7 @@ const config: ExpoConfig = {
   newArchEnabled: true,
   ios: {
     supportsTablet: true,
+    usesAppleSignIn: true,
     bundleIdentifier: env.iosBundleId,
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
@@ -113,6 +114,7 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    "expo-apple-authentication",
     [
       "expo-audio",
       {

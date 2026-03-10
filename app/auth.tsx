@@ -23,6 +23,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useI18n, type Language } from "@/lib/i18n-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import * as AppleAuthentication from "expo-apple-authentication";
 // Share uses react-native Share API for native, Web Share API for web
 
 type AuthMode = "signin" | "signup" | "forgot";
@@ -43,7 +44,7 @@ export default function AuthScreen() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const router = useRouter();
   const colors = useColors();
-  const { localLogin, localSignup } = useAuth({ autoFetch: false });
+  const { localLogin, localSignup, appleLogin } = useAuth({ autoFetch: false });
   const { t, language, setLanguage } = useI18n();
 
   const toggleLanguage = () => {
@@ -116,16 +117,54 @@ export default function AuthScreen() {
   const handleSocialLogin = async (provider: "google" | "apple") => {
     setLoading(true);
     try {
-      await startOAuthLogin();
-    } catch (error) {
+      if (provider === "apple" && Platform.OS === "ios") {
+        // === Native Apple Sign In (iOS only) ===
+        const credential = await AppleAuthentication.signInAsync({
+          requestedScopes: [
+            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+            AppleAuthentication.AppleAuthenticationScope.EMAIL,
+          ],
+        });
+
+        if (!credential.identityToken) {
+          throw new Error("No identity token received from Apple");
+        }
+
+        // Build display name from Apple credential
+        const fullName = credential.fullName;
+        const displayName = fullName
+          ? [fullName.givenName, fullName.familyName].filter(Boolean).join(" ") || null
+          : null;
+
+        // Send identity token to our server for verification
+        await appleLogin(
+          credential.identityToken,
+          credential.email || null,
+          displayName,
+          credential.user
+        );
+
+        router.replace("/(tabs)");
+      } else {
+        // Google or Apple on non-iOS: use existing OAuth flow
+        await startOAuthLogin();
+      }
+    } catch (error: any) {
+      // User cancelled Apple Sign In
+      if (error?.code === "ERR_REQUEST_CANCELED" || error?.code === "ERR_CANCELED") {
+        console.log(`[Auth] ${provider} sign in cancelled by user`);
+        return;
+      }
       console.error(`[Auth] ${provider} login error:`, error);
       if (Platform.OS === "web") {
         alert(`${provider} login failed. Please try again.`);
       } else {
-        Alert.alert(t.error || "Error", `${provider} ${t.loginFailed || "login failed. Please try again."}`);
+        Alert.alert(
+          t.error || "Error",
+          error?.message || `${provider} ${t.loginFailed || "login failed. Please try again."}`
+        );
       }
     } finally {
-      // Always reset loading state, even if OAuth flow completes or is cancelled
       setLoading(false);
     }
   };

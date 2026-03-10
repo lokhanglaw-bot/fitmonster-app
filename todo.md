@@ -1129,3 +1129,9 @@
 - [x] Bump version to 1.0.7 for Apple resubmission
 - [x] Add submit profile to eas.json for EAS Submit (Windows-compatible)
 - [x] Update eas.json with ascAppId (6759150998) and appleId for App Specific Password EAS Submit
+
+## Bug Fix - Round 113: Apple Sign In Crash (Apple Review 2.1a)
+- [x] Fix "Continue with Apple" crash - switch from WebBrowser OAuth to native expo-apple-authentication
+- [x] Update server-side auth to handle native Apple identity token
+- [x] Handle user cancel gracefully (no error shown)
+- [ ] Consider native Google Sign In for future stability (deferred - not flagged by Apple)

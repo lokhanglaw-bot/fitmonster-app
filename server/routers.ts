@@ -114,6 +114,49 @@ export const appRouter = router({
         });
         return { id: existingUser.id, openId: existingUser.openId };
       }),
+    // Native Apple Sign In - verify identity token and create/login user
+    appleLogin: publicProcedure
+      .input(z.object({
+        identityToken: z.string().min(1),
+        email: z.string().nullable(),
+        name: z.string().nullable(),
+        appleUserId: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          // Verify Apple identity token (JWT)
+          const { createRemoteJWKSet, jwtVerify } = await import("jose");
+          const JWKS = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
+          const { payload } = await jwtVerify(input.identityToken, JWKS, {
+            issuer: "https://appleid.apple.com",
+            audience: "space.manus.fitmonster.app.t20260212212854",
+          });
+
+          // Extract Apple user ID from token subject
+          const appleSubject = payload.sub;
+          if (!appleSubject) {
+            throw new Error("Invalid Apple identity token: no subject");
+          }
+
+          // Create or login user with Apple credentials
+          const result = await db.createOrLoginAppleUser({
+            appleUserId: appleSubject,
+            email: (input.email || payload.email as string) || null,
+            name: input.name,
+          });
+
+          return { success: true, id: result.id, openId: result.openId, name: result.name, email: result.email };
+        } catch (err: any) {
+          console.error("[Auth] Apple login error:", err);
+          if (err.code === "ERR_JWT_EXPIRED") {
+            throw new Error("Apple identity token has expired. Please try again.");
+          }
+          if (err.code === "ERR_JWS_SIGNATURE_VERIFICATION_FAILED") {
+            throw new Error("Invalid Apple identity token.");
+          }
+          throw new Error(err.message || "Apple login failed");
+        }
+      }),
     deleteAccount: protectedProcedure
       .mutation(async ({ ctx }) => {
         const userId = ctx.user.id;
