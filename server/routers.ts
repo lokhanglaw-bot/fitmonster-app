@@ -157,6 +157,59 @@ export const appRouter = router({
           throw new Error(err.message || "Apple login failed");
         }
       }),
+    // Native Google Sign In - verify ID token and create/login user
+    googleLogin: publicProcedure
+      .input(z.object({
+        idToken: z.string().min(1),
+        email: z.string().email(),
+        name: z.string().nullable(),
+        googleUserId: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          // Verify Google ID token by fetching Google's token info endpoint
+          const tokenInfoRes = await fetch(
+            `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(input.idToken)}`
+          );
+          if (!tokenInfoRes.ok) {
+            throw new Error("Invalid Google ID token");
+          }
+          const tokenInfo = await tokenInfoRes.json() as Record<string, string>;
+
+          // Verify the token audience matches one of our client IDs
+          const validClientIds = [
+            "525433155057-8u1ubopd5mcrk3mucqtgplpoc71drsbg.apps.googleusercontent.com", // Web
+            "525433155057-m3b87hddvrqmoe5jjlun01hb5kdula6d.apps.googleusercontent.com", // iOS
+            "525433155057-ch8mhegje24psobbld0m657tet2rn81k.apps.googleusercontent.com", // Android
+          ];
+          if (!validClientIds.includes(tokenInfo.aud)) {
+            throw new Error("Google ID token audience mismatch");
+          }
+
+          // Verify the issuer
+          if (tokenInfo.iss !== "accounts.google.com" && tokenInfo.iss !== "https://accounts.google.com") {
+            throw new Error("Google ID token issuer mismatch");
+          }
+
+          // Extract Google user ID from token subject
+          const googleSubject = tokenInfo.sub;
+          if (!googleSubject) {
+            throw new Error("Invalid Google ID token: no subject");
+          }
+
+          // Create or login user with Google credentials
+          const result = await db.createOrLoginGoogleUser({
+            googleUserId: googleSubject,
+            email: input.email || tokenInfo.email || "",
+            name: input.name || tokenInfo.name || null,
+          });
+
+          return { success: true, id: result.id, openId: result.openId, name: result.name, email: result.email };
+        } catch (err: any) {
+          console.error("[Auth] Google login error:", err);
+          throw new Error(err.message || "Google login failed");
+        }
+      }),
     deleteAccount: protectedProcedure
       .mutation(async ({ ctx }) => {
         const userId = ctx.user.id;

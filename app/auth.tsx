@@ -24,6 +24,8 @@ import { useI18n, type Language } from "@/lib/i18n-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import * as AppleAuthentication from "expo-apple-authentication";
+import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
+import Constants from "expo-constants";
 // Share uses react-native Share API for native, Web Share API for web
 
 type AuthMode = "signin" | "signup" | "forgot";
@@ -44,7 +46,7 @@ export default function AuthScreen() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const router = useRouter();
   const colors = useColors();
-  const { localLogin, localSignup, appleLogin } = useAuth({ autoFetch: false });
+  const { localLogin, localSignup, appleLogin, googleLogin } = useAuth({ autoFetch: false });
   const { t, language, setLanguage } = useI18n();
 
   const toggleLanguage = () => {
@@ -145,14 +147,54 @@ export default function AuthScreen() {
         );
 
         router.replace("/(tabs)");
+      } else if (provider === "google" && Platform.OS !== "web") {
+        // === Native Google Sign In (iOS & Android) ===
+        const extra = Constants.expoConfig?.extra;
+        GoogleSignin.configure({
+          webClientId: extra?.googleWebClientId || "525433155057-8u1ubopd5mcrk3mucqtgplpoc71drsbg.apps.googleusercontent.com",
+          iosClientId: extra?.googleIosClientId || "525433155057-m3b87hddvrqmoe5jjlun01hb5kdula6d.apps.googleusercontent.com",
+          offlineAccess: false,
+        });
+
+        const response = await GoogleSignin.signIn();
+        if (response.type === "cancelled") {
+          console.log("[Auth] Google sign in cancelled by user");
+          return;
+        }
+
+        if (response.type === "success" && response.data) {
+          const { user: googleUser, idToken } = response.data;
+          if (!idToken) {
+            throw new Error("No ID token received from Google");
+          }
+
+          const displayName = [googleUser.givenName, googleUser.familyName]
+            .filter(Boolean)
+            .join(" ") || googleUser.name || null;
+
+          // Send ID token to our server for verification
+          await googleLogin(
+            idToken,
+            googleUser.email,
+            displayName,
+            googleUser.id
+          );
+
+          router.replace("/(tabs)");
+        }
       } else {
-        // Google or Apple on non-iOS: use existing OAuth flow
+        // Web platform or fallback: use existing OAuth flow
         await startOAuthLogin();
       }
     } catch (error: any) {
       // User cancelled Apple Sign In
       if (error?.code === "ERR_REQUEST_CANCELED" || error?.code === "ERR_CANCELED") {
         console.log(`[Auth] ${provider} sign in cancelled by user`);
+        return;
+      }
+      // User cancelled Google Sign In
+      if (error?.code === statusCodes?.SIGN_IN_CANCELLED) {
+        console.log("[Auth] Google sign in cancelled by user");
         return;
       }
       console.error(`[Auth] ${provider} login error:`, error);

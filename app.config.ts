@@ -36,6 +36,10 @@ const env = {
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
+  // Google Sign In Client IDs (from Google Cloud Console)
+  googleWebClientId: "525433155057-8u1ubopd5mcrk3mucqtgplpoc71drsbg.apps.googleusercontent.com",
+  googleIosClientId: "525433155057-m3b87hddvrqmoe5jjlun01hb5kdula6d.apps.googleusercontent.com",
+  googleAndroidClientId: "525433155057-ch8mhegje24psobbld0m657tet2rn81k.apps.googleusercontent.com",
 };
 
 const config: ExpoConfig = {
@@ -157,6 +161,11 @@ const config: ExpoConfig = {
         enableBackgroundRemoteNotifications: true,
       },
     ],
+    ["@react-native-google-signin/google-signin", {
+      iosUrlScheme: "com.googleusercontent.apps.525433155057-m3b87hddvrqmoe5jjlun01hb5kdula6d",
+    }],
+    // Expose Google Client IDs to the app via extra
+    // These are used by GoogleSignin.configure() in auth code
     // HealthKit (iOS) — react-native-health config plugin
     ["react-native-health", {
       healthSharePermission: "FitMonster reads your step count and workout data to power your Monster's growth.",
@@ -169,6 +178,9 @@ const config: ExpoConfig = {
     eas: {
       projectId: "d2d082ac-2355-4462-b14b-591a913d941b",
     },
+    googleWebClientId: env.googleWebClientId,
+    googleIosClientId: env.googleIosClientId,
+    googleAndroidClientId: env.googleAndroidClientId,
   },
   experiments: {
     typedRoutes: true,

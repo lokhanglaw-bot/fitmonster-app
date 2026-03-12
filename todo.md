@@ -1134,4 +1134,16 @@
 - [x] Fix "Continue with Apple" crash - switch from WebBrowser OAuth to native expo-apple-authentication
 - [x] Update server-side auth to handle native Apple identity token
 - [x] Handle user cancel gracefully (no error shown)
-- [ ] Consider native Google Sign In for future stability (deferred - not flagged by Apple)
+- [x] Consider native Google Sign In for future stability (deferred - not flagged by Apple)
+
+## Round 114: Native Google Sign In
+- [x] Switch Google Sign In from WebBrowser OAuth to native Google authentication
+- [x] Install @react-native-google-signin/google-signin (already installed v16.1.2)
+- [x] Configure Google Cloud Console OAuth Client IDs (iOS + Android) in app.config.ts extra
+- [x] Add server-side Google identity token verification endpoint (googleLogin in routers.ts)
+- [x] Add createOrLoginGoogleUser function in server/db.ts
+- [x] Add googleLogin method in auth-context.tsx
+- [x] Update auth.tsx to use native GoogleSignin.signIn() on iOS/Android
+- [x] Handle user cancel gracefully (both response.type === 'cancelled' and statusCodes.SIGN_IN_CANCELLED)
+- [x] Keep existing OAuth as fallback for web platform
+- [x] 23 unit tests passing for Google auth

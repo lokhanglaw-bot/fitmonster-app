@@ -209,6 +209,74 @@ export async function createOrLoginAppleUser(data: {
   };
 }
 
+export async function createOrLoginGoogleUser(data: {
+  googleUserId: string;
+  email: string;
+  name: string | null;
+}): Promise<{ id: number; openId: string; name: string | null; email: string | null }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const openId = `google-${data.googleUserId}`;
+
+  // Check if user already exists with this Google ID
+  const existing = await getUserByOpenId(openId);
+  if (existing) {
+    // Update lastSignedIn
+    await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, existing.id));
+    // Update name/email if provided and missing
+    const updateSet: Record<string, unknown> = {};
+    if (data.name && !existing.name) updateSet.name = data.name;
+    if (data.email && !existing.email) updateSet.email = data.email;
+    if (Object.keys(updateSet).length > 0) {
+      await db.update(users).set(updateSet).where(eq(users.id, existing.id));
+    }
+    return {
+      id: existing.id,
+      openId: existing.openId,
+      name: data.name || existing.name,
+      email: data.email || existing.email,
+    };
+  }
+
+  // Check if a user with the same email already exists (e.g., signed up with email/password first)
+  if (data.email) {
+    const emailUser = await getUserByEmail(data.email);
+    if (emailUser) {
+      // Link Google ID to existing account
+      await db.update(users).set({
+        openId,
+        loginMethod: "google",
+        lastSignedIn: new Date(),
+      }).where(eq(users.id, emailUser.id));
+      return {
+        id: emailUser.id,
+        openId,
+        name: data.name || emailUser.name,
+        email: emailUser.email,
+      };
+    }
+  }
+
+  // Create new user
+  await db.insert(users).values({
+    openId,
+    name: data.name || "Google User",
+    email: data.email,
+    loginMethod: "google",
+    lastSignedIn: new Date(),
+  });
+
+  const newUser = await getUserByOpenId(openId);
+  if (!newUser) throw new Error("Failed to create Google user");
+  return {
+    id: newUser.id,
+    openId: newUser.openId,
+    name: newUser.name,
+    email: newUser.email,
+  };
+}
+
 export async function createLocalUser(data: {
   name: string;
   email: string;
