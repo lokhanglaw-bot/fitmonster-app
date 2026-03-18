@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
-import { Platform } from "react-native";
+import { Alert, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApiBaseUrl } from "@/constants/oauth";
 
@@ -217,6 +217,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ "0": { json: { idToken, email, name, googleUserId } } }),
     });
+    // Bug 3 fix: check res.ok before parsing JSON to avoid SyntaxError on HTML error pages
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Server error ${res.status}: ${text.slice(0, 100)}`);
+    }
     const data = await res.json();
     const result = data?.[0]?.result?.data?.json;
     if (!result?.success) {
@@ -243,6 +248,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userInfo);
     setLoading(false);
     console.log("[AuthProvider] Google login successful, DB ID:", result.id);
+    // Bug 8 fix: notify user when account was linked
+    if (result.accountLinked) {
+      setTimeout(() => {
+        Alert.alert(
+          "Account Linked",
+          "Your Google account has been linked to your existing account."
+        );
+      }, 500);
+    }
   }, []);
 
   const appleLogin = useCallback(async (identityToken: string, email: string | null, name: string | null, appleUserId: string) => {
@@ -253,6 +267,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ "0": { json: { identityToken, email, name, appleUserId } } }),
     });
+    // Bug 3 fix: check res.ok before parsing JSON to avoid SyntaxError on HTML error pages
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Server error ${res.status}: ${text.slice(0, 100)}`);
+    }
     const data = await res.json();
     const result = data?.[0]?.result?.data?.json;
     if (!result?.success) {
@@ -279,6 +298,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userInfo);
     setLoading(false);
     console.log("[AuthProvider] Apple login successful, DB ID:", result.id);
+    // Bug 8 fix: notify user when account was linked
+    if (result.accountLinked) {
+      setTimeout(() => {
+        Alert.alert(
+          "Account Linked",
+          "Your Apple ID has been linked to your existing account."
+        );
+      }, 500);
+    }
   }, []);
 
   const localSignup = useCallback(async (name: string, email: string, password: string) => {

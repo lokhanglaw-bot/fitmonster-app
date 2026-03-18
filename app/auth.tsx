@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -48,6 +48,20 @@ export default function AuthScreen() {
   const colors = useColors();
   const { localLogin, localSignup, appleLogin, googleLogin } = useAuth({ autoFetch: false });
   const { t, language, setLanguage } = useI18n();
+  const isMountedRef = useRef(true);
+
+  // Bug 1 fix: Configure GoogleSignin once on mount, not in handler
+  useEffect(() => {
+    if (Platform.OS !== "web") {
+      const extra = Constants.expoConfig?.extra;
+      GoogleSignin.configure({
+        webClientId: extra?.googleWebClientId || "525433155057-8u1ubopd5mcrk3mucqtgplpoc71drsbg.apps.googleusercontent.com",
+        iosClientId: extra?.googleIosClientId || "525433155057-m3b87hddvrqmoe5jjlun01hb5kdula6d.apps.googleusercontent.com",
+        offlineAccess: false,
+      });
+    }
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   const toggleLanguage = () => {
     setLanguage(language === "en" ? "zh" : "en");
@@ -146,15 +160,13 @@ export default function AuthScreen() {
           credential.user
         );
 
+        // Bug 2 fix: clear loading before navigating to avoid setState on unmounted component
+        if (isMountedRef.current) setLoading(false);
         router.replace("/(tabs)");
+        return;
       } else if (provider === "google" && Platform.OS !== "web") {
         // === Native Google Sign In (iOS & Android) ===
-        const extra = Constants.expoConfig?.extra;
-        GoogleSignin.configure({
-          webClientId: extra?.googleWebClientId || "525433155057-8u1ubopd5mcrk3mucqtgplpoc71drsbg.apps.googleusercontent.com",
-          iosClientId: extra?.googleIosClientId || "525433155057-m3b87hddvrqmoe5jjlun01hb5kdula6d.apps.googleusercontent.com",
-          offlineAccess: false,
-        });
+        // GoogleSignin.configure() already called in useEffect (Bug 1 fix)
 
         const response = await GoogleSignin.signIn();
         if (response.type === "cancelled") {
@@ -180,7 +192,13 @@ export default function AuthScreen() {
             googleUser.id
           );
 
+          // Bug 2 fix: clear loading before navigating
+          if (isMountedRef.current) setLoading(false);
           router.replace("/(tabs)");
+          return;
+        } else {
+          // Bug 6 fix: handle non-success/non-cancelled response types
+          throw new Error(`Google sign-in failed: ${(response as any).type}`);
         }
       } else {
         // Web platform or fallback: use existing OAuth flow
@@ -207,7 +225,7 @@ export default function AuthScreen() {
         );
       }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   };
 

@@ -1147,3 +1147,13 @@
 - [x] Handle user cancel gracefully (both response.type === 'cancelled' and statusCodes.SIGN_IN_CANCELLED)
 - [x] Keep existing OAuth as fallback for web platform
 - [x] 23 unit tests passing for Google auth
+
+## Round 115: Auth Code Review Bug Fixes
+- [x] Bug 1: Move GoogleSignin.configure() from handler to useEffect (crash fix)
+- [x] Bug 2: Fix router.replace after setLoading to avoid setState on unmounted component
+- [x] Bug 3: Add res.ok check in appleLogin/googleLogin before res.json() (crash fix)
+- [x] Bug 4: Verify EXPO_PUBLIC_API_BASE_URL is set for native production builds (already has fallback)
+- [x] Bug 5: Replace deprecated Google tokeninfo endpoint with google-auth-library
+- [x] Bug 6: Handle non-success/non-cancelled Google sign-in response types
+- [x] Bug 7: Merge two DB updates into one atomic operation in createOrLoginAppleUser/GoogleUser
+- [x] Bug 8: Add account linking notification when linking social login to existing email account

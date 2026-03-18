@@ -145,7 +145,7 @@ export async function createOrLoginAppleUser(data: {
   appleUserId: string;
   email: string | null;
   name: string | null;
-}): Promise<{ id: number; openId: string; name: string | null; email: string | null }> {
+}): Promise<{ id: number; openId: string; name: string | null; email: string | null; accountLinked?: boolean }> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -154,15 +154,11 @@ export async function createOrLoginAppleUser(data: {
   // Check if user already exists with this Apple ID
   const existing = await getUserByOpenId(openId);
   if (existing) {
-    // Update lastSignedIn
-    await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, existing.id));
-    // If we got a name/email this time (Apple only sends on first sign-in), update it
-    const updateSet: Record<string, unknown> = {};
+    // Bug 7 fix: merge into one atomic DB update
+    const updateSet: Record<string, unknown> = { lastSignedIn: new Date() };
     if (data.name && !existing.name) updateSet.name = data.name;
     if (data.email && !existing.email) updateSet.email = data.email;
-    if (Object.keys(updateSet).length > 0) {
-      await db.update(users).set(updateSet).where(eq(users.id, existing.id));
-    }
+    await db.update(users).set(updateSet).where(eq(users.id, existing.id));
     return {
       id: existing.id,
       openId: existing.openId,
@@ -175,7 +171,7 @@ export async function createOrLoginAppleUser(data: {
   if (data.email) {
     const emailUser = await getUserByEmail(data.email);
     if (emailUser) {
-      // Link Apple ID to existing account
+      // Bug 8: Link Apple ID to existing account (accountLinked flag for client notification)
       await db.update(users).set({
         openId,
         loginMethod: "apple",
@@ -186,6 +182,7 @@ export async function createOrLoginAppleUser(data: {
         openId,
         name: data.name || emailUser.name,
         email: emailUser.email,
+        accountLinked: true,
       };
     }
   }
@@ -213,7 +210,7 @@ export async function createOrLoginGoogleUser(data: {
   googleUserId: string;
   email: string;
   name: string | null;
-}): Promise<{ id: number; openId: string; name: string | null; email: string | null }> {
+}): Promise<{ id: number; openId: string; name: string | null; email: string | null; accountLinked?: boolean }> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -222,15 +219,11 @@ export async function createOrLoginGoogleUser(data: {
   // Check if user already exists with this Google ID
   const existing = await getUserByOpenId(openId);
   if (existing) {
-    // Update lastSignedIn
-    await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, existing.id));
-    // Update name/email if provided and missing
-    const updateSet: Record<string, unknown> = {};
+    // Bug 7 fix: merge into one atomic DB update
+    const updateSet: Record<string, unknown> = { lastSignedIn: new Date() };
     if (data.name && !existing.name) updateSet.name = data.name;
     if (data.email && !existing.email) updateSet.email = data.email;
-    if (Object.keys(updateSet).length > 0) {
-      await db.update(users).set(updateSet).where(eq(users.id, existing.id));
-    }
+    await db.update(users).set(updateSet).where(eq(users.id, existing.id));
     return {
       id: existing.id,
       openId: existing.openId,
@@ -243,7 +236,7 @@ export async function createOrLoginGoogleUser(data: {
   if (data.email) {
     const emailUser = await getUserByEmail(data.email);
     if (emailUser) {
-      // Link Google ID to existing account
+      // Bug 8: Link Google ID to existing account (accountLinked flag for client notification)
       await db.update(users).set({
         openId,
         loginMethod: "google",
@@ -254,6 +247,7 @@ export async function createOrLoginGoogleUser(data: {
         openId,
         name: data.name || emailUser.name,
         email: emailUser.email,
+        accountLinked: true,
       };
     }
   }

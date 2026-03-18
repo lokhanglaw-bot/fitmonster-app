@@ -145,7 +145,7 @@ export const appRouter = router({
             name: input.name,
           });
 
-          return { success: true, id: result.id, openId: result.openId, name: result.name, email: result.email };
+          return { success: true, id: result.id, openId: result.openId, name: result.name, email: result.email, accountLinked: result.accountLinked || false };
         } catch (err: any) {
           console.error("[Auth] Apple login error:", err);
           if (err.code === "ERR_JWT_EXPIRED") {
@@ -167,32 +167,27 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         try {
-          // Verify Google ID token by fetching Google's token info endpoint
-          const tokenInfoRes = await fetch(
-            `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(input.idToken)}`
-          );
-          if (!tokenInfoRes.ok) {
-            throw new Error("Invalid Google ID token");
-          }
-          const tokenInfo = await tokenInfoRes.json() as Record<string, string>;
+          // Bug 5 fix: Use google-auth-library instead of deprecated tokeninfo endpoint
+          const { OAuth2Client } = await import("google-auth-library");
+          const client = new OAuth2Client();
 
-          // Verify the token audience matches one of our client IDs
           const validClientIds = [
             "525433155057-8u1ubopd5mcrk3mucqtgplpoc71drsbg.apps.googleusercontent.com", // Web
             "525433155057-m3b87hddvrqmoe5jjlun01hb5kdula6d.apps.googleusercontent.com", // iOS
             "525433155057-ch8mhegje24psobbld0m657tet2rn81k.apps.googleusercontent.com", // Android
           ];
-          if (!validClientIds.includes(tokenInfo.aud)) {
-            throw new Error("Google ID token audience mismatch");
-          }
 
-          // Verify the issuer
-          if (tokenInfo.iss !== "accounts.google.com" && tokenInfo.iss !== "https://accounts.google.com") {
-            throw new Error("Google ID token issuer mismatch");
+          const ticket = await client.verifyIdToken({
+            idToken: input.idToken,
+            audience: validClientIds,
+          });
+          const payload = ticket.getPayload();
+          if (!payload) {
+            throw new Error("Invalid Google ID token: no payload");
           }
 
           // Extract Google user ID from token subject
-          const googleSubject = tokenInfo.sub;
+          const googleSubject = payload.sub;
           if (!googleSubject) {
             throw new Error("Invalid Google ID token: no subject");
           }
@@ -200,11 +195,11 @@ export const appRouter = router({
           // Create or login user with Google credentials
           const result = await db.createOrLoginGoogleUser({
             googleUserId: googleSubject,
-            email: input.email || tokenInfo.email || "",
-            name: input.name || tokenInfo.name || null,
+            email: input.email || payload.email || "",
+            name: input.name || payload.name || null,
           });
 
-          return { success: true, id: result.id, openId: result.openId, name: result.name, email: result.email };
+          return { success: true, id: result.id, openId: result.openId, name: result.name, email: result.email, accountLinked: result.accountLinked || false };
         } catch (err: any) {
           console.error("[Auth] Google login error:", err);
           throw new Error(err.message || "Google login failed");
