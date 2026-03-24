@@ -1252,3 +1252,7 @@
 ## Schema & Migration Fixes
 - [x] Issue 1: Add missing FK reference on passwordResetTokens.userId → users.id with onDelete cascade
 - [x] Issue 2: Check migration numbering — confirmed 0011→0012 ordering is correct (no conflict)
+
+## EAS Build Fix
+- [x] Remove stale package-lock.json (project uses pnpm, not npm)
+- [x] Regenerate pnpm-lock.yaml to ensure all new packages are included
