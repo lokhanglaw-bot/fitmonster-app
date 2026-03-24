@@ -36,10 +36,10 @@ const env = {
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
-  // Google Sign In Client IDs (from Google Cloud Console)
-  googleWebClientId: "525433155057-8u1ubopd5mcrk3mucqtgplpoc71drsbg.apps.googleusercontent.com",
-  googleIosClientId: "525433155057-m3b87hddvrqmoe5jjlun01hb5kdula6d.apps.googleusercontent.com",
-  googleAndroidClientId: "525433155057-ch8mhegje24psobbld0m657tet2rn81k.apps.googleusercontent.com",
+  // Google Sign In Client IDs — read from env vars (never hardcode in source)
+  googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID ?? "",
+  googleIosClientId: process.env.GOOGLE_IOS_CLIENT_ID ?? "",
+  googleAndroidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID ?? "",
 };
 
 const config: ExpoConfig = {
@@ -85,7 +85,7 @@ const config: ExpoConfig = {
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
     edgeToEdgeEnabled: true,
-    predictiveBackGestureEnabled: false,
+    predictiveBackGestureEnabled: true,
     package: env.androidPackage,
     permissions: [
       "POST_NOTIFICATIONS",
@@ -98,6 +98,10 @@ const config: ExpoConfig = {
       // Location permissions for nearby users feature
       "ACCESS_FINE_LOCATION",
       "ACCESS_COARSE_LOCATION",
+      "ACCESS_BACKGROUND_LOCATION",
+      // Foreground service permissions (Android 14+ mandatory)
+      "FOREGROUND_SERVICE",
+      "FOREGROUND_SERVICE_LOCATION",
     ],
     intentFilters: [
       {
@@ -150,7 +154,7 @@ const config: ExpoConfig = {
       "expo-build-properties",
       {
         android: {
-          buildArchs: ["arm64-v8a"],
+          buildArchs: ["armeabi-v7a", "arm64-v8a", "x86_64"],
           minSdkVersion: 26,
           compileSdkVersion: 36,
           targetSdkVersion: 36,
@@ -166,8 +170,16 @@ const config: ExpoConfig = {
     ["@react-native-google-signin/google-signin", {
       iosUrlScheme: "com.googleusercontent.apps.525433155057-m3b87hddvrqmoe5jjlun01hb5kdula6d",
     }],
-    // Expose Google Client IDs to the app via extra
-    // These are used by GoogleSignin.configure() in auth code
+    // expo-location config for background location + foreground service
+    [
+      "expo-location",
+      {
+        locationAlwaysAndWhenInUsePermission:
+          "FitMonster tracks your location in the background to match you with nearby trainers.",
+        isAndroidBackgroundLocationEnabled: true,
+        isAndroidForegroundServiceEnabled: true,
+      },
+    ],
     // HealthKit (iOS) — react-native-health config plugin
     ["react-native-health", {
       healthSharePermission: "FitMonster reads your step count and workout data to power your Monster's growth.",

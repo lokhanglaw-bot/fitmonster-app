@@ -28,14 +28,14 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 
 async function sendLocationToServer(latitude: number, longitude: number) {
   // FIX 12: Use absolute URL + auth header for background tasks
+  // FIX 3: Use JWT session token from SecureStore (not openId which is NOT a JWT)
   try {
-    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-    const userJson = await AsyncStorage.getItem("fitmonster_user");
-    const user = userJson ? JSON.parse(userJson) : null;
+    const SecureStore = await import("expo-secure-store");
+    const sessionToken = await SecureStore.getItemAsync("app_session_token");
     const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (user?.openId) {
-      headers["Authorization"] = `Bearer ${user.openId}`;
+    if (sessionToken) {
+      headers["Authorization"] = `Bearer ${sessionToken}`;
     }
     const response = await fetch(`${baseUrl}/api/trpc/location.update`, {
       method: "POST",

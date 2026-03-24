@@ -996,6 +996,9 @@ Always return valid JSON.`;
         count: z.number().default(100),
       }))
       .mutation(async ({ input }) => {
+        if (ENV.isProduction) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Disabled in production" });
+        }
         const ids = await db.insertFakeUsers(input.centerLat, input.centerLng, input.count);
         console.log(`[Test] Inserted ${ids.length} fake users around (${input.centerLat}, ${input.centerLng})`);
         return { count: ids.length, userIds: ids };
@@ -1003,6 +1006,9 @@ Always return valid JSON.`;
     deleteFakeUsers: protectedProcedure
       .input(z.object({ userIds: z.array(z.number()) }))
       .mutation(async ({ input }) => {
+        if (ENV.isProduction) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Disabled in production" });
+        }
         await db.deleteFakeUsers(input.userIds);
         console.log(`[Test] Deleted ${input.userIds.length} fake users`);
         return { success: true, deleted: input.userIds.length };

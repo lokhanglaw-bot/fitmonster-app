@@ -1220,3 +1220,19 @@
 - [x] Verify Fix #19: initializeDaily idempotent (server/routers.ts)
 - [x] Verify Fix #21: Foreign key constraints with cascade (drizzle/schema.ts) — FIXED (7 tables were missing)
 - [x] Verify Fix #24: Timezone bug — getLocalDateString() (lib/activity-context.tsx) — FIXED (5 toISOString() calls replaced)
+
+## Complete Action Plan (App Store + Bug Fixes)
+### PART 1 — Security & Functional Code Fixes
+- [x] FIX 1: Password reset two-step token flow (already done as FIX 3v2)
+- [x] FIX 2: deleteUserAccount transaction wrapper (already done as FIX 11v2)
+- [x] FIX 3: Background location — use JWT session token not openId
+
+### PART 2 — Google Play Store Code Changes
+- [x] Item A: Android permissions + expo-location foreground service config
+- [x] Item B: Disable testLocation.insertFakeUsers/deleteFakeUsers in production
+- [x] Item C: predictiveBackGestureEnabled → true
+- [x] Item D: expo-file-system/legacy → expo-file-system (new File API) in camera.tsx
+- [x] Item I: Upgrade react-native-maps@1.26.0 for New Architecture
+- [x] Item J: Add /.well-known/assetlinks.json route for deep links
+- [x] Item K: Add x86_64 to buildArchs
+- [x] Item L: Move Google OAuth Client IDs to env vars in app.config.ts

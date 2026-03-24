@@ -89,6 +89,20 @@ async function startServer() {
     res.json({ ok: true, timestamp: Date.now() });
   });
 
+  // Android App Links — assetlinks.json for deep link verification
+  app.get("/.well-known/assetlinks.json", (_req, res) => {
+    res.json([{
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: {
+        namespace: "android_app",
+        package_name: "space.manus.fitmonster.app.t20260212212854",
+        sha256_cert_fingerprints: [
+          process.env.ANDROID_SHA256_FINGERPRINT || "YOUR_SHA256_FINGERPRINT_HERE"
+        ],
+      },
+    }]);
+  });
+
   // Account deletion page (Google Play compliance)
   app.get("/api/delete-account", (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
