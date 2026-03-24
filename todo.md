@@ -1256,3 +1256,8 @@
 ## EAS Build Fix
 - [x] Remove stale package-lock.json (project uses pnpm, not npm)
 - [x] Regenerate pnpm-lock.yaml to ensure all new packages are included
+
+## iOS Build Fix (Round 2)
+- [x] Install missing expo-asset peer dependency (expo-asset@~12.0.12)
+- [x] Update outdated expo packages via npx expo install --check (expo, expo-audio, expo-constants, expo-font, expo-linking, expo-notifications, expo-router, expo-splash-screen, expo-video updated; react-native-maps reverted to 1.20.1 for SDK 54 compat)
+- [ ] Guide user to delete and regenerate iOS provisioning profile (includes Apple Sign-In entitlement) — USER ACTION REQUIRED
