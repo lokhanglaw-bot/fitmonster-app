@@ -1266,3 +1266,7 @@
 - [x] Apple Sign-In must use native iOS popup (not external browser) — code already correct, needs rebuild with v1.1.0
 - [x] Remove Facebook share button from login page
 - [x] Restore Delete Account button in settings/profile page — Apple Review requirement
+
+## Bug Fix - Round 117
+- [x] Fix EAS Build overriding Apple Sign-In capability in Apple Developer Portal
+- [x] Enable Manus Publish for iOS builds (non-interactive CI mode)

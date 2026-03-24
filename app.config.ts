@@ -68,6 +68,7 @@ const config: ExpoConfig = {
       NSPhotoLibraryUsageDescription: "FitMonster accesses your photo library so you can select meal photos for AI-powered nutritional analysis.",
     },
     entitlements: {
+      "com.apple.developer.applesignin": ["Default"],
       "com.apple.developer.healthkit": true,
       "com.apple.developer.healthkit.access": [],
     },
