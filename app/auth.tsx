@@ -40,7 +40,8 @@ export default function AuthScreen() {
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
-  const [forgotStep, setForgotStep] = useState<"email" | "newpass" | "done">("email");
+  const [forgotStep, setForgotStep] = useState<"email" | "token" | "newpass" | "done">("email");
+  const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
@@ -60,6 +61,10 @@ export default function AuthScreen() {
         offlineAccess: false,
       });
     }
+  }, []);
+
+  // Round 116 Issue 1: isMountedRef cleanup in its own useEffect
+  useEffect(() => {
     return () => { isMountedRef.current = false; };
   }, []);
 
@@ -235,18 +240,35 @@ export default function AuthScreen() {
         Alert.alert(t.error || "Error", t.pleaseEnterEmail || "Please enter your email address");
         return;
       }
-      // Validate email exists on server, then go to new password step
+      // FIX 3: Step 1 — call requestPasswordReset to generate token
       setForgotLoading(true);
       try {
         const { getApiBaseUrl } = require("@/constants/oauth");
         const baseUrl = getApiBaseUrl();
-        // We just move to the new password step — the actual validation happens on reset
-        setForgotStep("newpass");
+        const res = await fetch(`${baseUrl}/api/trpc/auth.requestPasswordReset?batch=1`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ "0": { json: { email: forgotEmail.trim().toLowerCase() } } }),
+        });
+        if (!res.ok) throw new Error("Server error");
+        // Always advance to token step (server returns success even if email not found to prevent enumeration)
+        setForgotStep("token");
+        Alert.alert(
+          t.checkEmail || "Check Your Email",
+          t.resetTokenSent || "If an account exists with this email, a password reset code has been sent."
+        );
       } catch (err) {
         Alert.alert(t.error || "Error", t.authFailed || "Something went wrong.");
       } finally {
         setForgotLoading(false);
       }
+    } else if (forgotStep === "token") {
+      if (!resetToken.trim()) {
+        Alert.alert(t.error || "Error", "Please enter the reset code from your email.");
+        return;
+      }
+      // Advance to new password step after token entry
+      setForgotStep("newpass");
     } else if (forgotStep === "newpass") {
       if (!newPassword || newPassword.length < 6) {
         Alert.alert(t.error || "Error", t.passwordTooShort || "Password must be at least 6 characters");
@@ -256,6 +278,7 @@ export default function AuthScreen() {
         Alert.alert(t.error || "Error", t.passwordsDoNotMatch || "Passwords do not match");
         return;
       }
+      // FIX 3: Step 2 — call resetPassword with token + new password
       setForgotLoading(true);
       try {
         const { getApiBaseUrl } = require("@/constants/oauth");
@@ -263,7 +286,7 @@ export default function AuthScreen() {
         const res = await fetch(`${baseUrl}/api/trpc/auth.resetPassword?batch=1`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ "0": { json: { email: forgotEmail.trim().toLowerCase(), newPassword } } }),
+          body: JSON.stringify({ "0": { json: { token: resetToken.trim(), newPassword } } }),
         });
         const data = await res.json();
         const result = data?.[0]?.result?.data?.json;
@@ -271,9 +294,10 @@ export default function AuthScreen() {
           setForgotStep("done");
         } else {
           const errMsg = data?.[0]?.error?.json?.message || "";
-          if (errMsg.includes("USER_NOT_FOUND")) {
-            Alert.alert(t.error || "Error", t.userNotFound || "No account found with this email address.");
+          if (errMsg.includes("INVALID_OR_EXPIRED_TOKEN")) {
+            Alert.alert(t.error || "Error", t.invalidToken || "Invalid or expired reset code. Please request a new one.");
             setForgotStep("email");
+            setResetToken("");
           } else {
             Alert.alert(t.error || "Error", t.authFailed || "Something went wrong.");
           }
@@ -291,6 +315,7 @@ export default function AuthScreen() {
     setForgotEmail("");
     setForgotSent(false);
     setForgotStep("email");
+    setResetToken("");
     setNewPassword("");
     setConfirmNewPassword("");
   };
@@ -635,6 +660,52 @@ export default function AuthScreen() {
                     ) : (
                       <Text style={styles.submitText}>{t.next}</Text>
                     )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.cancelBtn, { borderColor: colors.border }]}
+                  onPress={closeForgotModal}
+                >
+                  <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {forgotStep === "token" && (
+              <>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalIcon}>📧</Text>
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.enterResetCode}</Text>
+                </View>
+                <Text style={[styles.modalDesc, { color: colors.muted }]}>
+                  {t.resetCodeDesc}
+                </Text>
+
+                <View style={styles.inputGroup}>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.labelIcon}>🔑</Text>
+                    <Text style={[styles.label, { color: colors.foreground }]}>{t.resetCodeLabel}</Text>
+                  </View>
+                  <TextInput
+                    value={resetToken}
+                    onChangeText={setResetToken}
+                    placeholder="abc123def456..."
+                    placeholderTextColor={colors.muted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                  />
+                </View>
+
+                <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.8}>
+                  <LinearGradient
+                    colors={["#22C55E", "#16A34A"] as const}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.submitBtn}
+                  >
+                    <Text style={styles.submitText}>{t.next}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
 

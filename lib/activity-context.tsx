@@ -70,7 +70,18 @@ export interface ActivityState {
   allWorkoutLogs: WorkoutLogEntry[];
 }
 
-const getToday = () => new Date().toISOString().split("T")[0];
+// FIX 24: Use local date instead of UTC to avoid timezone-related reset issues
+const getToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+// FIX 24: Local timezone timestamp for food/workout log entries
+const getLocalTimestamp = () => {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+};
 
 const initialState: ActivityState = {
   todayProtein: 0,
@@ -121,7 +132,7 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
       const entry: FoodLogEntry = {
         id: `food-${Date.now()}`,
         name, calories, protein, carbs, fat, expEarned,
-        timestamp: new Date().toISOString(),
+        timestamp: getLocalTimestamp(),
       };
       const foodResult = {
         ...state,
@@ -146,7 +157,7 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
       const entry: WorkoutLogEntry = {
         id: `workout-${Date.now()}`,
         exercise, duration, expEarned,
-        timestamp: new Date().toISOString(),
+        timestamp: getLocalTimestamp(),
       };
       const workoutResult = {
         ...state,
@@ -175,7 +186,7 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
     }
     case "SYNC_HEALTH_DATA": {
       const { steps, caloriesBurned, workoutMinutes, workoutLogs, stepsExp } = action.payload;
-      const now = new Date().toISOString();
+      const now = getLocalTimestamp();
       const newWorkoutEntries: WorkoutLogEntry[] = workoutLogs.map((w, i) => ({
         id: `health-workout-${Date.now()}-${i}`,
         exercise: w.exercise,
@@ -208,7 +219,7 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
       const entry: FoodLogEntry = {
         id: `food-${Date.now()}`,
         name, calories, protein, carbs: 0, fat: 0, expEarned: exp,
-        timestamp: new Date().toISOString(),
+        timestamp: getLocalTimestamp(),
       };
       return {
         ...state,
@@ -228,7 +239,7 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
       const entry: WorkoutLogEntry = {
         id: `workout-${Date.now()}`,
         exercise: name, duration, expEarned: exp,
-        timestamp: new Date().toISOString(),
+        timestamp: getLocalTimestamp(),
       };
       return {
         ...state,
@@ -438,8 +449,7 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
                 const localAuthRaw = await AsyncStorage.getItem("@fitmonster_local_auth");
                 if (localAuthRaw) {
                   const localUser = JSON.parse(localAuthRaw);
-                  if (localUser.id) headers["X-User-Id"] = String(localUser.id);
-                  if (localUser.openId) headers["X-Open-Id"] = localUser.openId;
+                  if (localUser.openId) headers["Authorization"] = `Bearer ${localUser.openId}`;
                 }
               }
               const resp = await fetch(`${apiBase}/api/trpc/monsters.list?batch=1&input=${encodeURIComponent(JSON.stringify({"0":{json:null}}))}`, {
@@ -488,11 +498,14 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
     })();
   }, [userId]);
 
-  // Persist to AsyncStorage on every state change (after hydration)
+  // FIX 16: Debounce AsyncStorage persist (500ms) to avoid writing on every state change
   useEffect(() => {
     if (!isHydrated.current || !currentUserId.current) return;
     const key = getStorageKey(currentUserId.current);
-    AsyncStorage.setItem(key, JSON.stringify(state)).catch(() => {});
+    const timer = setTimeout(() => {
+      AsyncStorage.setItem(key, JSON.stringify(state)).catch(() => {});
+    }, 500);
+    return () => clearTimeout(timer);
   }, [state]);
 
   // Sync monsters to server whenever they change (for social features)
@@ -521,8 +534,7 @@ export function ActivityProvider({ children, userId }: { children: React.ReactNo
             const localAuthRaw = await AsyncStorage.getItem("@fitmonster_local_auth");
             if (localAuthRaw) {
               const localUser = JSON.parse(localAuthRaw);
-              if (localUser.id) headers["X-User-Id"] = String(localUser.id);
-              if (localUser.openId) headers["X-Open-Id"] = localUser.openId;
+              if (localUser.openId) headers["Authorization"] = `Bearer ${localUser.openId}`;
             }
           } catch (_) { /* ignore */ }
         }

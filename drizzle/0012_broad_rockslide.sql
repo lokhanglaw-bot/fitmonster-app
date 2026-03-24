@@ -1,0 +1,14 @@
+ALTER TABLE `battles` ADD CONSTRAINT `battles_challengerId_users_id_fk` FOREIGN KEY (`challengerId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `battles` ADD CONSTRAINT `battles_opponentId_users_id_fk` FOREIGN KEY (`opponentId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `battles` ADD CONSTRAINT `battles_challengerMonsterId_monsters_id_fk` FOREIGN KEY (`challengerMonsterId`) REFERENCES `monsters`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `battles` ADD CONSTRAINT `battles_opponentMonsterId_monsters_id_fk` FOREIGN KEY (`opponentMonsterId`) REFERENCES `monsters`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `chatMessages` ADD CONSTRAINT `chatMessages_senderId_users_id_fk` FOREIGN KEY (`senderId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `chatMessages` ADD CONSTRAINT `chatMessages_receiverId_users_id_fk` FOREIGN KEY (`receiverId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `dailyStats` ADD CONSTRAINT `dailyStats_userId_users_id_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `friendships` ADD CONSTRAINT `friendships_userId_users_id_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `friendships` ADD CONSTRAINT `friendships_friendId_users_id_fk` FOREIGN KEY (`friendId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `matchSwipes` ADD CONSTRAINT `matchSwipes_userId_users_id_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `matchSwipes` ADD CONSTRAINT `matchSwipes_targetUserId_users_id_fk` FOREIGN KEY (`targetUserId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `userQuests` ADD CONSTRAINT `userQuests_userId_users_id_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `userQuests` ADD CONSTRAINT `userQuests_questId_quests_id_fk` FOREIGN KEY (`questId`) REFERENCES `quests`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `workouts` ADD CONSTRAINT `workouts_userId_users_id_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;

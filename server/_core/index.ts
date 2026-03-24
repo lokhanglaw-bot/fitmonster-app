@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import rateLimit from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -27,28 +28,50 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+// FIX 4: CORS origin allowlist
+const ALLOWED_ORIGINS = new Set([
+  process.env.PRODUCTION_URL || "https://fitmonster.com",
+  "http://localhost:3000",
+  "http://localhost:8081",
+  // Expo dev URLs
+  ...(process.env.EXPO_DEV_URL ? [process.env.EXPO_DEV_URL] : []),
+]);
+
+// FIX 7: Rate limiters
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: { error: "TOO_MANY_REQUESTS" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 120,
+  message: { error: "TOO_MANY_REQUESTS" },
+});
+
+const analyzeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20,
+  message: { error: "ANALYZE_RATE_LIMIT_EXCEEDED" },
+});
+
 async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  // Enable CORS for all routes - reflect the request origin to support credentials
+  // FIX 4: CORS with origin allowlist
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin) {
+    if (origin && ALLOWED_ORIGINS.has(origin)) {
       res.header("Access-Control-Allow-Origin", origin);
+      res.header("Access-Control-Allow-Credentials", "true");
     }
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-    );
-    res.header("Access-Control-Allow-Credentials", "true");
-
-    // Handle preflight requests
-    if (req.method === "OPTIONS") {
-      res.sendStatus(200);
-      return;
-    }
+    res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (req.method === "OPTIONS") return res.sendStatus(204);
     next();
   });
 
@@ -57,12 +80,16 @@ async function startServer() {
 
   registerOAuthRoutes(app);
 
+  // FIX 7: Apply rate limiters (order matters — most specific first)
+  app.use("/api/trpc/auth.", authLimiter);
+  app.use("/api/trpc/foodLogs.analyze", analyzeLimiter);
+  app.use("/api/trpc", apiLimiter);
+
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
   });
 
   // Account deletion page (Google Play compliance)
-  // Use /api/ prefix so the deployed proxy routes it to the Express server
   app.get("/api/delete-account", (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(getDeleteAccountPage());

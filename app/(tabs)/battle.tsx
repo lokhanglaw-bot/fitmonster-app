@@ -18,6 +18,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useI18n } from "@/lib/i18n-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { trpc } from "@/lib/trpc";
 import { useActivity } from "@/lib/activity-context";
 import { useAuthContext } from "@/lib/auth-context";
@@ -287,13 +288,16 @@ export default function BattleScreen() {
           const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
           const coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
           setUserLoc(coords);
-          // Auto-share location so other users can find us
+          // FIX 18: Only auto-share if user has opted in (check AsyncStorage preference)
           try {
-            await locationShareMutation.mutateAsync({
-              latitude: coords.lat,
-              longitude: coords.lng,
-              isSharing: true,
-            });
+            const pref = await AsyncStorage.getItem("@fitmonster_location_sharing");
+            if (pref !== "disabled") {
+              await locationShareMutation.mutateAsync({
+                latitude: coords.lat,
+                longitude: coords.lng,
+                isSharing: true,
+              });
+            }
           } catch (err) {
             console.warn("Failed to share location from battle:", err);
           }

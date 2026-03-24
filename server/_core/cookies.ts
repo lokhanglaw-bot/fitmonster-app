@@ -50,11 +50,13 @@ export function getSessionCookieOptions(
   const hostname = req.hostname;
   const domain = getParentDomain(hostname);
 
+  const secure = isSecureRequest(req);
   return {
     domain,
     httpOnly: true,
     path: "/",
-    sameSite: "none",
-    secure: isSecureRequest(req),
+    // FIX 23: sameSite=none requires secure=true; fall back to lax for non-HTTPS
+    sameSite: secure ? "none" : "lax",
+    secure,
   };
 }

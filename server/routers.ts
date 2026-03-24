@@ -2,8 +2,11 @@ import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { randomBytes, createHash } from "crypto";
 import * as db from "./db";
+import { ENV } from "./_core/env";
 import * as chatDb from "./chat-db";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
@@ -12,6 +15,18 @@ import { sendToUser, getOnlineStatuses, isUserOnline } from "./websocket";
 import { sendPushNotification, sendChatPushNotification } from "./push-notifications";
 import * as caringDb from "./caring-db";
 import { getMonsterAdvicePrompt, getMonsterAdviceUserPrompt, getQuickStatusDialogue } from "./caring-prompt";
+// Round 116 Issue 2: Module-level imports (initialized once, not per-request)
+import { createRemoteJWKSet, jwtVerify } from "jose";
+import { OAuth2Client } from "google-auth-library";
+
+const APPLE_JWKS = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
+const googleAuthClient = new OAuth2Client();
+
+// Crypto helpers (also defined in db.ts — duplicated here for router-level use)
+function generateSalt(): string { return randomBytes(32).toString("hex"); }
+function hashPassword(p: string, s: string): string {
+  return createHash("sha256").update(p + s).digest("hex");
+}
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -70,23 +85,41 @@ export const appRouter = router({
         }
         return { success: true, id: user.id, openId: user.openId, name: user.name };
       }),
-    // Reset password (set new password for existing account by email)
+    // FIX 3: Two-step password reset with token verification
+    // Step 1: Request a password reset — generates token and (in production) emails it
+    requestPasswordReset: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        const emailNorm = input.email.trim().toLowerCase();
+        const user = await db.getUserByEmail(emailNorm);
+        // Always return success to prevent email enumeration
+        if (!user) return { success: true };
+        const token = randomBytes(32).toString("hex");
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+        await db.savePasswordResetToken(user.id, token, expiresAt);
+        // TODO: In production, send token via email (e.g. sendPasswordResetEmail(user.email!, token))
+        console.log(`[Auth] Password reset token for ${emailNorm}: ${token}`);
+        return { success: true };
+      }),
+    // Step 2: Verify token and set new password
     resetPassword: publicProcedure
       .input(z.object({
-        email: z.string().email(),
+        token: z.string().min(1),
         newPassword: z.string().min(6),
       }))
       .mutation(async ({ input }) => {
-        const emailNorm = input.email.trim().toLowerCase();
-        const exists = await db.checkUserExistsByEmail(emailNorm);
-        if (!exists) {
-          throw new Error("USER_NOT_FOUND");
+        const record = await db.getPasswordResetToken(input.token);
+        if (!record || record.usedAt || record.expiresAt < new Date()) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "INVALID_OR_EXPIRED_TOKEN",
+          });
         }
-        const user = await db.resetPasswordByEmail(emailNorm, input.newPassword);
-        if (!user) {
-          throw new Error("RESET_FAILED");
-        }
-        return { success: true, id: user.id, openId: user.openId, name: user.name };
+        const salt = generateSalt();
+        const hash = hashPassword(input.newPassword, salt);
+        await db.resetPasswordById(record.userId, hash, salt);
+        await db.markPasswordResetTokenUsed(record.id);
+        return { success: true };
       }),
     // Legacy sync for backward compatibility (used by existing sessions)
     // IMPORTANT: Only updates existing users, does NOT create new ones.
@@ -125,9 +158,8 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         try {
           // Verify Apple identity token (JWT)
-          const { createRemoteJWKSet, jwtVerify } = await import("jose");
-          const JWKS = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
-          const { payload } = await jwtVerify(input.identityToken, JWKS, {
+          // Using module-level APPLE_JWKS and jwtVerify
+          const { payload } = await jwtVerify(input.identityToken, APPLE_JWKS, {
             issuer: "https://appleid.apple.com",
             audience: "space.manus.fitmonster.app.t20260212212854",
           });
@@ -168,16 +200,19 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         try {
           // Bug 5 fix: Use google-auth-library instead of deprecated tokeninfo endpoint
-          const { OAuth2Client } = await import("google-auth-library");
-          const client = new OAuth2Client();
+          // Using module-level googleAuthClient
 
+          // FIX 22: Read Google OAuth Client IDs from env vars (not hardcoded)
           const validClientIds = [
-            "525433155057-8u1ubopd5mcrk3mucqtgplpoc71drsbg.apps.googleusercontent.com", // Web
-            "525433155057-m3b87hddvrqmoe5jjlun01hb5kdula6d.apps.googleusercontent.com", // iOS
-            "525433155057-ch8mhegje24psobbld0m657tet2rn81k.apps.googleusercontent.com", // Android
-          ];
+            ENV.googleWebClientId,
+            ENV.googleIosClientId,
+            ENV.googleAndroidClientId,
+          ].filter(Boolean);
+          if (validClientIds.length === 0) {
+            throw new Error("Google OAuth Client IDs not configured on server");
+          }
 
-          const ticket = await client.verifyIdToken({
+          const ticket = await googleAuthClient.verifyIdToken({
             idToken: input.idToken,
             audience: validClientIds,
           });
@@ -525,7 +560,7 @@ export const appRouter = router({
       }),
 
     // AI Food Analysis - upload base64 image, get nutrition data
-    analyze: publicProcedure
+    analyze: protectedProcedure
       .input(
         z.object({
           imageBase64: z.string(), // base64 encoded image data
@@ -582,7 +617,7 @@ export const appRouter = router({
         };
       }),
     // AI Food Analysis from text description - no image needed
-    analyzeText: publicProcedure
+    analyzeText: protectedProcedure
       .input(
         z.object({
           description: z.string(), // e.g. "一嚿雞胸加兩隻蛋"
@@ -670,6 +705,11 @@ Always return valid JSON.`;
     initializeDaily: protectedProcedure
       .input(z.object({ date: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        // FIX 19: Check if already initialized for this date (idempotent)
+        const existing = await db.getUserQuests(ctx.user.id, input.date);
+        if (existing && existing.length > 0) {
+          return { count: existing.length, alreadyInitialized: true };
+        }
         const allQuests = await db.getAllQuests();
         const results = [];
         for (const quest of allQuests) {
@@ -681,7 +721,7 @@ Always return valid JSON.`;
           });
           results.push(id);
         }
-        return { count: results.length };
+        return { count: results.length, alreadyInitialized: false };
       }),
   }),
 
@@ -869,33 +909,31 @@ Always return valid JSON.`;
     acceptRequest: protectedProcedure
       .input(z.object({ friendshipId: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        await db.updateFriendship(input.friendshipId, 'accepted');
-        // Find who sent the request so we can notify them
-        const friendship = await db.checkFriendship(ctx.user.id, 0); // We need the friendship row
-        // Query the friendship by id to find the sender
+        // FIX 8: Verify the current user is the recipient of this friend request
         const { getDb } = await import('./db');
         const dbInstance = await getDb();
-        if (dbInstance) {
-          const { friendships } = await import('../drizzle/schema');
-          const { eq } = await import('drizzle-orm');
-          const rows = await dbInstance.select().from(friendships).where(eq(friendships.id, input.friendshipId)).limit(1);
-          if (rows[0]) {
-            const senderId = rows[0].userId;
-            const acceptorMonster = await db.getActiveMonster(ctx.user.id);
-            const acceptorName = acceptorMonster?.name || 'A trainer';
-            sendToUser(senderId, {
-              type: 'friend_accepted',
-              fromUserId: ctx.user.id,
-              fromName: acceptorName,
-            });
-            // Send push notification to original sender
-            sendPushNotification(senderId, {
-              title: '\u{2705} Friend Request Accepted',
-              body: `${acceptorName} accepted your friend request!`,
-              data: { type: 'friend_accepted', fromUserId: ctx.user.id },
-            });
-          }
+        if (!dbInstance) throw new Error('Database unavailable');
+        const { friendships } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        const rows = await dbInstance.select().from(friendships).where(eq(friendships.id, input.friendshipId)).limit(1);
+        if (!rows[0]) throw new Error('Friend request not found');
+        if (rows[0].friendId !== ctx.user.id) {
+          throw new Error('You can only accept requests sent to you');
         }
+        await db.updateFriendship(input.friendshipId, 'accepted');
+        const senderId = rows[0].userId;
+        const acceptorMonster = await db.getActiveMonster(ctx.user.id);
+        const acceptorName = acceptorMonster?.name || 'A trainer';
+        sendToUser(senderId, {
+          type: 'friend_accepted',
+          fromUserId: ctx.user.id,
+          fromName: acceptorName,
+        });
+        sendPushNotification(senderId, {
+          title: '\u{2705} Friend Request Accepted',
+          body: `${acceptorName} accepted your friend request!`,
+          data: { type: 'friend_accepted', fromUserId: ctx.user.id },
+        });
         return { success: true };
       }),
     rejectRequest: protectedProcedure

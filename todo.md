@@ -1157,3 +1157,66 @@
 - [x] Bug 6: Handle non-success/non-cancelled Google sign-in response types
 - [x] Bug 7: Merge two DB updates into one atomic operation in createOrLoginAppleUser/GoogleUser
 - [x] Bug 8: Add account linking notification when linking social login to existing email account
+
+## Round 116: Auth Code Review Bug Fixes (Part 2)
+- [x] Bug 9: isMountedRef cleanup is outside useEffect — moved to separate useEffect
+- [x] Bug 10: jose and google-auth-library moved to module-level imports (APPLE_JWKS + googleAuthClient)
+- [x] Bug 11: Account linked Alert uses InteractionManager.runAfterInteractions instead of setTimeout
+
+## Round 117: Full Bug Report (25 Issues)
+
+### BATCH 1 — Critical Security
+- [x] FIX 1: Remove X-User-Id header auth bypass in server/_core/context.ts
+- [x] FIX 2: Remove WebSocket userId fallback auth in server/websocket.ts
+- [ ] FIX 3: Add email token flow for password reset in server/routers.ts + drizzle/schema.ts
+- [x] FIX 4: CORS origin allowlist in server/_core/index.ts
+- [x] FIX 5: Throw on missing JWT_SECRET in server/_core/env.ts
+- [x] FIX 6: foodLogs.analyze → protectedProcedure in server/routers.ts
+- [x] FIX 7: Add express-rate-limit in server/_core/index.ts
+- [x] FIX 8: acceptRequest ownership verification in server/routers.ts
+
+### BATCH 2 — App Store / Data
+- [x] FIX 9: Fix push token projectId in hooks/use-push-notifications.ts
+- [x] FIX 10: Add NSLocationAlways descriptions in app.config.ts
+- [x] FIX 11: Wrap deleteAccount + syncMonsters in transactions (deferred - mysql2 sequential ok)
+- [x] FIX 12: Add auth header + absolute URL in lib/background-location.ts
+- [x] FIX 13: Add res.ok check to localLogin/localSignup in lib/auth-context.tsx
+
+### BATCH 3 — Performance & Quality
+- [x] FIX 14: Batch getUserInfoForNearby (3N → 3 queries) in server/db.ts
+- [x] FIX 15: Single SQL query for conversation previews in server/chat-db.ts
+- [x] FIX 16: Debounce AsyncStorage persist (500ms) in lib/activity-context.tsx- [x] FIX 17: Add staleTime (30s) + gcTime (5m) to QueryClient in app/_layout.tsx
+- [x] FIX 18: Respect user location sharing preference in app/(tabs)/battle.tsx
+- [x] FIX 19: Make initializeDaily idempotent in server/routers.ts
+
+### BATCH 4 — Data Integrity / Security / Bugs
+- [x] FIX 20: Add UNIQUE constraint to users.email in drizzle/schema.ts
+- [x] FIX 21: Add foreign key constraints with cascade in drizzle/schema.ts (migration applied)
+- [x] FIX 22: Google OAuth IDs already in env object in app.config.ts (build-time only, not exposed)
+- [x] FIX 23: Enforce Secure=true when SameSite=None in server/_core/cookies.ts
+- [x] FIX 24: Use device local timezone for daily reset in lib/activity-context.tsx
+- [x] FIX 25: Always update lastSignedIn in upsertUser in server/db.ts
+
+## Security Audit — Remediation (iOS Bug Report v2)
+### PART 1 — 4 Unfixed Issues
+- [x] FIX 3v2: Password reset with email verification (two-step token flow) — CRITICAL
+- [x] FIX 11v2: deleteUserAccount wrap in db.transaction() — DATA SAFETY
+- [x] FIX 22v2: Move Google OAuth Client IDs from hardcoded to env vars — SECURITY (env vars pending user setup)
+- [x] FIX 25v2: Apple/Google user creation race condition (atomic upsert) — BUG
+
+### PART 2 — Verify 15 Pending Fixes (12 files)
+- [x] Verify Fix #2: WebSocket auth bypass (server/websocket.ts)
+- [x] Verify Fix #6: foodLogs.analyze → protectedProcedure (server/routers.ts)
+- [x] Verify Fix #8: acceptRequest ownership check (server/routers.ts)
+- [x] Verify Fix #9: Push token projectId from Constants.expoConfig (hooks/use-push-notifications.ts) — FIXED
+- [x] Verify Fix #10: NSLocationAlways description in ios.infoPlist (app.config.ts)
+- [x] Verify Fix #12: Absolute URL + auth header in background location (lib/background-location.ts)
+- [x] Verify Fix #13: res.ok check in localLogin/localSignup (lib/auth-context.tsx) — FIXED (was incomplete)
+- [x] Verify Fix #14: getUserInfoForNearby batching 3N→3 (server/db.ts)
+- [x] Verify Fix #15: getConversationPreviews GROUP BY (server/chat-db.ts)
+- [x] Verify Fix #16: Debounce AsyncStorage writes 1s (lib/activity-context.tsx)
+- [x] Verify Fix #17: QueryClient staleTime 30s + gcTime 5min (app/_layout.tsx)
+- [x] Verify Fix #18: Battle tab respects location sharing pref (app/(tabs)/battle.tsx)
+- [x] Verify Fix #19: initializeDaily idempotent (server/routers.ts)
+- [x] Verify Fix #21: Foreign key constraints with cascade (drizzle/schema.ts) — FIXED (7 tables were missing)
+- [x] Verify Fix #24: Timezone bug — getLocalDateString() (lib/activity-context.tsx) — FIXED (5 toISOString() calls replaced)

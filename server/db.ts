@@ -1,4 +1,4 @@
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createHash, randomBytes } from "crypto";
 import {
@@ -14,6 +14,7 @@ import {
   matchSwipes,
   friendships,
   userLocations,
+  passwordResetTokens,
   InsertUser,
   InsertProfile,
   InsertMonster,
@@ -90,9 +91,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.lastSignedIn = new Date();
     }
 
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
+    // FIX 25: Always update lastSignedIn on login, even if no other fields changed
+    updateSet.lastSignedIn = new Date();
 
     await db.insert(users).values(values).onDuplicateKeyUpdate({
       set: updateSet,
@@ -141,6 +141,7 @@ export async function getUserByEmail(email: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+// FIX 25: Atomic upsert for Apple user creation (prevents TOCTOU race condition)
 export async function createOrLoginAppleUser(data: {
   appleUserId: string;
   email: string | null;
@@ -151,26 +152,10 @@ export async function createOrLoginAppleUser(data: {
 
   const openId = `apple-${data.appleUserId}`;
 
-  // Check if user already exists with this Apple ID
-  const existing = await getUserByOpenId(openId);
-  if (existing) {
-    // Bug 7 fix: merge into one atomic DB update
-    const updateSet: Record<string, unknown> = { lastSignedIn: new Date() };
-    if (data.name && !existing.name) updateSet.name = data.name;
-    if (data.email && !existing.email) updateSet.email = data.email;
-    await db.update(users).set(updateSet).where(eq(users.id, existing.id));
-    return {
-      id: existing.id,
-      openId: existing.openId,
-      name: data.name || existing.name,
-      email: data.email || existing.email,
-    };
-  }
-
-  // Also check if a user with the same email already exists (e.g., signed up with email/password first)
+  // Step 1: Check if a user with the same email already exists (account linking)
   if (data.email) {
     const emailUser = await getUserByEmail(data.email);
-    if (emailUser) {
+    if (emailUser && emailUser.openId !== openId) {
       // Bug 8: Link Apple ID to existing account (accountLinked flag for client notification)
       await db.update(users).set({
         openId,
@@ -187,25 +172,33 @@ export async function createOrLoginAppleUser(data: {
     }
   }
 
-  // Create new user
+  // Step 2: Atomic upsert — insert new user or update existing on openId conflict
   await db.insert(users).values({
     openId,
     name: data.name || "Apple User",
     email: data.email,
     loginMethod: "apple",
     lastSignedIn: new Date(),
+  }).onDuplicateKeyUpdate({
+    set: {
+      lastSignedIn: new Date(),
+      // Only update name/email if they were previously null
+      ...(data.name ? { name: sql`COALESCE(NULLIF(${users.name}, ''), ${data.name})` } : {}),
+      ...(data.email ? { email: sql`COALESCE(${users.email}, ${data.email})` } : {}),
+    },
   });
 
-  const newUser = await getUserByOpenId(openId);
-  if (!newUser) throw new Error("Failed to create Apple user");
+  const user = await getUserByOpenId(openId);
+  if (!user) throw new Error("Failed to create/update Apple user");
   return {
-    id: newUser.id,
-    openId: newUser.openId,
-    name: newUser.name,
-    email: newUser.email,
+    id: user.id,
+    openId: user.openId,
+    name: user.name,
+    email: user.email,
   };
 }
 
+// FIX 25: Atomic upsert for Google user creation (prevents TOCTOU race condition)
 export async function createOrLoginGoogleUser(data: {
   googleUserId: string;
   email: string;
@@ -216,26 +209,10 @@ export async function createOrLoginGoogleUser(data: {
 
   const openId = `google-${data.googleUserId}`;
 
-  // Check if user already exists with this Google ID
-  const existing = await getUserByOpenId(openId);
-  if (existing) {
-    // Bug 7 fix: merge into one atomic DB update
-    const updateSet: Record<string, unknown> = { lastSignedIn: new Date() };
-    if (data.name && !existing.name) updateSet.name = data.name;
-    if (data.email && !existing.email) updateSet.email = data.email;
-    await db.update(users).set(updateSet).where(eq(users.id, existing.id));
-    return {
-      id: existing.id,
-      openId: existing.openId,
-      name: data.name || existing.name,
-      email: data.email || existing.email,
-    };
-  }
-
-  // Check if a user with the same email already exists (e.g., signed up with email/password first)
+  // Step 1: Check if a user with the same email already exists (account linking)
   if (data.email) {
     const emailUser = await getUserByEmail(data.email);
-    if (emailUser) {
+    if (emailUser && emailUser.openId !== openId) {
       // Bug 8: Link Google ID to existing account (accountLinked flag for client notification)
       await db.update(users).set({
         openId,
@@ -252,22 +229,29 @@ export async function createOrLoginGoogleUser(data: {
     }
   }
 
-  // Create new user
+  // Step 2: Atomic upsert — insert new user or update existing on openId conflict
   await db.insert(users).values({
     openId,
     name: data.name || "Google User",
     email: data.email,
     loginMethod: "google",
     lastSignedIn: new Date(),
+  }).onDuplicateKeyUpdate({
+    set: {
+      lastSignedIn: new Date(),
+      // Only update name/email if they were previously null
+      ...(data.name ? { name: sql`COALESCE(NULLIF(${users.name}, ''), ${data.name})` } : {}),
+      ...(data.email ? { email: sql`COALESCE(${users.email}, ${data.email})` } : {}),
+    },
   });
 
-  const newUser = await getUserByOpenId(openId);
-  if (!newUser) throw new Error("Failed to create Google user");
+  const user = await getUserByOpenId(openId);
+  if (!user) throw new Error("Failed to create/update Google user");
   return {
-    id: newUser.id,
-    openId: newUser.openId,
-    name: newUser.name,
-    email: newUser.email,
+    id: user.id,
+    openId: user.openId,
+    name: user.name,
+    email: user.email,
   };
 }
 
@@ -350,6 +334,45 @@ export async function resetPasswordByEmail(email: string, newPassword: string): 
 export async function checkUserExistsByEmail(email: string): Promise<boolean> {
   const user = await getUserByEmail(email);
   return !!user;
+}
+
+// ============================================
+// Password Reset Token Functions (FIX 3)
+// ============================================
+
+export async function savePasswordResetToken(
+  userId: number, token: string, expiresAt: Date,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(passwordResetTokens).values({ userId, token, expiresAt });
+}
+
+export async function getPasswordResetToken(token: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db
+    .select().from(passwordResetTokens)
+    .where(eq(passwordResetTokens.token, token)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function markPasswordResetTokenUsed(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(passwordResetTokens)
+    .set({ usedAt: new Date() })
+    .where(eq(passwordResetTokens.id, id));
+}
+
+export async function resetPasswordById(
+  userId: number, hash: string, salt: string,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users)
+    .set({ passwordHash: hash, passwordSalt: salt })
+    .where(eq(users.id, userId));
 }
 
 // ============================================
@@ -630,26 +653,23 @@ export async function updateMatchRadius(userId: number, radiusKm: number) {
 }
 
 // Get user info with profile and active monster for nearby display
+// FIX 14: Batch queries (3 total instead of 3N)
 export async function getUserInfoForNearby(userIds: number[]) {
   const db = await getDb();
   if (!db) return [];
   if (userIds.length === 0) return [];
   
-  const results = [];
-  for (const uid of userIds) {
-    const userResult = await db.select().from(users).where(eq(users.id, uid)).limit(1);
-    const profileResult = await db.select().from(profiles).where(eq(profiles.userId, uid)).limit(1);
-    const monsterResult = await db.select().from(monsters).where(and(eq(monsters.userId, uid), eq(monsters.isActive, true))).limit(1);
-    
-    if (userResult[0]) {
-      results.push({
-        user: userResult[0],
-        profile: profileResult[0] || null,
-        activeMonster: monsterResult[0] || null,
-      });
-    }
-  }
-  return results;
+  const [allUsers, allProfiles, allMonsters] = await Promise.all([
+    db.select().from(users).where(inArray(users.id, userIds)),
+    db.select().from(profiles).where(inArray(profiles.userId, userIds)),
+    db.select().from(monsters).where(and(inArray(monsters.userId, userIds), eq(monsters.isActive, true))),
+  ]);
+  
+  return allUsers.map(u => ({
+    user: u,
+    profile: allProfiles.find(p => p.userId === u.id) || null,
+    activeMonster: allMonsters.find(m => m.userId === u.id) || null,
+  }));
 }
 
 // Get pending friend requests for a user
@@ -911,6 +931,7 @@ export async function deleteFriendship(userId: number, friendId: number) {
 }
 
 // Delete user account and all associated data
+// FIX 11: Wrapped in db.transaction() for atomicity
 export async function deleteUserAccount(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -918,29 +939,32 @@ export async function deleteUserAccount(userId: number) {
   // Import additional tables not in the default imports
   const { chatMessages, pushTokens, monsterCaring } = await import("../drizzle/schema");
   
-  // Delete in order to respect foreign key constraints
-  await db.delete(chatMessages).where(
-    sql`${chatMessages.senderId} = ${userId} OR ${chatMessages.receiverId} = ${userId}`
-  );
-  await db.delete(pushTokens).where(eq(pushTokens.userId, userId));
-  await db.delete(monsterCaring).where(eq(monsterCaring.userId, userId));
-  await db.delete(userQuests).where(eq(userQuests.userId, userId));
-  await db.delete(foodLogs).where(eq(foodLogs.userId, userId));
-  await db.delete(workouts).where(eq(workouts.userId, userId));
-  await db.delete(dailyStats).where(eq(dailyStats.userId, userId));
-  await db.delete(battles).where(
-    sql`${battles.challengerId} = ${userId} OR ${battles.opponentId} = ${userId}`
-  );
-  await db.delete(matchSwipes).where(
-    sql`${matchSwipes.userId} = ${userId} OR ${matchSwipes.targetUserId} = ${userId}`
-  );
-  await db.delete(friendships).where(
-    sql`${friendships.userId} = ${userId} OR ${friendships.friendId} = ${userId}`
-  );
-  await db.delete(userLocations).where(eq(userLocations.userId, userId));
-  await db.delete(monsters).where(eq(monsters.userId, userId));
-  await db.delete(profiles).where(eq(profiles.userId, userId));
-  await db.delete(users).where(eq(users.id, userId));
+  await db.transaction(async (tx) => {
+    // Delete in order to respect foreign key constraints
+    await tx.delete(chatMessages).where(
+      sql`${chatMessages.senderId} = ${userId} OR ${chatMessages.receiverId} = ${userId}`
+    );
+    await tx.delete(pushTokens).where(eq(pushTokens.userId, userId));
+    await tx.delete(monsterCaring).where(eq(monsterCaring.userId, userId));
+    await tx.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+    await tx.delete(userQuests).where(eq(userQuests.userId, userId));
+    await tx.delete(foodLogs).where(eq(foodLogs.userId, userId));
+    await tx.delete(workouts).where(eq(workouts.userId, userId));
+    await tx.delete(dailyStats).where(eq(dailyStats.userId, userId));
+    await tx.delete(battles).where(
+      sql`${battles.challengerId} = ${userId} OR ${battles.opponentId} = ${userId}`
+    );
+    await tx.delete(matchSwipes).where(
+      sql`${matchSwipes.userId} = ${userId} OR ${matchSwipes.targetUserId} = ${userId}`
+    );
+    await tx.delete(friendships).where(
+      sql`${friendships.userId} = ${userId} OR ${friendships.friendId} = ${userId}`
+    );
+    await tx.delete(userLocations).where(eq(userLocations.userId, userId));
+    await tx.delete(monsters).where(eq(monsters.userId, userId));
+    await tx.delete(profiles).where(eq(profiles.userId, userId));
+    await tx.delete(users).where(eq(users.id, userId));
+  });
   
   return { success: true };
 }

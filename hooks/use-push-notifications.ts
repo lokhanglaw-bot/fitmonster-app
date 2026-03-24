@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { trpc } from "@/lib/trpc";
 
@@ -83,8 +84,10 @@ export function usePushNotifications(userId: number | null) {
         return null;
       }
 
+      // FIX 9: Read projectId from Constants.expoConfig instead of hardcoding
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.expoConfig?.slug;
       const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: undefined,
+        projectId: projectId as string,
       });
 
       const token = tokenData.data;

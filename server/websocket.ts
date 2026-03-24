@@ -91,44 +91,12 @@ export function setupWebSocket(server: HttpServer) {
             console.log(`[WS] Primary auth failed:`, err?.message || err);
           }
 
-          // If primary auth failed, try fallback
+          // If primary auth failed, reject connection
           if (!authSuccess) {
-            const fallbackId = msg.userId ? Number(msg.userId) : null;
-            const fallbackOpenId = msg.openId || null;
-            console.log(`[WS] Trying fallback auth - userId: ${fallbackId}, openId: ${fallbackOpenId}`);
-            
-            let resolvedUser: { id: number } | undefined = undefined;
-            
-            if (fallbackId && !isNaN(fallbackId) && fallbackId > 0) {
-              try {
-                resolvedUser = await db.getUserById(fallbackId);
-                console.log(`[WS] Fallback userId lookup:`, resolvedUser ? `found (id=${resolvedUser.id})` : "not found");
-              } catch (e: any) {
-                console.error(`[WS] Fallback userId lookup error:`, e?.message);
-              }
-            }
-            
-            if (!resolvedUser && fallbackOpenId) {
-              try {
-                resolvedUser = await db.getUserByOpenId(fallbackOpenId) || undefined;
-                console.log(`[WS] Fallback openId lookup:`, resolvedUser ? `found (id=${resolvedUser.id})` : "not found");
-              } catch (e: any) {
-                console.error(`[WS] Fallback openId lookup error:`, e?.message);
-              }
-            }
-            
-            if (resolvedUser) {
-              userId = resolvedUser.id;
-              const count = registerConnection(userId, ws);
-              const sent = safeSend(ws, JSON.stringify({ type: "auth_success", userId }));
-              console.log(`[WS] User ${userId} connected via fallback auth. Total: ${count}, auth_success sent: ${sent}`);
-              authSuccess = true;
-            } else {
-              console.log(`[WS] All auth methods failed for userId=${fallbackId}, openId=${fallbackOpenId}`);
-              safeSend(ws, JSON.stringify({ type: "auth_error", message: "Authentication failed" }));
-              ws.close();
-              return;
-            }
+            console.log(`[WS] Auth failed — rejecting connection`);
+            safeSend(ws, JSON.stringify({ type: "auth_failed", reason: "invalid_token" }));
+            ws.close();
+            return;
           }
 
           // Send unread count after successful auth

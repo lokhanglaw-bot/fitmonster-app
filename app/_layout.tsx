@@ -90,6 +90,9 @@ export default function RootLayout() {
             refetchOnWindowFocus: false,
             // Retry failed requests once
             retry: 1,
+            // FIX 17: Prevent re-fetching data that's still fresh
+            staleTime: 30_000, // 30 seconds
+            gcTime: 5 * 60_000, // 5 minutes garbage collection
           },
         },
       }),

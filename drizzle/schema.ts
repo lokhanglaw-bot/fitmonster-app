@@ -24,7 +24,7 @@ export const users = mysqlTable("users", {
   /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
-  email: varchar("email", { length: 320 }),
+  email: varchar("email", { length: 320 }).unique(),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -43,7 +43,7 @@ export type InsertUser = typeof users.$inferInsert;
 
 export const profiles = mysqlTable("profiles", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
+  userId: int("userId").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
   trainerName: varchar("trainerName", { length: 100 }),
   healthScore: int("healthScore").default(0).notNull(),
   totalSteps: int("totalSteps").default(0).notNull(),
@@ -69,7 +69,7 @@ export const profiles = mysqlTable("profiles", {
 
 export const monsters = mysqlTable("monsters", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 100 }).notNull(),
   monsterType: mysqlEnum("monsterType", [
     "bodybuilder",
@@ -97,7 +97,7 @@ export const monsters = mysqlTable("monsters", {
 
 export const workouts = mysqlTable("workouts", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   exerciseType: varchar("exerciseType", { length: 100 }).notNull(),
   exerciseName: varchar("exerciseName", { length: 200 }).notNull(),
   duration: int("duration").notNull(),
@@ -111,7 +111,7 @@ export const workouts = mysqlTable("workouts", {
 
 export const dailyStats = mysqlTable("dailyStats", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   date: varchar("date", { length: 10 }).notNull(),
   steps: int("steps").default(0).notNull(),
   caloriesIntake: int("caloriesIntake").default(0).notNull(),
@@ -128,7 +128,7 @@ export const dailyStats = mysqlTable("dailyStats", {
 
 export const foodLogs = mysqlTable("foodLogs", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   foodName: varchar("foodName", { length: 200 }).notNull(),
   calories: int("calories").notNull(),
   protein: int("protein").notNull(),
@@ -156,8 +156,8 @@ export const quests = mysqlTable("quests", {
 
 export const userQuests = mysqlTable("userQuests", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  questId: int("questId").notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  questId: int("questId").notNull().references(() => quests.id, { onDelete: "cascade" }),
   currentProgress: int("currentProgress").default(0).notNull(),
   targetValue: int("targetValue").notNull(),
   isCompleted: boolean("isCompleted").default(false).notNull(),
@@ -169,10 +169,10 @@ export const userQuests = mysqlTable("userQuests", {
 
 export const battles = mysqlTable("battles", {
   id: int("id").autoincrement().primaryKey(),
-  challengerId: int("challengerId").notNull(),
-  opponentId: int("opponentId").notNull(),
-  challengerMonsterId: int("challengerMonsterId").notNull(),
-  opponentMonsterId: int("opponentMonsterId").notNull(),
+  challengerId: int("challengerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  opponentId: int("opponentId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  challengerMonsterId: int("challengerMonsterId").notNull().references(() => monsters.id, { onDelete: "cascade" }),
+  opponentMonsterId: int("opponentMonsterId").notNull().references(() => monsters.id, { onDelete: "cascade" }),
   winnerId: int("winnerId"),
   battleType: mysqlEnum("battleType", ["pvp", "wild", "friendly"]).default("pvp").notNull(),
   status: mysqlEnum("status", ["pending", "active", "completed"]).default("pending").notNull(),
@@ -186,8 +186,8 @@ export const battles = mysqlTable("battles", {
 
 export const matchSwipes = mysqlTable("matchSwipes", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  targetUserId: int("targetUserId").notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  targetUserId: int("targetUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   swipeType: mysqlEnum("swipeType", ["like", "nope", "super_like"]).notNull(),
   date: varchar("date", { length: 10 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -195,8 +195,8 @@ export const matchSwipes = mysqlTable("matchSwipes", {
 
 export const friendships = mysqlTable("friendships", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  friendId: int("friendId").notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  friendId: int("friendId").notNull().references(() => users.id, { onDelete: "cascade" }),
   status: mysqlEnum("status", ["pending", "accepted", "blocked"]).default("pending").notNull(),
   hideLocation: boolean("hideLocation").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -205,7 +205,7 @@ export const friendships = mysqlTable("friendships", {
 
 export const userLocations = mysqlTable("userLocations", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
+  userId: int("userId").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
   latitude: float("latitude").notNull(),
   longitude: float("longitude").notNull(),
   isSharing: boolean("isSharing").default(false).notNull(),
@@ -218,8 +218,8 @@ export const userLocations = mysqlTable("userLocations", {
 // ============================================
 export const chatMessages = mysqlTable("chatMessages", {
   id: int("id").autoincrement().primaryKey(),
-  senderId: int("senderId").notNull(),
-  receiverId: int("receiverId").notNull(),
+  senderId: int("senderId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  receiverId: int("receiverId").notNull().references(() => users.id, { onDelete: "cascade" }),
   message: text("message").notNull(),
   messageType: mysqlEnum("messageType", ["text", "image", "audio", "system"]).default("text").notNull(),
   isRead: boolean("isRead").default(false).notNull(),
@@ -231,7 +231,7 @@ export const chatMessages = mysqlTable("chatMessages", {
 // ============================================
 export const pushTokens = mysqlTable("pushTokens", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   token: varchar("token", { length: 255 }).notNull(),
   platform: mysqlEnum("platform", ["ios", "android", "web"]).default("ios").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -243,7 +243,7 @@ export const pushTokens = mysqlTable("pushTokens", {
 // ============================================
 export const monsterCaring = mysqlTable("monsterCaring", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
+  userId: int("userId").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
   fullness: int("fullness").default(70).notNull(), // 0-100 satiety
   energy: int("energy").default(70).notNull(), // 0-100 vitality
   mood: int("mood").default(70).notNull(), // 0-100 mood
@@ -259,6 +259,21 @@ export const monsterCaring = mysqlTable("monsterCaring", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+// ============================================
+// Password Reset Tokens (FIX 3)
+// ============================================
+export const passwordResetTokens = mysqlTable("password_reset_tokens", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull(),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 
 // Type Exports
 export type MonsterCaring = typeof monsterCaring.$inferSelect;

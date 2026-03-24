@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
-import { Alert, Platform } from "react-native";
+import { Alert, InteractionManager, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApiBaseUrl } from "@/constants/oauth";
 
@@ -174,6 +174,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ "0": { json: { email: email.trim().toLowerCase(), password } } }),
     });
+    // FIX 13: Check res.ok before parsing JSON to avoid SyntaxError on HTML error pages
+    if (!res.ok) {
+      if (res.status >= 500) {
+        throw new Error("Server error, please try again later");
+      }
+      // For 4xx errors, try to parse tRPC error response
+      let errMsg = "";
+      try {
+        const errData = await res.json();
+        errMsg = errData?.[0]?.error?.json?.message || errData?.[0]?.error?.message || "";
+      } catch {
+        const text = await res.text().catch(() => "");
+        throw new Error(`Request failed (${res.status}): ${text.slice(0, 100)}`);
+      }
+      if (errMsg.includes("NEEDS_PASSWORD")) throw new Error("NEEDS_PASSWORD");
+      if (errMsg.includes("INVALID_CREDENTIALS")) throw new Error("INVALID_CREDENTIALS");
+      if (errMsg.includes("ACCOUNT_NOT_FOUND")) throw new Error("ACCOUNT_NOT_FOUND");
+      throw new Error("INVALID_CREDENTIALS");
+    }
     const data = await res.json();
     const result = data?.[0]?.result?.data?.json;
     if (!result?.success) {
@@ -249,13 +268,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
     console.log("[AuthProvider] Google login successful, DB ID:", result.id);
     // Bug 8 fix: notify user when account was linked
+    // Round 116 Issue 3: Use InteractionManager instead of setTimeout for stable timing
     if (result.accountLinked) {
-      setTimeout(() => {
+      InteractionManager.runAfterInteractions(() => {
         Alert.alert(
           "Account Linked",
           "Your Google account has been linked to your existing account."
         );
-      }, 500);
+      });
     }
   }, []);
 
@@ -299,13 +319,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
     console.log("[AuthProvider] Apple login successful, DB ID:", result.id);
     // Bug 8 fix: notify user when account was linked
+    // Round 116 Issue 3: Use InteractionManager instead of setTimeout for stable timing
     if (result.accountLinked) {
-      setTimeout(() => {
+      InteractionManager.runAfterInteractions(() => {
         Alert.alert(
           "Account Linked",
           "Your Apple ID has been linked to your existing account."
         );
-      }, 500);
+      });
     }
   }, []);
 
@@ -317,6 +338,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ "0": { json: { name, email: email.trim().toLowerCase(), password } } }),
     });
+    // FIX 13: Check res.ok before parsing JSON to avoid SyntaxError on HTML error pages
+    if (!res.ok) {
+      if (res.status >= 500) {
+        throw new Error("Server error, please try again later");
+      }
+      // For 4xx errors, try to parse tRPC error response
+      let errMsg = "";
+      try {
+        const errData = await res.json();
+        errMsg = errData?.[0]?.error?.json?.message || errData?.[0]?.error?.message || "";
+      } catch {
+        const text = await res.text().catch(() => "");
+        throw new Error(`Request failed (${res.status}): ${text.slice(0, 100)}`);
+      }
+      if (errMsg.includes("EMAIL_EXISTS")) throw new Error("EMAIL_EXISTS");
+      throw new Error("SIGNUP_FAILED");
+    }
     const data = await res.json();
     const result = data?.[0]?.result?.data?.json;
     if (!result?.success) {

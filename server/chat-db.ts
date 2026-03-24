@@ -104,55 +104,38 @@ export async function getUnreadCountByFriend(userId: number): Promise<Array<{ se
 }
 
 // Get last message for each conversation
+// FIX 15: Use SQL to get latest message per partner in 1 query instead of N+1
 export async function getConversationPreviews(userId: number) {
   const db = await getDb();
   if (!db) return [];
 
-  // Get all unique conversation partners
-  const sent = await db
-    .select({ partnerId: chatMessages.receiverId })
-    .from(chatMessages)
-    .where(eq(chatMessages.senderId, userId))
-    .groupBy(chatMessages.receiverId);
+  // Single query: get the latest message for each conversation partner
+  const rows = await db.execute(sql`
+    SELECT m.* FROM ${chatMessages} m
+    INNER JOIN (
+      SELECT
+        CASE WHEN sender_id = ${userId} THEN receiver_id ELSE sender_id END AS partner_id,
+        MAX(id) AS max_id
+      FROM ${chatMessages}
+      WHERE sender_id = ${userId} OR receiver_id = ${userId}
+      GROUP BY partner_id
+    ) latest ON m.id = latest.max_id
+    ORDER BY m.created_at DESC
+  `);
 
-  const received = await db
-    .select({ partnerId: chatMessages.senderId })
-    .from(chatMessages)
-    .where(eq(chatMessages.receiverId, userId))
-    .groupBy(chatMessages.senderId);
-
-  const partnerIds = [...new Set([...sent.map((s) => s.partnerId), ...received.map((r) => r.partnerId)])];
-
-  const previews = [];
-  for (const partnerId of partnerIds) {
-    const lastMsg = await db
-      .select()
-      .from(chatMessages)
-      .where(
-        or(
-          and(eq(chatMessages.senderId, userId), eq(chatMessages.receiverId, partnerId)),
-          and(eq(chatMessages.senderId, partnerId), eq(chatMessages.receiverId, userId))
-        )
-      )
-      .orderBy(desc(chatMessages.createdAt))
-      .limit(1);
-
-    if (lastMsg[0]) {
-      previews.push({
-        partnerId,
-        lastMessage: lastMsg[0],
-      });
-    }
-  }
-
-  // Sort by most recent message
-  previews.sort((a, b) => {
-    const aTime = a.lastMessage.createdAt?.getTime() || 0;
-    const bTime = b.lastMessage.createdAt?.getTime() || 0;
-    return bTime - aTime;
-  });
-
-  return previews;
+  const results = (rows as any)[0] || rows;
+  return (Array.isArray(results) ? results : []).map((row: any) => ({
+    partnerId: row.sender_id === userId ? row.receiver_id : row.sender_id,
+    lastMessage: {
+      id: row.id,
+      senderId: row.sender_id,
+      receiverId: row.receiver_id,
+      message: row.message,
+      messageType: row.message_type,
+      isRead: row.is_read,
+      createdAt: row.created_at ? new Date(row.created_at) : null,
+    },
+  }));
 }
 
 // Push token management
