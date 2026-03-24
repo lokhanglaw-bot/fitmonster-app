@@ -1270,3 +1270,7 @@
 ## Bug Fix - Round 117
 - [x] Fix EAS Build overriding Apple Sign-In capability in Apple Developer Portal
 - [x] Enable Manus Publish for iOS builds (non-interactive CI mode)
+
+## Bug Fix - Round 118
+- [x] Fix preview (web) login not working — CORS origin check updated to allow Manus sandbox domains
+- [x] Bump version to 1.1.1 for Manus Publish

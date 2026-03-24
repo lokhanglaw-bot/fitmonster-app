@@ -37,6 +37,20 @@ const ALLOWED_ORIGINS = new Set([
   ...(process.env.EXPO_DEV_URL ? [process.env.EXPO_DEV_URL] : []),
 ]);
 
+// Dynamic CORS check: also allow same-host sandbox origins (e.g. 8081-xxx matching 3000-xxx)
+function isAllowedOrigin(origin: string): boolean {
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  // Allow Manus sandbox origins: any port prefix on the same sandbox host
+  try {
+    const url = new URL(origin);
+    // Match pattern: {port}-{sandbox_id}.sg1.manus.computer
+    if (url.hostname.includes(".manus.computer") || url.hostname.includes(".manus.space")) return true;
+  } catch {}
+  // Allow same-host different port in dev
+  if (process.env.NODE_ENV !== "production" && (origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1"))) return true;
+  return false;
+}
+
 // FIX 7: Rate limiters
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -65,7 +79,7 @@ async function startServer() {
   // FIX 4: CORS with origin allowlist
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin && ALLOWED_ORIGINS.has(origin)) {
+    if (origin && isAllowedOrigin(origin)) {
       res.header("Access-Control-Allow-Origin", origin);
       res.header("Access-Control-Allow-Credentials", "true");
     }
