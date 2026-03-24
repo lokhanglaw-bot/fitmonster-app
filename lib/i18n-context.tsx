@@ -135,6 +135,7 @@ const en = {
   logoutConfirm: "Log Out",
 
   // Delete Account
+  dangerZone: "Danger Zone",
   deleteAccount: "Delete Account",
   deleteAccountTitle: "Delete Account?",
   deleteAccountMessage: "This will permanently delete your account and all associated data, including your monsters, workout history, food logs, and friend connections. This action cannot be undone.",
@@ -993,6 +994,7 @@ const zh: Translations = {
   logoutConfirm: "登出",
 
   // Delete Account
+  dangerZone: "危險區域",
   deleteAccount: "刪除帳號",
   deleteAccountTitle: "確定刪除帳號？",
   deleteAccountMessage: "這將永久刪除你的帳號及所有相關資料，包括你的怪獸、運動紀錄、飲食紀錄和好友關係。此操作無法復原。",

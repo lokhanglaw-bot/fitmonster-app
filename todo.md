@@ -1261,3 +1261,8 @@
 - [x] Install missing expo-asset peer dependency (expo-asset@~12.0.12)
 - [x] Update outdated expo packages via npx expo install --check (expo, expo-audio, expo-constants, expo-font, expo-linking, expo-notifications, expo-router, expo-splash-screen, expo-video updated; react-native-maps reverted to 1.20.1 for SDK 54 compat)
 - [ ] Guide user to delete and regenerate iOS provisioning profile (includes Apple Sign-In entitlement) — USER ACTION REQUIRED
+
+## Bug Fix - Round 116
+- [x] Apple Sign-In must use native iOS popup (not external browser) — code already correct, needs rebuild with v1.1.0
+- [x] Remove Facebook share button from login page
+- [x] Restore Delete Account button in settings/profile page — Apple Review requirement

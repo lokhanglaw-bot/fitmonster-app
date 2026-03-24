@@ -593,8 +593,9 @@ export default function EditProfileScreen() {
             </TouchableOpacity>
 
             {/* Delete Account Section */}
-            <View style={{ marginTop: 40, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.border }}>
-              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12, textAlign: "center", lineHeight: 20 }}>
+            <View style={{ marginTop: 48, paddingTop: 24, borderTopWidth: 1.5, borderTopColor: "#FCA5A5" }}>
+              <Text style={{ fontSize: 18, fontWeight: "700", color: "#DC2626", textAlign: "center", marginBottom: 8 }}>⚠️ {t.dangerZone}</Text>
+              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16, textAlign: "center", lineHeight: 20 }}>
                 {t.deleteAccountMessage}
               </Text>
               {!showDeleteConfirm ? (
@@ -725,7 +726,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 24,
-    paddingBottom: 80,
+    paddingBottom: 160,
   },
   headerRow: {
     flexDirection: "row",

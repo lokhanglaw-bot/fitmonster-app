@@ -580,14 +580,6 @@ export default function AuthScreen() {
                 <Text style={styles.shareBtnLabel}>{t.twitter || "Twitter"}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={handleShareToFacebook}
-                style={[styles.shareBtn, { backgroundColor: "#1877F2" }]}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.shareBtnIcon}>f</Text>
-                <Text style={styles.shareBtnLabel}>{t.facebook || "Facebook"}</Text>
-              </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleShareToWhatsApp}
