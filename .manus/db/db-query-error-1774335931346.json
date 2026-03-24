@@ -1,0 +1,8 @@
+{
+  "query": "SELECT CONSTRAINT_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME, DELETE_RULE FROM information_schema.KEY_COLUMN_USAGE kcu JOIN information_schema.REFERENTIAL_CONSTRAINTS rc ON kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND kcu.TABLE_SCHEMA = rc.CONSTRAINT_SCHEMA WHERE kcu.TABLE_NAME = 'password_reset_tokens' AND kcu.REFERENCED_TABLE_NAME IS NOT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4JQihNFt71oUk4Z.root --database DZLsNMXz8tKivpZtpPajU7 --execute SELECT CONSTRAINT_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME, DELETE_RULE FROM information_schema.KEY_COLUMN_USAGE kcu JOIN information_schema.REFERENTIAL_CONSTRAINTS rc ON kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND kcu.TABLE_SCHEMA = rc.CONSTRAINT_SCHEMA WHERE kcu.TABLE_NAME = 'password_reset_tokens' AND kcu.REFERENCED_TABLE_NAME IS NOT NULL;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1052 (23000) at line 1: Column 'CONSTRAINT_NAME' in field list is ambiguous"
+  ]
+}

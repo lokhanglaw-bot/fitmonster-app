@@ -1247,4 +1247,8 @@
 - [x] Fix 1e: Create app/reset-password.tsx screen for deep link token handling
 - [x] Fix 2: Verify deleteUserAccount uses db.transaction() with tx.delete() and explicit schema imports
 - [x] TypeScript check: 0 errors
-- [ ] Export modified code as Markdown
+- [x] Export modified code as Markdown
+
+## Schema & Migration Fixes
+- [x] Issue 1: Add missing FK reference on passwordResetTokens.userId → users.id with onDelete cascade
+- [x] Issue 2: Check migration numbering — confirmed 0011→0012 ordering is correct (no conflict)

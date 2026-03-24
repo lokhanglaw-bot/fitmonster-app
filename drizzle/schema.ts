@@ -265,7 +265,7 @@ export const monsterCaring = mysqlTable("monsterCaring", {
 // ============================================
 export const passwordResetTokens = mysqlTable("password_reset_tokens", {
   id: int("id").primaryKey().autoincrement(),
-  userId: int("user_id").notNull(),
+  userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   token: varchar("token", { length: 64 }).notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),

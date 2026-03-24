@@ -92,6 +92,13 @@
       "when": 1774327849823,
       "tag": "0012_broad_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1774335902693,
+      "tag": "0013_green_sandman",
+      "breakpoints": true
     }
   ]
 }
