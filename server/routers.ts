@@ -28,6 +28,42 @@ function hashPassword(p: string, s: string): string {
   return createHash("sha256").update(p + s).digest("hex");
 }
 
+// Fix 1: Email helper for password reset tokens
+async function sendPasswordResetEmail(email: string, token: string): Promise<void> {
+  if (!ENV.resendApiKey) {
+    // Development mode: print reset link to server console
+    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8081";
+    console.log(`[Auth] Password reset token for ${email}: ${token}`);
+    console.log(`[Auth] Reset link: ${baseUrl}/reset-password?token=${token}`);
+    return;
+  }
+  const appUrl = process.env.EXPO_PUBLIC_APP_URL || "https://fitmonster.app";
+  const resetLink = `${appUrl}/reset-password?token=${token}`;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${ENV.resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: ENV.emailFrom,
+      to: email,
+      subject: "Reset your FitMonster password",
+      html: `
+        <p>Hi,</p>
+        <p>We received a request to reset your FitMonster password.</p>
+        <p><a href="${resetLink}"
+            style="background:#22C55E;color:white;padding:12px 24px;border-radius:6px;
+                   text-decoration:none;display:inline-block;">
+          Reset Password
+        </a></p>
+        <p>This link expires in <strong>1 hour</strong>.</p>
+        <p>If you didn't request this, ignore this email &mdash; your password won't change.</p>
+      `,
+    }),
+  });
+}
+
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
@@ -85,41 +121,33 @@ export const appRouter = router({
         }
         return { success: true, id: user.id, openId: user.openId, name: user.name };
       }),
-    // FIX 3: Two-step password reset with token verification
-    // Step 1: Request a password reset — generates token and (in production) emails it
+    // Fix 1 Step 1: Request a password reset email (token-based)
     requestPasswordReset: publicProcedure
       .input(z.object({ email: z.string().email() }))
       .mutation(async ({ input }) => {
         const emailNorm = input.email.trim().toLowerCase();
-        const user = await db.getUserByEmail(emailNorm);
-        // Always return success to prevent email enumeration
-        if (!user) return { success: true };
-        const token = randomBytes(32).toString("hex");
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
-        await db.savePasswordResetToken(user.id, token, expiresAt);
-        // TODO: In production, send token via email (e.g. sendPasswordResetEmail(user.email!, token))
-        console.log(`[Auth] Password reset token for ${emailNorm}: ${token}`);
+        const token = await db.createPasswordResetToken(emailNorm);
+        // Always return success — prevents email enumeration attacks
+        if (token) {
+          await sendPasswordResetEmail(emailNorm, token);
+        }
         return { success: true };
       }),
-    // Step 2: Verify token and set new password
+    // Fix 1 Step 2: Submit token + new password to complete the reset
     resetPassword: publicProcedure
       .input(z.object({
-        token: z.string().min(1),
+        token: z.string().length(64),
         newPassword: z.string().min(6),
       }))
       .mutation(async ({ input }) => {
-        const record = await db.getPasswordResetToken(input.token);
-        if (!record || record.usedAt || record.expiresAt < new Date()) {
+        const user = await db.resetPasswordByToken(input.token, input.newPassword);
+        if (!user) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "INVALID_OR_EXPIRED_TOKEN",
           });
         }
-        const salt = generateSalt();
-        const hash = hashPassword(input.newPassword, salt);
-        await db.resetPasswordById(record.userId, hash, salt);
-        await db.markPasswordResetTokenUsed(record.id);
-        return { success: true };
+        return { success: true, id: user.id, openId: user.openId, name: user.name };
       }),
     // Legacy sync for backward compatibility (used by existing sessions)
     // IMPORTANT: Only updates existing users, does NOT create new ones.

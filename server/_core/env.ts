@@ -17,4 +17,7 @@ export const ENV = {
   googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID ?? "",
   googleIosClientId: process.env.GOOGLE_IOS_CLIENT_ID ?? "",
   googleAndroidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID ?? "",
+  // Fix 1: Email service for password reset tokens
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  emailFrom: process.env.EMAIL_FROM ?? "noreply@fitmonster.app",
 };

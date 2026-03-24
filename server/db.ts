@@ -310,25 +310,8 @@ export async function verifyLocalUser(email: string, password: string): Promise<
   return { id: user.id, openId: user.openId, name: user.name, status: "ok" };
 }
 
-// Reset/set password for a user by email (used for forgot password and legacy account migration)
-export async function resetPasswordByEmail(email: string, newPassword: string): Promise<{ id: number; openId: string; name: string | null } | null> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const user = await getUserByEmail(email);
-  if (!user) return null;
-
-  const salt = generateSalt();
-  const hash = hashPassword(newPassword, salt);
-
-  await db.update(users).set({
-    passwordHash: hash,
-    passwordSalt: salt,
-    lastSignedIn: new Date(),
-  }).where(eq(users.id, user.id));
-
-  return { id: user.id, openId: user.openId, name: user.name };
-}
+// Legacy — kept for backward compatibility but no longer used by the password reset flow
+// export async function resetPasswordByEmail(...) { ... }
 
 // Check if a user exists by email (for forgot password validation)
 export async function checkUserExistsByEmail(email: string): Promise<boolean> {
@@ -337,42 +320,79 @@ export async function checkUserExistsByEmail(email: string): Promise<boolean> {
 }
 
 // ============================================
-// Password Reset Token Functions (FIX 3)
+// Password Reset Token Helpers  (Fix 1)
 // ============================================
 
-export async function savePasswordResetToken(
-  userId: number, token: string, expiresAt: Date,
-) {
+export async function createPasswordResetToken(email: string): Promise<string | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.insert(passwordResetTokens).values({ userId, token, expiresAt });
+  const user = await getUserByEmail(email);
+  if (!user) return null; // Silently return null — do NOT reveal if email exists
+
+  // Invalidate any existing unused tokens for this user
+  await db.delete(passwordResetTokens).where(
+    and(
+      eq(passwordResetTokens.userId, user.id),
+      sql`${passwordResetTokens.usedAt} IS NULL`,
+    ),
+  );
+
+  const token = randomBytes(32).toString("hex"); // 64-char hex string
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+  await db.insert(passwordResetTokens).values({ userId: user.id, token, expiresAt });
+  return token;
 }
 
-export async function getPasswordResetToken(token: string) {
+export async function getUserEmailByResetToken(token: string): Promise<string | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db
-    .select().from(passwordResetTokens)
-    .where(eq(passwordResetTokens.token, token)).limit(1);
-  return result.length > 0 ? result[0] : null;
+
+  const rows = await db.select().from(passwordResetTokens)
+    .where(eq(passwordResetTokens.token, token))
+    .limit(1);
+
+  if (rows.length === 0) return null;
+  const record = rows[0];
+  if (record.usedAt) return null;                       // Already used
+  if (record.expiresAt < new Date()) return null;       // Expired
+
+  const user = await getUserById(record.userId);
+  return user?.email ?? null;
 }
 
-export async function markPasswordResetTokenUsed(id: number) {
+export async function resetPasswordByToken(
+  token: string,
+  newPassword: string,
+): Promise<{ id: number; openId: string; name: string | null } | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(passwordResetTokens)
-    .set({ usedAt: new Date() })
-    .where(eq(passwordResetTokens.id, id));
-}
 
-export async function resetPasswordById(
-  userId: number, hash: string, salt: string,
-) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  await db.update(users)
-    .set({ passwordHash: hash, passwordSalt: salt })
-    .where(eq(users.id, userId));
+  const rows = await db.select().from(passwordResetTokens)
+    .where(eq(passwordResetTokens.token, token))
+    .limit(1);
+
+  if (rows.length === 0) return null;
+  const record = rows[0];
+  if (record.usedAt) return null;
+  if (record.expiresAt < new Date()) return null;
+
+  const salt = generateSalt();
+  const hash = hashPassword(newPassword, salt);
+
+  // Mark token used AND update password atomically in one transaction
+  await db.transaction(async (tx) => {
+    await tx.update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokens.id, record.id));
+    await tx.update(users)
+      .set({ passwordHash: hash, passwordSalt: salt, lastSignedIn: new Date() })
+      .where(eq(users.id, record.userId));
+  });
+
+  const user = await getUserById(record.userId);
+  if (!user) return null;
+  return { id: user.id, openId: user.openId, name: user.name };
 }
 
 // ============================================
@@ -936,8 +956,12 @@ export async function deleteUserAccount(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // Import additional tables not in the default imports
-  const { chatMessages, pushTokens, monsterCaring } = await import("../drizzle/schema");
+  // Fix 2: Explicitly import all child tables for the transaction
+  const {
+    chatMessages, pushTokens, monsterCaring, userQuests, foodLogs,
+    workouts, dailyStats, battles, matchSwipes, friendships,
+    userLocations, monsters, profiles,
+  } = await import("../drizzle/schema");
   
   await db.transaction(async (tx) => {
     // Delete in order to respect foreign key constraints

@@ -1236,3 +1236,15 @@
 - [x] Item J: Add /.well-known/assetlinks.json route for deep links
 - [x] Item K: Add x86_64 to buildArchs
 - [x] Item L: Move Google OAuth Client IDs to env vars in app.config.ts
+
+## Fix 1 & Fix 2 Implementation Guide (PDF v2)
+- [x] Fix 1a: Verify passwordResetTokens table matches PDF spec
+- [x] Fix 1b: Add resendApiKey + emailFrom to server/_core/env.ts
+- [x] Fix 1c: Replace resetPasswordByEmail with 3 new functions (createPasswordResetToken, getUserEmailByResetToken, resetPasswordByToken)
+- [x] Fix 1d-A: Add sendPasswordResetEmail helper using Resend API to server/routers.ts
+- [x] Fix 1d-B: Replace resetPassword procedure with requestPasswordReset + resetPassword two-step
+- [x] Fix 1e: Update client forgot password screen to email-only step + deep link token flow
+- [x] Fix 1e: Create app/reset-password.tsx screen for deep link token handling
+- [x] Fix 2: Verify deleteUserAccount uses db.transaction() with tx.delete() and explicit schema imports
+- [x] TypeScript check: 0 errors
+- [ ] Export modified code as Markdown
