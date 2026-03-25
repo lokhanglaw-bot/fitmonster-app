@@ -1278,3 +1278,21 @@
 ## Bug Fix - Round 119
 - [ ] Fix Manus Publish iOS build failure — Provisioning Profile doesn't include Sign In with Apple
 - [ ] Remove native Apple Sign-In entitlement and use web-based OAuth flow instead (compatible with CI builds)
+
+## Bug Fix - Round 120
+- [ ] Fix Food Scanner "Please login (10001)" error — auth token not being sent or validated
+- [ ] Fix Food Scanner "Unable to transform response from server" error — server response format issue
+
+## Bug Fix - Round 121
+- [ ] Fix ALL API calls failing with "Unable to transform response from server" — affects Food Scanner, Chat, Nearby Trainers, Friend Requests
+- [ ] Fix Nearby Trainers not showing other players (others can see me, I can't see them)
+- [ ] Fix Friend Requests not showing incoming requests (notification received but no request shown)
+- [ ] Fix Chat "Failed to send" error
+- [ ] Fix "Location sharing may be delayed" warning on map
+
+## Critical Auth Fix - Round 122
+- [x] Fix root cause: localLogin/appleLogin/googleLogin/localSignup mutations don't return JWT session tokens
+- [x] Server: generate JWT session token in localLogin, appleLogin, googleLogin, localSignup, resetPassword mutations
+- [x] Client: store JWT session token in SecureStore after login (Auth.setSessionToken)
+- [x] Client: tRPC headers use Bearer token from SecureStore for all API calls
+- [x] This fixes ALL "Unable to transform response from server" / "Please login (10001)" errors

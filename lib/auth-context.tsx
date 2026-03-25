@@ -7,7 +7,7 @@ import { getApiBaseUrl } from "@/constants/oauth";
 
 const LOCAL_AUTH_KEY = "@fitmonster_local_auth";
 
-// Sync local user to backend DB and get real DB ID
+// Sync local user to backend DB and get real DB ID + JWT session token
 // Return value: positive number = DB ID, null = server unavailable (keep local), "ACCOUNT_NOT_FOUND" = deleted
 async function syncLocalUserToDb(openId: string, name: string, email: string): Promise<number | null | "ACCOUNT_NOT_FOUND"> {
   try {
@@ -35,6 +35,11 @@ async function syncLocalUserToDb(openId: string, name: string, email: string): P
     const result = data?.[0]?.result?.data?.json;
     if (result?.id) {
       console.log("[AuthProvider] Local user synced to DB, real ID:", result.id);
+      // Store JWT session token if returned (enables authenticated API calls)
+      if (result.sessionToken) {
+        await Auth.setSessionToken(result.sessionToken);
+        console.log("[AuthProvider] JWT session token stored from syncLocalUser");
+      }
       return result.id;
     }
     return null;
@@ -215,6 +220,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastSignedIn: new Date().toISOString(),
     };
     await AsyncStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(localUser));
+    // Store JWT session token in SecureStore for authenticated API calls
+    if (result.sessionToken) {
+      await Auth.setSessionToken(result.sessionToken);
+      console.log("[AuthProvider] JWT session token stored for local login");
+    }
     const userInfo: Auth.User = {
       id: localUser.id,
       openId: localUser.openId,
@@ -224,6 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastSignedIn: new Date(localUser.lastSignedIn),
     };
     setUser(userInfo);
+    await Auth.setUserInfo(userInfo);
     setLoading(false);
     console.log("[AuthProvider] Local login successful, DB ID:", result.id);
   }, []);
@@ -256,6 +267,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastSignedIn: new Date().toISOString(),
     };
     await AsyncStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(localUser));
+    // Store JWT session token in SecureStore for authenticated API calls
+    if (result.sessionToken) {
+      await Auth.setSessionToken(result.sessionToken);
+      console.log("[AuthProvider] JWT session token stored for Google login");
+    }
     const userInfo: Auth.User = {
       id: localUser.id,
       openId: localUser.openId,
@@ -265,6 +281,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastSignedIn: new Date(localUser.lastSignedIn),
     };
     setUser(userInfo);
+    await Auth.setUserInfo(userInfo);
     setLoading(false);
     console.log("[AuthProvider] Google login successful, DB ID:", result.id);
     // Bug 8 fix: notify user when account was linked
@@ -307,6 +324,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastSignedIn: new Date().toISOString(),
     };
     await AsyncStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(localUser));
+    // Store JWT session token in SecureStore for authenticated API calls
+    if (result.sessionToken) {
+      await Auth.setSessionToken(result.sessionToken);
+      console.log("[AuthProvider] JWT session token stored for Apple login");
+    }
     const userInfo: Auth.User = {
       id: localUser.id,
       openId: localUser.openId,
@@ -316,6 +338,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastSignedIn: new Date(localUser.lastSignedIn),
     };
     setUser(userInfo);
+    await Auth.setUserInfo(userInfo);
     setLoading(false);
     console.log("[AuthProvider] Apple login successful, DB ID:", result.id);
     // Bug 8 fix: notify user when account was linked
@@ -373,6 +396,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastSignedIn: new Date().toISOString(),
     };
     await AsyncStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(localUser));
+    // Store JWT session token in SecureStore for authenticated API calls
+    if (result.sessionToken) {
+      await Auth.setSessionToken(result.sessionToken);
+      console.log("[AuthProvider] JWT session token stored for local signup");
+    }
     const userInfo: Auth.User = {
       id: localUser.id,
       openId: localUser.openId,
@@ -382,6 +410,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastSignedIn: new Date(localUser.lastSignedIn),
     };
     setUser(userInfo);
+    await Auth.setUserInfo(userInfo);
     setLoading(false);
     console.log("[AuthProvider] Local signup successful:", name, "DB ID:", result.id);
   }, []);

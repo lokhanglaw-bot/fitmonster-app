@@ -74,6 +74,9 @@ const analyzeLimiter = rateLimit({
 
 async function startServer() {
   const app = express();
+  // Trust proxy — required when behind reverse proxy (Manus, Heroku, etc.)
+  // Ensures correct client IP for rate limiting and secure cookie handling
+  app.set("trust proxy", 1);
   const server = createServer(app);
 
   // FIX 4: CORS with origin allowlist

@@ -1,4 +1,4 @@
-import { COOKIE_NAME } from "../shared/const.js";
+import { COOKIE_NAME, ONE_YEAR_MS } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
@@ -7,6 +7,7 @@ import { z } from "zod";
 import { randomBytes, createHash } from "crypto";
 import * as db from "./db";
 import { ENV } from "./_core/env";
+import { sdk } from "./_core/sdk";
 import * as chatDb from "./chat-db";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
@@ -83,14 +84,22 @@ export const appRouter = router({
         email: z.string().email(),
         password: z.string().min(6),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         try {
           const result = await db.createLocalUser({
             name: input.name,
             email: input.email.trim().toLowerCase(),
             password: input.password,
           });
-          return { success: true, id: result.id, openId: result.openId };
+          // Generate JWT session token so the client can authenticate subsequent requests
+          const sessionToken = await sdk.createSessionToken(result.openId, {
+            name: input.name,
+            expiresInMs: ONE_YEAR_MS,
+          });
+          // Also set cookie for web clients
+          const cookieOptions = getSessionCookieOptions(ctx.req);
+          ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+          return { success: true, id: result.id, openId: result.openId, sessionToken };
         } catch (err: any) {
           if (err.message === "EMAIL_EXISTS") {
             throw new Error("EMAIL_EXISTS");
@@ -104,7 +113,7 @@ export const appRouter = router({
         email: z.string().email(),
         password: z.string().min(1),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const emailNorm = input.email.trim().toLowerCase();
         // First check if the account exists at all
         const exists = await db.checkUserExistsByEmail(emailNorm);
@@ -119,7 +128,15 @@ export const appRouter = router({
         if (user.status === "needs_password") {
           throw new Error("NEEDS_PASSWORD");
         }
-        return { success: true, id: user.id, openId: user.openId, name: user.name };
+        // Generate JWT session token so the client can authenticate subsequent requests
+        const sessionToken = await sdk.createSessionToken(user.openId, {
+          name: user.name || "",
+          expiresInMs: ONE_YEAR_MS,
+        });
+        // Also set cookie for web clients
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        return { success: true, id: user.id, openId: user.openId, name: user.name, sessionToken };
       }),
     // Fix 1 Step 1: Request a password reset email (token-based)
     requestPasswordReset: publicProcedure
@@ -147,7 +164,12 @@ export const appRouter = router({
             message: "INVALID_OR_EXPIRED_TOKEN",
           });
         }
-        return { success: true, id: user.id, openId: user.openId, name: user.name };
+        // Generate JWT session token so the client can authenticate after password reset
+        const sessionToken = await sdk.createSessionToken(user.openId, {
+          name: user.name || "",
+          expiresInMs: ONE_YEAR_MS,
+        });
+        return { success: true, id: user.id, openId: user.openId, name: user.name, sessionToken };
       }),
     // Legacy sync for backward compatibility (used by existing sessions)
     // IMPORTANT: Only updates existing users, does NOT create new ones.
@@ -173,7 +195,12 @@ export const appRouter = router({
           loginMethod: "local",
           lastSignedIn: new Date(),
         });
-        return { id: existingUser.id, openId: existingUser.openId };
+        // Generate JWT session token for existing sessions that don't have one yet
+        const sessionToken = await sdk.createSessionToken(existingUser.openId, {
+          name: existingUser.name || "",
+          expiresInMs: ONE_YEAR_MS,
+        });
+        return { id: existingUser.id, openId: existingUser.openId, sessionToken };
       }),
     // Native Apple Sign In - verify identity token and create/login user
     appleLogin: publicProcedure
@@ -205,7 +232,12 @@ export const appRouter = router({
             name: input.name,
           });
 
-          return { success: true, id: result.id, openId: result.openId, name: result.name, email: result.email, accountLinked: result.accountLinked || false };
+          // Generate JWT session token so the client can authenticate subsequent requests
+          const sessionToken = await sdk.createSessionToken(result.openId, {
+            name: result.name || "",
+            expiresInMs: ONE_YEAR_MS,
+          });
+          return { success: true, id: result.id, openId: result.openId, name: result.name, email: result.email, accountLinked: result.accountLinked || false, sessionToken };
         } catch (err: any) {
           console.error("[Auth] Apple login error:", err);
           if (err.code === "ERR_JWT_EXPIRED") {
@@ -262,7 +294,12 @@ export const appRouter = router({
             name: input.name || payload.name || null,
           });
 
-          return { success: true, id: result.id, openId: result.openId, name: result.name, email: result.email, accountLinked: result.accountLinked || false };
+          // Generate JWT session token so the client can authenticate subsequent requests
+          const sessionToken = await sdk.createSessionToken(result.openId, {
+            name: result.name || "",
+            expiresInMs: ONE_YEAR_MS,
+          });
+          return { success: true, id: result.id, openId: result.openId, name: result.name, email: result.email, accountLinked: result.accountLinked || false, sessionToken };
         } catch (err: any) {
           console.error("[Auth] Google login error:", err);
           throw new Error(err.message || "Google login failed");
