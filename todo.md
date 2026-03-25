@@ -1274,3 +1274,7 @@
 ## Bug Fix - Round 118
 - [x] Fix preview (web) login not working — CORS origin check updated to allow Manus sandbox domains
 - [x] Bump version to 1.1.1 for Manus Publish
+
+## Bug Fix - Round 119
+- [ ] Fix Manus Publish iOS build failure — Provisioning Profile doesn't include Sign In with Apple
+- [ ] Remove native Apple Sign-In entitlement and use web-based OAuth flow instead (compatible with CI builds)
