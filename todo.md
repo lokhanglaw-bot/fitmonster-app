@@ -1310,3 +1310,6 @@
 - [x] Fix Email login — root cause: production server (manus.space) was running old code without JWT token fix
 - [x] Fix Google login — restored Client IDs from git history and set as env vars
 - [x] Verified: sandbox server localSignup/localLogin return sessionToken, Google login passes Client ID check
+
+## Round 124 - Android Google Play Build
+- [x] Increment Android versionCode in app.config.ts for new Google Play build (set to 12)
