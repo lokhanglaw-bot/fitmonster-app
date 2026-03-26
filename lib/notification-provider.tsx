@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useCallback, useRef } from "react";
 import { Platform, AppState } from "react-native";
 import * as Notifications from "expo-notifications";
 import { useAuthContext } from "@/lib/auth-context";
@@ -46,18 +46,39 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [unreadQuery.data, updateBadgeCount]);
 
   // Update badge and refresh queries when app comes to foreground
+  const prevAppState = useRef(AppState.currentState);
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (nextAppState === "active" && userId) {
+      if (nextAppState === "active" && prevAppState.current !== "active" && userId) {
         unreadQuery.refetch();
-        // Also refresh conversations and friend lists
-        queryClient.invalidateQueries({ queryKey: [["chat", "conversations"]] });
-        queryClient.invalidateQueries({ queryKey: [["friends", "pendingRequests"]] });
-        queryClient.invalidateQueries({ queryKey: [["friends", "list"]] });
+        // Force refetch by resetting queries (bypasses staleTime)
+        queryClient.resetQueries({ queryKey: [["chat", "conversations"]] });
+        queryClient.resetQueries({ queryKey: [["friends", "pendingRequests"]] });
+        queryClient.resetQueries({ queryKey: [["friends", "list"]] });
+        queryClient.resetQueries({ queryKey: [["friends", "sentRequests"]] });
       }
+      prevAppState.current = nextAppState;
     });
     return () => subscription.remove();
   }, [unreadQuery, userId, queryClient]);
+
+  // FIX 6: Handle notification taps — force refetch relevant queries when user taps a notification
+  useEffect(() => {
+    if (!userId) return;
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      if (data?.type === "friend_request" || data?.type === "friend_accepted") {
+        // Force immediate refetch (bypasses staleTime)
+        queryClient.resetQueries({ queryKey: [["friends", "pendingRequests"]] });
+        queryClient.resetQueries({ queryKey: [["friends", "list"]] });
+        queryClient.resetQueries({ queryKey: [["friends", "sentRequests"]] });
+      }
+      if (data?.type === "chat_message") {
+        queryClient.resetQueries({ queryKey: [["chat", "conversations"]] });
+      }
+    });
+    return () => responseSubscription.remove();
+  }, [userId, queryClient]);
 
   const value = useMemo(
     () => ({ expoPushToken, updateBadgeCount }),

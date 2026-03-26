@@ -55,6 +55,17 @@ function isAllowedOrigin(origin: string): boolean {
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10,
+  // FIX 4: Use email as key instead of IP — prevents same-WiFi users from sharing quota
+  keyGenerator: (req) => {
+    try {
+      const body = req.body?.["0"]?.json;
+      const email = body?.email?.trim().toLowerCase();
+      if (email) return email;
+    } catch {
+      // Fall through to default
+    }
+    return "unknown";
+  },
   message: { error: "TOO_MANY_REQUESTS" },
   standardHeaders: true,
   legacyHeaders: false,
@@ -114,8 +125,8 @@ async function startServer() {
         namespace: "android_app",
         package_name: "space.manus.fitmonster.app.t20260212212854",
         sha256_cert_fingerprints: [
-          process.env.ANDROID_SHA256_FINGERPRINT || "YOUR_SHA256_FINGERPRINT_HERE"
-        ],
+          process.env.ANDROID_SHA256_FINGERPRINT || ""
+        ].filter(Boolean),
       },
     }]);
   });

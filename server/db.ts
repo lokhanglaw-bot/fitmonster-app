@@ -740,16 +740,10 @@ export async function getFriendsLocations(userId: number) {
   
   if (friendIds.length === 0) return [];
   
-  // Get locations for friends who are sharing
-  const results = [];
-  for (const fid of friendIds) {
-    const locResult = await db.select().from(userLocations).where(
-      and(eq(userLocations.userId, fid), eq(userLocations.isSharing, true))
-    ).limit(1);
-    if (locResult[0]) {
-      results.push(locResult[0]);
-    }
-  }
+  // Batch query: get all friends' locations in one query (fixes N+1 problem)
+  const results = await db.select().from(userLocations).where(
+    and(inArray(userLocations.userId, friendIds), eq(userLocations.isSharing, true))
+  );
   
   // Enrich with user info
   const locUserIds = results.map(r => r.userId);

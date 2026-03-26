@@ -1296,3 +1296,17 @@
 - [x] Client: store JWT session token in SecureStore after login (Auth.setSessionToken)
 - [x] Client: tRPC headers use Bearer token from SecureStore for all API calls
 - [x] This fixes ALL "Unable to transform response from server" / "Please login (10001)" errors
+
+## Claude Diagnostic Report Fixes - v1.1.4
+- [x] FIX 1: Set up Google OAuth Client IDs as environment variables (restored from git history)
+- [x] FIX 2: Already correct in current code (Claude report was based on older version)
+- [x] FIX 3: Batch query for getFriendsLocations to fix N+1 query (db.ts)
+- [x] FIX 4: authLimiter keyGenerator by email instead of IP (index.ts)
+- [x] FIX 5: assetlinks.json SHA256 fingerprint filter empty values (index.ts)
+- [x] FIX 6: Improved notification-provider to invalidateQueries on app foreground + notification tap
+- [x] FIX 7: Push token auto-cleanup (already handled, just needs new app version)
+
+## Round 123 - Critical Login Fix
+- [x] Fix Email login — root cause: production server (manus.space) was running old code without JWT token fix
+- [x] Fix Google login — restored Client IDs from git history and set as env vars
+- [x] Verified: sandbox server localSignup/localLogin return sessionToken, Google login passes Client ID check
