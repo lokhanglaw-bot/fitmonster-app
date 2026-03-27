@@ -308,8 +308,17 @@ export const appRouter = router({
     deleteAccount: protectedProcedure
       .mutation(async ({ ctx }) => {
         const userId = ctx.user.id;
-        console.log(`[Auth] Deleting account for user ${userId}`);
-        await db.deleteUserAccount(userId);
+        const userOpenId = ctx.user.openId;
+        console.log(`[Auth] Deleting account for user ${userId} (openId: ${userOpenId})`);
+        try {
+          await db.deleteUserAccount(userId);
+        } catch (err: any) {
+          console.error(`[Auth] deleteUserAccount FAILED for user ${userId}:`, err);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Failed to delete account: ${err.message || "Unknown error"}`,
+          });
+        }
         // Clear session cookie
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });

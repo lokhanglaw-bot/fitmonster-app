@@ -371,6 +371,12 @@ export default function HomeScreen() {
     setIsDeletingAccount(true);
     try {
       await deleteAccountMutation.mutateAsync();
+      // Clear ALL local data after successful server-side deletion
+      const Auth = await import("@/lib/_core/auth");
+      const AsyncStorageMod = (await import("@react-native-async-storage/async-storage")).default;
+      await AsyncStorageMod.clear();
+      await Auth.removeSessionToken();
+      await Auth.clearUserInfo();
       setShowDeleteAccountModal(false);
       await logout();
       router.replace("/auth");

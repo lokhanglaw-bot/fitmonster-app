@@ -945,44 +945,45 @@ export async function deleteFriendship(userId: number, friendId: number) {
 }
 
 // Delete user account and all associated data
-// FIX 11: Wrapped in db.transaction() for atomicity
+// All child tables have onDelete: "cascade", so deleting the user row cascades automatically.
+// We still manually delete tables that use compound WHERE (OR conditions) as a safety net.
 export async function deleteUserAccount(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // Fix 2: Explicitly import all child tables for the transaction
   const {
-    chatMessages, pushTokens, monsterCaring, userQuests, foodLogs,
-    workouts, dailyStats, battles, matchSwipes, friendships,
-    userLocations, monsters, profiles,
+    chatMessages, battles, matchSwipes, friendships,
   } = await import("../drizzle/schema");
   
-  await db.transaction(async (tx) => {
-    // Delete in order to respect foreign key constraints
-    await tx.delete(chatMessages).where(
+  // Step 1: Manually delete rows where the user appears in non-owner FK columns
+  // (CASCADE only fires on the direct userId FK, not on receiverId/opponentId/targetUserId/friendId)
+  try {
+    await db.delete(chatMessages).where(
       sql`${chatMessages.senderId} = ${userId} OR ${chatMessages.receiverId} = ${userId}`
     );
-    await tx.delete(pushTokens).where(eq(pushTokens.userId, userId));
-    await tx.delete(monsterCaring).where(eq(monsterCaring.userId, userId));
-    await tx.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
-    await tx.delete(userQuests).where(eq(userQuests.userId, userId));
-    await tx.delete(foodLogs).where(eq(foodLogs.userId, userId));
-    await tx.delete(workouts).where(eq(workouts.userId, userId));
-    await tx.delete(dailyStats).where(eq(dailyStats.userId, userId));
-    await tx.delete(battles).where(
+  } catch (e) { console.warn("[DeleteAccount] chatMessages cleanup:", e); }
+  
+  try {
+    await db.delete(battles).where(
       sql`${battles.challengerId} = ${userId} OR ${battles.opponentId} = ${userId}`
     );
-    await tx.delete(matchSwipes).where(
+  } catch (e) { console.warn("[DeleteAccount] battles cleanup:", e); }
+  
+  try {
+    await db.delete(matchSwipes).where(
       sql`${matchSwipes.userId} = ${userId} OR ${matchSwipes.targetUserId} = ${userId}`
     );
-    await tx.delete(friendships).where(
+  } catch (e) { console.warn("[DeleteAccount] matchSwipes cleanup:", e); }
+  
+  try {
+    await db.delete(friendships).where(
       sql`${friendships.userId} = ${userId} OR ${friendships.friendId} = ${userId}`
     );
-    await tx.delete(userLocations).where(eq(userLocations.userId, userId));
-    await tx.delete(monsters).where(eq(monsters.userId, userId));
-    await tx.delete(profiles).where(eq(profiles.userId, userId));
-    await tx.delete(users).where(eq(users.id, userId));
-  });
+  } catch (e) { console.warn("[DeleteAccount] friendships cleanup:", e); }
+  
+  // Step 2: Delete the user row — CASCADE handles all other child tables
+  const result = await db.delete(users).where(eq(users.id, userId));
+  console.log(`[DeleteAccount] User ${userId} deleted, result:`, result);
   
   return { success: true };
 }

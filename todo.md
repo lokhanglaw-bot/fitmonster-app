@@ -1327,3 +1327,9 @@
 
 ## Bug Fix - Round 127
 - [x] Fix Delete Account "Delete Permanently" button not responding in Home page logout modal — added fallback direct fetch + web-compatible alert
+
+## Bug Fix - Round 128
+- [x] BUG: Delete Account fails on real device — simplified deleteUserAccount to use CASCADE, added better error logging
+- [x] BUG: After delete attempt + re-register with same email — fixed authenticateRequest to NOT re-create deleted local/apple/google users
+- [x] BUG: Client-side tRPC success path now clears AsyncStorage + SecureStore after deletion
+- [ ] BUG (noted): Google Sign-In DEVELOPER_ERROR on Android — separate issue for later

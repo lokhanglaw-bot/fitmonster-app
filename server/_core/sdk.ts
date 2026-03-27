@@ -251,21 +251,34 @@ class SDKServer {
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);
 
-    // If user not in DB, sync from OAuth server automatically
+    // If user not in DB, they may have been deleted or are a first-time OAuth user.
+    // Only sync from OAuth if the user was NEVER in our DB (i.e. first login).
+    // If user was deleted (account deletion), do NOT re-create them.
     if (!user) {
-      try {
-        const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
-        await db.upsertUser({
-          openId: userInfo.openId,
-          name: userInfo.name || null,
-          email: userInfo.email ?? null,
-          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-          lastSignedIn: signedInAt,
-        });
-        user = await db.getUserByOpenId(userInfo.openId);
-      } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
-        throw ForbiddenError("Failed to sync user info");
+      // Check if this openId was previously used (user existed then deleted)
+      // Since CASCADE deletes remove the row, we can't tell — but we can check
+      // if the openId format suggests a local/apple/google user who should already exist.
+      // For safety: only auto-create for OAuth-style openIds, not local ones.
+      const isOAuthFirstLogin = !sessionUserId.startsWith("local-") && !sessionUserId.startsWith("apple-") && !sessionUserId.startsWith("google-");
+      if (isOAuthFirstLogin) {
+        try {
+          const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
+          await db.upsertUser({
+            openId: userInfo.openId,
+            name: userInfo.name || null,
+            email: userInfo.email ?? null,
+            loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+            lastSignedIn: signedInAt,
+          });
+          user = await db.getUserByOpenId(userInfo.openId);
+        } catch (error) {
+          console.error("[Auth] Failed to sync user from OAuth:", error);
+          throw ForbiddenError("Failed to sync user info");
+        }
+      } else {
+        // User was deleted or doesn't exist — reject the session
+        console.log(`[Auth] User ${sessionUserId} not found in DB (likely deleted). Rejecting session.`);
+        throw ForbiddenError("Account not found or deleted");
       }
     }
 
