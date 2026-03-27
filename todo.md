@@ -1333,3 +1333,6 @@
 - [x] BUG: After delete attempt + re-register with same email — fixed authenticateRequest to NOT re-create deleted local/apple/google users
 - [x] BUG: Client-side tRPC success path now clears AsyncStorage + SecureStore after deletion
 - [ ] BUG (noted): Google Sign-In DEVELOPER_ERROR on Android — separate issue for later
+
+## Bug Fix - Round 129
+- [x] Add S3 image cleanup to deleteUserAccount — delete food log images, monster images, and chat media from S3 before DB cascade delete

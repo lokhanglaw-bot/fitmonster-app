@@ -952,8 +952,49 @@ export async function deleteUserAccount(userId: number) {
   if (!db) throw new Error("Database not available");
   
   const {
-    chatMessages, battles, matchSwipes, friendships,
+    chatMessages, battles, matchSwipes, friendships, foodLogs, monsters,
   } = await import("../drizzle/schema");
+  const { storageDelete } = await import("./storage");
+  
+  // Step 0: Clean up S3 files BEFORE deleting DB rows
+  // (We need the DB rows to know which S3 keys to delete)
+  try {
+    // Delete food log images from S3
+    const userFoodLogs = await db.select({ imageUrl: foodLogs.imageUrl })
+      .from(foodLogs)
+      .where(eq(foodLogs.userId, userId));
+    for (const log of userFoodLogs) {
+      if (log.imageUrl) {
+        await storageDelete(log.imageUrl);
+      }
+    }
+    
+    // Delete monster images from S3
+    const userMonsters = await db.select({ imageUrl: monsters.imageUrl })
+      .from(monsters)
+      .where(eq(monsters.userId, userId));
+    for (const m of userMonsters) {
+      if (m.imageUrl) {
+        await storageDelete(m.imageUrl);
+      }
+    }
+    
+    // Delete chat media (images/audio) from S3
+    const userChatMedia = await db.select({ message: chatMessages.message, messageType: chatMessages.messageType })
+      .from(chatMessages)
+      .where(
+        sql`(${chatMessages.senderId} = ${userId}) AND ${chatMessages.messageType} IN ('image', 'audio')`
+      );
+    for (const msg of userChatMedia) {
+      if (msg.message && (msg.message.startsWith("http") || msg.message.startsWith("/"))) {
+        await storageDelete(msg.message);
+      }
+    }
+    
+    console.log(`[DeleteAccount] S3 cleanup done for user ${userId}: ${userFoodLogs.length} food images, ${userMonsters.length} monster images, ${userChatMedia.length} chat media`);
+  } catch (e) {
+    console.warn("[DeleteAccount] S3 cleanup error (continuing with DB deletion):", e);
+  }
   
   // Step 1: Manually delete rows where the user appears in non-owner FK columns
   // (CASCADE only fires on the direct userId FK, not on receiverId/opponentId/targetUserId/friendId)

@@ -85,6 +85,32 @@ export async function storagePut(
   return { key, url };
 }
 
+/**
+ * Delete a file from S3 storage.
+ * Best-effort: logs warning on failure but does not throw.
+ */
+export async function storageDelete(relKey: string): Promise<boolean> {
+  try {
+    const { baseUrl, apiKey } = getStorageConfig();
+    const key = normalizeKey(relKey);
+    const deleteUrl = new URL("v1/storage/delete", ensureTrailingSlash(baseUrl));
+    deleteUrl.searchParams.set("path", key);
+    const response = await fetch(deleteUrl, {
+      method: "DELETE",
+      headers: buildAuthHeaders(apiKey),
+    });
+    if (!response.ok) {
+      console.warn(`[StorageDelete] Failed to delete ${key}: ${response.status} ${response.statusText}`);
+      return false;
+    }
+    console.log(`[StorageDelete] Deleted ${key}`);
+    return true;
+  } catch (err) {
+    console.warn(`[StorageDelete] Error deleting ${relKey}:`, err);
+    return false;
+  }
+}
+
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   const { baseUrl, apiKey } = getStorageConfig();
   const key = normalizeKey(relKey);
