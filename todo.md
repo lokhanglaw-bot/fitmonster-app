@@ -1319,3 +1319,8 @@
 - [x] FIX: Guideline 5.1.1(v) - Account deletion: added Delete Account link in logout modal for easy discoverability; delete flow already works in edit-profile.tsx
 - [x] Bumped version to 1.1.5 (iOS) / versionCode 13 (Android)
 - [ ] Prepare Apple Review reply with explanation of fixes
+
+## Round 126 - Consolidate Delete Account
+- [x] Remove Delete Account section from edit-profile.tsx (Danger Zone)
+- [x] Keep Delete Account only in Home page logout modal
+- [x] Verify delete account flow works end-to-end from logout modal

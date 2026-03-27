@@ -175,8 +175,6 @@ export default function EditProfileScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [matchPref, setMatchPref] = useState<"all" | "male" | "female">("all");
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load existing profile data
   useEffect(() => {
@@ -592,117 +590,6 @@ export default function EditProfileScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Delete Account Section */}
-            <View style={{ marginTop: 48, paddingTop: 24, borderTopWidth: 1.5, borderTopColor: "#FCA5A5" }}>
-              <Text style={{ fontSize: 18, fontWeight: "700", color: "#DC2626", textAlign: "center", marginBottom: 8 }}>⚠️ {t.dangerZone}</Text>
-              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16, textAlign: "center", lineHeight: 20 }}>
-                {t.deleteAccountMessage}
-              </Text>
-              {!showDeleteConfirm ? (
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: "transparent",
-                    borderWidth: 1.5,
-                    borderColor: "#DC2626",
-                    paddingVertical: 14,
-                    borderRadius: 14,
-                    alignItems: "center",
-                  }}
-                  onPress={() => setShowDeleteConfirm(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={{ color: "#DC2626", fontSize: 16, fontWeight: "700" }}>{t.deleteAccount}</Text>
-                </TouchableOpacity>
-              ) : (
-                <View style={{ gap: 10 }}>
-                  <Text style={{ color: "#DC2626", fontSize: 14, fontWeight: "600", textAlign: "center", marginBottom: 4 }}>
-                    {t.deleteAccountTitle}
-                  </Text>
-                  <TouchableOpacity
-                    style={{
-                      backgroundColor: "#DC2626",
-                      paddingVertical: 14,
-                      borderRadius: 14,
-                      alignItems: "center",
-                      opacity: isDeleting ? 0.6 : 1,
-                    }}
-                    disabled={isDeleting}
-                    onPress={async () => {
-                      setIsDeleting(true);
-                      try {
-                        const baseUrl = getApiBaseUrl();
-                        const token = await AuthModule.getSessionToken();
-                        const headers: Record<string, string> = {
-                          "Content-Type": "application/json",
-                        };
-                        if (token) {
-                          headers["Authorization"] = `Bearer ${token}`;
-                          headers["Cookie"] = `session=${token}`;
-                        }
-                        if (!token) {
-                          const localAuthRaw = await AsyncStorage.getItem("@fitmonster_local_auth");
-                          if (localAuthRaw) {
-                            const localUser = JSON.parse(localAuthRaw);
-                            if (localUser.id) headers["X-User-Id"] = String(localUser.id);
-                            if (localUser.openId) headers["X-Open-Id"] = localUser.openId;
-                          }
-                        }
-                        const res = await fetch(`${baseUrl}/api/trpc/auth.deleteAccount?batch=1`, {
-                          method: "POST",
-                          headers,
-                          body: JSON.stringify({"0":{"json":null}}),
-                          credentials: "include",
-                        });
-                        if (res.ok) {
-                          // Clear all local storage and auth state
-                          await AsyncStorage.clear();
-                          await AuthModule.removeSessionToken();
-                          await AuthModule.clearUserInfo();
-                          // Call logout to clear AuthContext user state
-                          // This ensures AuthGate detects user=null and redirects to /auth
-                          await logout();
-                          // Force navigate to auth page
-                          router.replace("/auth");
-                        } else {
-                          const errText = await res.text().catch(() => "");
-                          console.error("[DeleteAccount] Server error:", res.status, errText);
-                          if (Platform.OS === "web") {
-                            alert(t.deleteAccountError);
-                          } else {
-                            Alert.alert(t.deleteAccountError);
-                          }
-                          setIsDeleting(false);
-                        }
-                      } catch (err) {
-                        console.error("[DeleteAccount] Error:", err);
-                        if (Platform.OS === "web") {
-                          alert(t.deleteAccountError);
-                        } else {
-                          Alert.alert(t.deleteAccountError);
-                        }
-                        setIsDeleting(false);
-                      }
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
-                      {isDeleting ? "..." : t.deleteAccountConfirm}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={{
-                      paddingVertical: 12,
-                      borderRadius: 14,
-                      alignItems: "center",
-                    }}
-                    onPress={() => setShowDeleteConfirm(false)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "600" }}>{t.deleteAccountCancel}</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
