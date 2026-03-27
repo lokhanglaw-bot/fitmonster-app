@@ -1324,3 +1324,6 @@
 - [x] Remove Delete Account section from edit-profile.tsx (Danger Zone)
 - [x] Keep Delete Account only in Home page logout modal
 - [x] Verify delete account flow works end-to-end from logout modal
+
+## Bug Fix - Round 127
+- [x] Fix Delete Account "Delete Permanently" button not responding in Home page logout modal — added fallback direct fetch + web-compatible alert

@@ -374,9 +374,54 @@ export default function HomeScreen() {
       setShowDeleteAccountModal(false);
       await logout();
       router.replace("/auth");
-    } catch (err) {
-      console.error("[DeleteAccount] Error:", err);
-      Alert.alert(t.deleteAccountError);
+    } catch (err: any) {
+      console.error("[DeleteAccount] tRPC error, trying direct fetch:", err);
+      // Fallback: direct fetch if tRPC fails (e.g. missing session)
+      try {
+        const { getApiBaseUrl } = await import("@/constants/oauth");
+        const Auth = await import("@/lib/_core/auth");
+        const AsyncStorageMod = (await import("@react-native-async-storage/async-storage")).default;
+        const baseUrl = getApiBaseUrl();
+        const token = await Auth.getSessionToken();
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+          headers["Cookie"] = `session=${token}`;
+        }
+        if (!token) {
+          const raw = await AsyncStorageMod.getItem("@fitmonster_local_auth");
+          if (raw) {
+            const u = JSON.parse(raw);
+            if (u.id) headers["X-User-Id"] = String(u.id);
+            if (u.openId) headers["X-Open-Id"] = u.openId;
+          }
+        }
+        const res = await fetch(`${baseUrl}/api/trpc/auth.deleteAccount?batch=1`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ "0": { "json": null } }),
+          credentials: "include",
+        });
+        if (res.ok) {
+          await AsyncStorageMod.clear();
+          await Auth.removeSessionToken();
+          await Auth.clearUserInfo();
+          setShowDeleteAccountModal(false);
+          await logout();
+          router.replace("/auth");
+          return;
+        }
+        const errText = await res.text().catch(() => "");
+        console.error("[DeleteAccount] Fallback fetch error:", res.status, errText);
+        throw new Error(errText || "Delete failed");
+      } catch (fallbackErr: any) {
+        console.error("[DeleteAccount] All attempts failed:", fallbackErr);
+        if (Platform.OS === "web") {
+          alert(t.deleteAccountError);
+        } else {
+          Alert.alert(t.deleteAccountError);
+        }
+      }
     } finally {
       setIsDeletingAccount(false);
     }
