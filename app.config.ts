@@ -45,7 +45,7 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.1.4",
+  version: "1.1.5",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
@@ -74,7 +74,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    versionCode: 12,
+    versionCode: 13,
     config: {
       googleMaps: {
         apiKey: process.env.GOOGLE_MAPS_API_KEY || "",

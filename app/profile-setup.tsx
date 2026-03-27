@@ -44,7 +44,7 @@ function DatePickerModal({
 }) {
   const now = new Date();
   const minYear = now.getFullYear() - 99;
-  const maxYear = now.getFullYear() - 18;
+  const maxYear = now.getFullYear() - 13;
 
   const [year, setYear] = useState(() => {
     if (initialDate) return parseInt(initialDate.split("-")[0]);
@@ -200,8 +200,8 @@ export default function ProfileSetupScreen() {
       newErrors.birthday = t.pleaseSelectBirthday;
     } else {
       const age = calculateAgeFromBirthday(birthday);
-      if (age < 18) {
-        newErrors.birthday = t.ageMustBe18;
+      if (age < 13) {
+        newErrors.birthday = t.ageMustBe13;
       } else if (age > 99) {
         newErrors.birthday = t.ageMustBeUnder100;
       }

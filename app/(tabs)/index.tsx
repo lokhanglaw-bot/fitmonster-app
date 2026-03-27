@@ -1351,6 +1351,15 @@ export default function HomeScreen() {
             >
               <Text style={[styles.cancelText, { color: colors.muted }]}>{t.cancel}</Text>
             </TouchableOpacity>
+            <View style={{ marginTop: 16, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 16, width: "100%" }}>
+              <TouchableOpacity
+                onPress={() => { setShowLogoutModal(false); setTimeout(() => setShowDeleteAccountModal(true), 300); }}
+                style={{ alignItems: "center" }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: "#DC2626", fontSize: 14, fontWeight: "600" }}>{t.deleteAccount}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

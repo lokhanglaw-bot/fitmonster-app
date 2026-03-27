@@ -1313,3 +1313,9 @@
 
 ## Round 124 - Android Google Play Build
 - [x] Increment Android versionCode in app.config.ts for new Google Play build (set to 12)
+
+## Round 125 - Apple Review Rejection Fixes
+- [x] FIX: Guideline 2.3.6 - Age Rating mismatch: lowered in-app age requirement from 18+ to 13+ (profile-setup.tsx birthday picker + validation)
+- [x] FIX: Guideline 5.1.1(v) - Account deletion: added Delete Account link in logout modal for easy discoverability; delete flow already works in edit-profile.tsx
+- [x] Bumped version to 1.1.5 (iOS) / versionCode 13 (Android)
+- [ ] Prepare Apple Review reply with explanation of fixes
