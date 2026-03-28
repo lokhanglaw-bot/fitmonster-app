@@ -1336,3 +1336,6 @@
 
 ## Bug Fix - Round 129
 - [x] Add S3 image cleanup to deleteUserAccount — delete food log images, monster images, and chat media from S3 before DB cascade delete
+
+## Bug Fix - Round 130
+- [x] Fix Edit Profile page: age validation still shows "Age must be 18+" instead of "Age must be 13+"
