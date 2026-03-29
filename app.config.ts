@@ -45,7 +45,7 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.1.8",
+  version: "1.1.9",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
@@ -76,7 +76,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    versionCode: 16,
+    versionCode: 17,
     config: {
       googleMaps: {
         apiKey: process.env.GOOGLE_MAPS_API_KEY || "",
@@ -132,7 +132,7 @@ const config: ExpoConfig = {
     [
       "expo-audio",
       {
-        microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone.",
+        microphonePermission: "FitMonster uses your microphone to record voice messages in chat conversations with your friends. For example, you can press and hold the microphone button to send a voice note instead of typing.",
       },
     ],
     [

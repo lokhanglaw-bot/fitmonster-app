@@ -1343,3 +1343,8 @@
 ## Bug Fix - Round 131 (Apple Review Rejection v1.1.7)
 - [x] Guideline 5.1.1(ii): Update Motion & Fitness Activity purpose string to clearly explain how the app uses fitness data with specific example
 - [x] Guideline 1.4.1: Add medical citations/source links for BMR calculation in the app UI
+
+## Bug Fix - Round 132 (Apple Guidelines Compliance Audit)
+- [x] Fix: Privacy Policy and Terms of Service must be clickable links in auth.tsx (Guideline 5.1.1(i))
+- [x] Fix: Add "consult your doctor" health disclaimer for BMR/health calculations (Guideline 1.4.1)
+- [x] Fix: Microphone permission string too generic - needs specific use case description (Guideline 5.1.1(ii))

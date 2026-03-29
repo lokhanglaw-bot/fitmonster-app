@@ -604,8 +604,14 @@ export default function AuthScreen() {
           {/* Terms */}
           <Text style={[styles.terms, { color: colors.muted }]}>
             {t.termsPrefix}{" "}
-            <Text style={{ fontWeight: "600" }}>{t.termsOfService}</Text> {t.and}{" "}
-            <Text style={{ fontWeight: "600" }}>{t.privacyPolicy}</Text>
+            <Text
+              style={{ fontWeight: "600", textDecorationLine: "underline" }}
+              onPress={() => Linking.openURL("https://lokhanglaw-bot.github.io/fitmonster-support/privacy-policy.html")}
+            >{t.termsOfService}</Text> {t.and}{" "}
+            <Text
+              style={{ fontWeight: "600", textDecorationLine: "underline" }}
+              onPress={() => Linking.openURL("https://lokhanglaw-bot.github.io/fitmonster-support/privacy-policy.html")}
+            >{t.privacyPolicy}</Text>
           </Text>
         </View>
       </ScrollView>
