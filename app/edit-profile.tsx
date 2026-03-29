@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -527,10 +528,21 @@ export default function EditProfileScreen() {
 
             {/* Current BMR Preview */}
             {birthday && gender && height && weight && (
-              <View style={[styles.bmrPreview, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
-                <Text style={[styles.bmrPreviewLabel, { color: colors.muted }]}>BMR</Text>
-                <Text style={[styles.bmrPreviewValue, { color: colors.primary }]}>
-                  {calculateBMR(gender, parseFloat(weight) || 0, parseFloat(height) || 0, calculateAgeFromBirthday(birthday))} {t.kcalPerDay}
+              <View>
+                <View style={[styles.bmrPreview, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
+                  <Text style={[styles.bmrPreviewLabel, { color: colors.muted }]}>BMR</Text>
+                  <Text style={[styles.bmrPreviewValue, { color: colors.primary }]}>
+                    {calculateBMR(gender, parseFloat(weight) || 0, parseFloat(height) || 0, calculateAgeFromBirthday(birthday))} {t.kcalPerDay}
+                  </Text>
+                </View>
+                <Text style={[styles.bmrCitation, { color: colors.muted }]}>
+                  {t.bmrCitation}{" "}
+                  <Text
+                    style={{ color: colors.primary, textDecorationLine: "underline" }}
+                    onPress={() => Linking.openURL("https://pubmed.ncbi.nlm.nih.gov/2305711/")}
+                  >
+                    {t.bmrSource}: Mifflin MD et al. (1990), Am J Clin Nutr.
+                  </Text>
                 </Text>
               </View>
             )}
@@ -721,6 +733,12 @@ const styles = StyleSheet.create({
   bmrPreviewValue: {
     fontSize: 18,
     fontWeight: "700",
+  },
+  bmrCitation: {
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 6,
+    paddingHorizontal: 4,
   },
   saveButton: {
     height: 56,

@@ -1339,3 +1339,7 @@
 
 ## Bug Fix - Round 130
 - [x] Fix Edit Profile page: age validation still shows "Age must be 18+" instead of "Age must be 13+"
+
+## Bug Fix - Round 131 (Apple Review Rejection v1.1.7)
+- [x] Guideline 5.1.1(ii): Update Motion & Fitness Activity purpose string to clearly explain how the app uses fitness data with specific example
+- [x] Guideline 1.4.1: Add medical citations/source links for BMR calculation in the app UI

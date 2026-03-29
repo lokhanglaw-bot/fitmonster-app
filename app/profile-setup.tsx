@@ -302,7 +302,7 @@ export default function ProfileSetupScreen() {
 
       Alert.alert(
         t.profileCompleted,
-        `${t.bmrResult} ${bmr} ${t.kcalPerDay}\n${t.dailyCalorieNeed}: ${dailyCalorieGoal} ${t.kcalPerDay}`,
+        `${t.bmrResult} ${bmr} ${t.kcalPerDay}\n${t.dailyCalorieNeed}: ${dailyCalorieGoal} ${t.kcalPerDay}\n\n${t.bmrCitation}`,
         [{
           text: t.ok,
           onPress: () => {

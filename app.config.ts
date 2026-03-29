@@ -45,7 +45,7 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.1.7",
+  version: "1.1.8",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
@@ -66,6 +66,8 @@ const config: ExpoConfig = {
       NSLocationAlwaysUsageDescription: "FitMonster uses your location in the background to keep your nearby trainer list up to date.",
       NSCameraUsageDescription: "FitMonster uses your camera to take photos of your meals for AI-powered nutritional analysis. For example, you can photograph your lunch to automatically calculate calories, protein, carbs, and fat content.",
       NSPhotoLibraryUsageDescription: "FitMonster accesses your photo library so you can select meal photos for AI-powered nutritional analysis.",
+      // Motion & Fitness Activity usage description
+      NSMotionUsageDescription: "FitMonster uses your device's motion and fitness activity data to count your daily steps. For example, when you tap 'Sync Steps' on the Workout screen, the app reads today's step count from your device's pedometer to calculate EXP points that help your virtual monster grow stronger.",
     },
     entitlements: {
       "com.apple.developer.applesignin": ["Default"],
@@ -74,7 +76,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    versionCode: 15,
+    versionCode: 16,
     config: {
       googleMaps: {
         apiKey: process.env.GOOGLE_MAPS_API_KEY || "",

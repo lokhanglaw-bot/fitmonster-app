@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, StyleSheet, TouchableOpacity } from "react-native";
+import { ScrollView, Text, View, StyleSheet, TouchableOpacity, Linking } from "react-native";
 import { useCallback, useMemo } from "react";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -240,9 +240,20 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
             {profileData?.bmr ? (
-              <View style={[styles.bmrBadge, { backgroundColor: colors.primary + "15" }]}>
-                <Text style={[styles.bmrBadgeText, { color: colors.primary }]}>
-                  BMR: {profileData.bmr} kcal ({t.basedOnProfile})
+              <View>
+                <View style={[styles.bmrBadge, { backgroundColor: colors.primary + "15" }]}>
+                  <Text style={[styles.bmrBadgeText, { color: colors.primary }]}>
+                    BMR: {profileData.bmr} kcal ({t.basedOnProfile})
+                  </Text>
+                </View>
+                <Text style={[styles.bmrCitationText, { color: colors.muted }]}>
+                  {t.bmrCitation}{" "}
+                  <Text
+                    style={{ color: colors.primary, textDecorationLine: "underline" }}
+                    onPress={() => Linking.openURL("https://pubmed.ncbi.nlm.nih.gov/2305711/")}
+                  >
+                    {t.bmrSource}: Mifflin MD et al. (1990)
+                  </Text>
                 </Text>
               </View>
             ) : null}
@@ -516,6 +527,12 @@ const styles = StyleSheet.create({
   bmrBadgeText: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  bmrCitationText: {
+    fontSize: 10,
+    lineHeight: 14,
+    marginTop: 3,
+    paddingHorizontal: 2,
   },
   nutritionDivider: {
     height: 1,
