@@ -43,12 +43,26 @@ const MONSTER_IMAGES: Record<string, any> = {
   "Powerlifter-1": require("@/assets/monsters/powerlifter-stage1.png"),
   "Powerlifter-2": require("@/assets/monsters/powerlifter-stage2.png"),
   "Powerlifter-3": require("@/assets/monsters/powerlifter-stage3.png"),
+  // Lowercase aliases (server stores types in lowercase)
+  "bodybuilder-1": require("@/assets/monsters/bodybuilder-stage1.png"),
+  "bodybuilder-2": require("@/assets/monsters/bodybuilder-stage2.png"),
+  "bodybuilder-3": require("@/assets/monsters/bodybuilder-stage3.png"),
+  "physique-1": require("@/assets/monsters/physique-stage1.png"),
+  "physique-2": require("@/assets/monsters/physique-stage2.png"),
+  "physique-3": require("@/assets/monsters/physique-stage3.png"),
+  "powerlifter-1": require("@/assets/monsters/powerlifter-stage1.png"),
+  "powerlifter-2": require("@/assets/monsters/powerlifter-stage2.png"),
+  "powerlifter-3": require("@/assets/monsters/powerlifter-stage3.png"),
 };
 
 const MONSTER_GRADIENTS: Record<string, readonly [string, string]> = {
   Bodybuilder: ["#DCFCE7", "#BBF7D0"],
   Physique: ["#DBEAFE", "#BFDBFE"],
   Powerlifter: ["#FEF3C7", "#FDE68A"],
+  // Lowercase aliases (server stores types in lowercase)
+  bodybuilder: ["#DCFCE7", "#BBF7D0"],
+  physique: ["#DBEAFE", "#BFDBFE"],
+  powerlifter: ["#FEF3C7", "#FDE68A"],
 };
 
 type Monster = {

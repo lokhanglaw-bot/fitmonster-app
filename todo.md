@@ -1348,3 +1348,6 @@
 - [x] Fix: Privacy Policy and Terms of Service must be clickable links in auth.tsx (Guideline 5.1.1(i))
 - [x] Fix: Add "consult your doctor" health disclaimer for BMR/health calculations (Guideline 1.4.1)
 - [x] Fix: Microphone permission string too generic - needs specific use case description (Guideline 5.1.1(ii))
+
+## Bug Fix - Round 133
+- [x] Fix: Evolution modal shows blank image instead of monster's new stage image (both "Ready to Evolve" and "Evolution Complete" modals)
