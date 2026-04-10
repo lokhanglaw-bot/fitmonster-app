@@ -115,9 +115,9 @@ export default function DashboardScreen() {
 
   // Protein goal based on monster type and body weight
   const monsterTypeCoefficient = activeMonster
-    ? (activeMonster.type === "powerlifter" ? 2.0
-      : activeMonster.type === "bodybuilder" ? 1.6
-      : activeMonster.type === "physique" ? 1.4
+    ? (activeMonster.type === "powerlifter" || activeMonster.type === "powerlifter2" ? 2.0
+      : activeMonster.type === "bodybuilder" || activeMonster.type === "bodybuilder2" ? 1.6
+      : activeMonster.type === "physique" || activeMonster.type === "physique2" ? 1.4
       : activeMonster.type === "colossus" ? 1.8
       : 1.2) // athlete or default
     : 1.2;

@@ -76,6 +76,66 @@ const EXPRESSION_IMAGES: Record<string, Record<number, Record<Exclude<MonsterExp
       peak: require("@/assets/monsters/expressions/powerlifter-stage3-peak.png"),
     },
   },
+  bodybuilder2: {
+    1: {
+      hungry: require("@/assets/monsters/expressions/bodybuilder2-stage1-hungry.png"),
+      tired: require("@/assets/monsters/expressions/bodybuilder2-stage1-tired.png"),
+      happy: require("@/assets/monsters/expressions/bodybuilder2-stage1-happy.png"),
+      peak: require("@/assets/monsters/expressions/bodybuilder2-stage1-peak.png"),
+    },
+    2: {
+      hungry: require("@/assets/monsters/expressions/bodybuilder2-stage2-hungry.png"),
+      tired: require("@/assets/monsters/expressions/bodybuilder2-stage2-tired.png"),
+      happy: require("@/assets/monsters/expressions/bodybuilder2-stage2-happy.png"),
+      peak: require("@/assets/monsters/expressions/bodybuilder2-stage2-peak.png"),
+    },
+    3: {
+      hungry: require("@/assets/monsters/expressions/bodybuilder2-stage3-hungry.png"),
+      tired: require("@/assets/monsters/expressions/bodybuilder2-stage3-tired.png"),
+      happy: require("@/assets/monsters/expressions/bodybuilder2-stage3-happy.png"),
+      peak: require("@/assets/monsters/expressions/bodybuilder2-stage3-peak.png"),
+    },
+  },
+  physique2: {
+    1: {
+      hungry: require("@/assets/monsters/expressions/physique2-stage1-hungry.png"),
+      tired: require("@/assets/monsters/expressions/physique2-stage1-tired.png"),
+      happy: require("@/assets/monsters/expressions/physique2-stage1-happy.png"),
+      peak: require("@/assets/monsters/expressions/physique2-stage1-peak.png"),
+    },
+    2: {
+      hungry: require("@/assets/monsters/expressions/physique2-stage2-hungry.png"),
+      tired: require("@/assets/monsters/expressions/physique2-stage2-tired.png"),
+      happy: require("@/assets/monsters/expressions/physique2-stage2-happy.png"),
+      peak: require("@/assets/monsters/expressions/physique2-stage2-peak.png"),
+    },
+    3: {
+      hungry: require("@/assets/monsters/expressions/physique2-stage3-hungry.png"),
+      tired: require("@/assets/monsters/expressions/physique2-stage3-tired.png"),
+      happy: require("@/assets/monsters/expressions/physique2-stage3-happy.png"),
+      peak: require("@/assets/monsters/expressions/physique2-stage3-peak.png"),
+    },
+  },
+  powerlifter2: {
+    1: {
+      hungry: require("@/assets/monsters/expressions/powerlifter2-stage1-hungry.png"),
+      tired: require("@/assets/monsters/expressions/powerlifter2-stage1-tired.png"),
+      happy: require("@/assets/monsters/expressions/powerlifter2-stage1-happy.png"),
+      peak: require("@/assets/monsters/expressions/powerlifter2-stage1-peak.png"),
+    },
+    2: {
+      hungry: require("@/assets/monsters/expressions/powerlifter2-stage2-hungry.png"),
+      tired: require("@/assets/monsters/expressions/powerlifter2-stage2-tired.png"),
+      happy: require("@/assets/monsters/expressions/powerlifter2-stage2-happy.png"),
+      peak: require("@/assets/monsters/expressions/powerlifter2-stage2-peak.png"),
+    },
+    3: {
+      hungry: require("@/assets/monsters/expressions/powerlifter2-stage3-hungry.png"),
+      tired: require("@/assets/monsters/expressions/powerlifter2-stage3-tired.png"),
+      happy: require("@/assets/monsters/expressions/powerlifter2-stage3-happy.png"),
+      peak: require("@/assets/monsters/expressions/powerlifter2-stage3-peak.png"),
+    },
+  },
 };
 
 // ── Default (neutral) images ────────────────────────────────────────────────
@@ -95,6 +155,21 @@ const DEFAULT_IMAGES: Record<string, Record<number, any>> = {
     1: require("@/assets/monsters/powerlifter-stage1.png"),
     2: require("@/assets/monsters/powerlifter-stage2.png"),
     3: require("@/assets/monsters/powerlifter-stage3.png"),
+  },
+  bodybuilder2: {
+    1: require("@/assets/monsters/bodybuilder2-stage1.png"),
+    2: require("@/assets/monsters/bodybuilder2-stage2.png"),
+    3: require("@/assets/monsters/bodybuilder2-stage3.png"),
+  },
+  physique2: {
+    1: require("@/assets/monsters/physique2-stage1.png"),
+    2: require("@/assets/monsters/physique2-stage2.png"),
+    3: require("@/assets/monsters/physique2-stage3.png"),
+  },
+  powerlifter2: {
+    1: require("@/assets/monsters/powerlifter2-stage1.png"),
+    2: require("@/assets/monsters/powerlifter2-stage2.png"),
+    3: require("@/assets/monsters/powerlifter2-stage3.png"),
   },
 };
 

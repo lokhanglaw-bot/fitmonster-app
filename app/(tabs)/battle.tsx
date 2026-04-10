@@ -110,6 +110,21 @@ function getMonsterImage(type: string, stage: number) {
       require("@/assets/monsters/powerlifter-stage2.png"),
       require("@/assets/monsters/powerlifter-stage3.png"),
     ],
+    bodybuilder2: [
+      require("@/assets/monsters/bodybuilder2-stage1.png"),
+      require("@/assets/monsters/bodybuilder2-stage2.png"),
+      require("@/assets/monsters/bodybuilder2-stage3.png"),
+    ],
+    physique2: [
+      require("@/assets/monsters/physique2-stage1.png"),
+      require("@/assets/monsters/physique2-stage2.png"),
+      require("@/assets/monsters/physique2-stage3.png"),
+    ],
+    powerlifter2: [
+      require("@/assets/monsters/powerlifter2-stage1.png"),
+      require("@/assets/monsters/powerlifter2-stage2.png"),
+      require("@/assets/monsters/powerlifter2-stage3.png"),
+    ],
   };
   const typeImages = images[type.toLowerCase()] || images.bodybuilder;
   return typeImages[Math.min(stage - 1, 2)] || typeImages[0];
@@ -120,6 +135,9 @@ function getGradientForType(type: string): readonly [string, string] {
     bodybuilder: ["#DCFCE7", "#BBF7D0"],
     physique: ["#DBEAFE", "#BFDBFE"],
     powerlifter: ["#FEF3C7", "#FDE68A"],
+    bodybuilder2: ["#FEE2E2", "#FECACA"],
+    physique2: ["#CCFBF1", "#99F6E4"],
+    powerlifter2: ["#FEF3C7", "#FDE68A"],
   };
   return gradients[type.toLowerCase()] || gradients.bodybuilder;
 }
@@ -474,9 +492,9 @@ export default function BattleScreen() {
     } else {
       // Create a wild monster opponent — always works even without playerMonster
       const playerLevel = playerMonster?.level || 1;
-      const typeIdx = Math.floor(Math.random() * 3);
-      const types = ["bodybuilder", "physique", "powerlifter"];
-      const typeNames = ["Bodybuilder", "Physique", "Powerlifter"];
+      const typeIdx = Math.floor(Math.random() * 6);
+      const types = ["bodybuilder", "physique", "powerlifter", "bodybuilder2", "physique2", "powerlifter2"];
+      const typeNames = ["Bodybuilder", "Physique", "Powerlifter", "Bodybuilder2", "Physique2", "Powerlifter2"];
       const chosenType = types[typeIdx];
       const stage = 1 + Math.floor(Math.random() * 3);
       const wildOpp: Opponent = {

@@ -1,0 +1,1 @@
+ALTER TABLE `monsters` MODIFY COLUMN `monsterType` enum('bodybuilder','physique','powerlifter','athlete','colossus','bodybuilder2','physique2','powerlifter2') NOT NULL DEFAULT 'bodybuilder';

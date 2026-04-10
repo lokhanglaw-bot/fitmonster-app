@@ -53,6 +53,26 @@ const MONSTER_IMAGES: Record<string, any> = {
   "powerlifter-1": require("@/assets/monsters/powerlifter-stage1.png"),
   "powerlifter-2": require("@/assets/monsters/powerlifter-stage2.png"),
   "powerlifter-3": require("@/assets/monsters/powerlifter-stage3.png"),
+  // New monsters
+  "Bodybuilder2-1": require("@/assets/monsters/bodybuilder2-stage1.png"),
+  "Bodybuilder2-2": require("@/assets/monsters/bodybuilder2-stage2.png"),
+  "Bodybuilder2-3": require("@/assets/monsters/bodybuilder2-stage3.png"),
+  "Physique2-1": require("@/assets/monsters/physique2-stage1.png"),
+  "Physique2-2": require("@/assets/monsters/physique2-stage2.png"),
+  "Physique2-3": require("@/assets/monsters/physique2-stage3.png"),
+  "Powerlifter2-1": require("@/assets/monsters/powerlifter2-stage1.png"),
+  "Powerlifter2-2": require("@/assets/monsters/powerlifter2-stage2.png"),
+  "Powerlifter2-3": require("@/assets/monsters/powerlifter2-stage3.png"),
+  // Lowercase aliases for new monsters
+  "bodybuilder2-1": require("@/assets/monsters/bodybuilder2-stage1.png"),
+  "bodybuilder2-2": require("@/assets/monsters/bodybuilder2-stage2.png"),
+  "bodybuilder2-3": require("@/assets/monsters/bodybuilder2-stage3.png"),
+  "physique2-1": require("@/assets/monsters/physique2-stage1.png"),
+  "physique2-2": require("@/assets/monsters/physique2-stage2.png"),
+  "physique2-3": require("@/assets/monsters/physique2-stage3.png"),
+  "powerlifter2-1": require("@/assets/monsters/powerlifter2-stage1.png"),
+  "powerlifter2-2": require("@/assets/monsters/powerlifter2-stage2.png"),
+  "powerlifter2-3": require("@/assets/monsters/powerlifter2-stage3.png"),
 };
 
 const MONSTER_GRADIENTS: Record<string, readonly [string, string]> = {
@@ -63,6 +83,13 @@ const MONSTER_GRADIENTS: Record<string, readonly [string, string]> = {
   bodybuilder: ["#DCFCE7", "#BBF7D0"],
   physique: ["#DBEAFE", "#BFDBFE"],
   powerlifter: ["#FEF3C7", "#FDE68A"],
+  // New monsters
+  Bodybuilder2: ["#FEE2E2", "#FECACA"],
+  Physique2: ["#CCFBF1", "#99F6E4"],
+  Powerlifter2: ["#FEF3C7", "#FDE68A"],
+  bodybuilder2: ["#FEE2E2", "#FECACA"],
+  physique2: ["#CCFBF1", "#99F6E4"],
+  powerlifter2: ["#FEF3C7", "#FDE68A"],
 };
 
 type Monster = {
@@ -98,6 +125,9 @@ export default function HomeScreen() {
     { type: "Bodybuilder", icon: "💪", color: "#EF4444", desc: t.bodybuilderDesc, label: t.bodybuilder, gradient: ["#FEE2E2", "#FECACA"] as const },
     { type: "Physique", icon: "🏃", color: "#3B82F6", desc: t.physiqueDesc, label: t.physique, gradient: ["#DBEAFE", "#BFDBFE"] as const },
     { type: "Powerlifter", icon: "🏋️", color: "#F59E0B", desc: t.powerlifterDesc, label: t.powerlifter, gradient: ["#FEF3C7", "#FDE68A"] as const },
+    { type: "Bodybuilder2", icon: "🐉", color: "#DC2626", desc: t.bodybuilder2Desc, label: t.bodybuilder2, gradient: ["#FEE2E2", "#FECACA"] as const },
+    { type: "Physique2", icon: "🦊", color: "#14B8A6", desc: t.physique2Desc, label: t.physique2, gradient: ["#CCFBF1", "#99F6E4"] as const },
+    { type: "Powerlifter2", icon: "🐻", color: "#92400E", desc: t.powerlifter2Desc, label: t.powerlifter2, gradient: ["#FEF3C7", "#FDE68A"] as const },
   ];
 
   const AI_DAILY_TASKS = [
@@ -346,6 +376,9 @@ export default function HomeScreen() {
         Bodybuilder: { str: 14, def: 10, agi: 8 },
         Physique: { str: 8, def: 8, agi: 14 },
         Powerlifter: { str: 16, def: 12, agi: 6 },
+        Bodybuilder2: { str: 13, def: 11, agi: 9 },
+        Physique2: { str: 9, def: 9, agi: 13 },
+        Powerlifter2: { str: 15, def: 13, agi: 7 },
       };
       const stats = baseStats[selectedType] || { str: 10, def: 10, agi: 10 };
       const newMonster: Monster = {
@@ -554,7 +587,7 @@ export default function HomeScreen() {
             <Text style={styles.badgeText}>Lv.{monster.level}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: "#3B82F6" }]}>
-            <Text style={styles.badgeText}>{monster.type === "Bodybuilder" ? t.bodybuilder : monster.type === "Physique" ? t.physique : t.powerlifter}</Text>
+            <Text style={styles.badgeText}>{MONSTER_TYPES.find((mt) => mt.type === monster.type || mt.type.toLowerCase() === monster.type.toLowerCase())?.label || monster.type}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: "#F59E0B" }]}>
             <Text style={styles.badgeText}>{monster.status === "Fighter" ? t.fighter : monster.status === "Rookie" ? t.rookie : monster.status}</Text>
@@ -1211,7 +1244,7 @@ export default function HomeScreen() {
             {hatchStep === "name" && (
               <>
                 <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.nameYourMonster}</Text>
-                <Text style={[styles.modalSubtitle, { color: colors.muted }]}>{tr("giveYourMonsterName", { type: selectedType === "Bodybuilder" ? t.bodybuilder : selectedType === "Physique" ? t.physique : t.powerlifter })}</Text>
+                <Text style={[styles.modalSubtitle, { color: colors.muted }]}>{tr("giveYourMonsterName", { type: MONSTER_TYPES.find((mt) => mt.type === selectedType)?.label || selectedType })}</Text>
                 <View style={styles.eggPreview}>
                   <LinearGradient colors={MONSTER_TYPES.find((t) => t.type === selectedType)?.gradient || ["#DCFCE7", "#BBF7D0"]} style={styles.eggGradient}>
                     <Image source={require("@/assets/monsters/egg.png")} style={styles.eggImage} contentFit="contain" />
@@ -1249,7 +1282,7 @@ export default function HomeScreen() {
                   <Image source={MONSTER_IMAGES[`${selectedType}-1`]} style={styles.hatchedImage} contentFit="contain" />
                 </LinearGradient>
                 <Text style={[styles.hatchedTitle, { color: colors.foreground }]}>{tr("monsterBorn", { name: newMonsterName })}</Text>
-                <Text style={[styles.hatchedSubtitle, { color: colors.muted }]}>{tr("newMonsterJoins", { type: selectedType === "Bodybuilder" ? t.bodybuilder : selectedType === "Physique" ? t.physique : t.powerlifter })}</Text>
+                <Text style={[styles.hatchedSubtitle, { color: colors.muted }]}>{tr("newMonsterJoins", { type: MONSTER_TYPES.find((mt) => mt.type === selectedType)?.label || selectedType })}</Text>
                 <TouchableOpacity style={[styles.hatchConfirmBtn, { backgroundColor: colors.primary }]} onPress={handleCloseHatch}>
                   <Text style={styles.hatchConfirmText}>{t.awesome}</Text>
                 </TouchableOpacity>

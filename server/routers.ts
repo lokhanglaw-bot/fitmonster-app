@@ -512,7 +512,7 @@ export const appRouter = router({
       .input(
         z.object({
           name: z.string(),
-          monsterType: z.enum(["bodybuilder", "physique", "powerlifter", "athlete", "colossus"]),
+          monsterType: z.enum(["bodybuilder", "physique", "powerlifter", "athlete", "colossus", "bodybuilder2", "physique2", "powerlifter2"]),
           imageUrl: z.string().optional(),
         })
       )
@@ -559,7 +559,7 @@ export const appRouter = router({
         for (let i = 0; i < input.monsters.length; i++) {
           const m = input.monsters[i];
           const monsterType = m.type.toLowerCase() as any;
-          const validTypes = ['bodybuilder', 'physique', 'powerlifter', 'athlete', 'colossus'];
+          const validTypes = ['bodybuilder', 'physique', 'powerlifter', 'athlete', 'colossus', 'bodybuilder2', 'physique2', 'powerlifter2'];
           const id = await db.createMonster({
             userId,
             name: m.name,
