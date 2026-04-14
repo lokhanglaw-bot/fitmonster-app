@@ -62,8 +62,7 @@ const config: ExpoConfig = {
       NSHealthUpdateUsageDescription: "FitMonster may save workout data to Apple Health.",
       // Location usage descriptions for nearby users feature
       NSLocationWhenInUseUsageDescription: "FitMonster uses your location to find nearby trainers for battles and friend matching.",
-      NSLocationAlwaysAndWhenInUseUsageDescription: "FitMonster uses your location in the background to keep your nearby trainer list up to date.",
-      NSLocationAlwaysUsageDescription: "FitMonster uses your location in the background to keep your nearby trainer list up to date.",
+
       NSCameraUsageDescription: "FitMonster uses your camera to take photos of your meals for AI-powered nutritional analysis. For example, you can photograph your lunch to automatically calculate calories, protein, carbs, and fat content.",
       NSPhotoLibraryUsageDescription: "FitMonster accesses your photo library so you can select meal photos for AI-powered nutritional analysis.",
       // Motion & Fitness Activity usage description
@@ -76,7 +75,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    versionCode: 19,
+    versionCode: 20,
     config: {
       googleMaps: {
         apiKey: process.env.GOOGLE_MAPS_API_KEY || "",
@@ -102,10 +101,7 @@ const config: ExpoConfig = {
       // Location permissions for nearby users feature
       "ACCESS_FINE_LOCATION",
       "ACCESS_COARSE_LOCATION",
-      "ACCESS_BACKGROUND_LOCATION",
-      // Foreground service permissions (Android 14+ mandatory)
-      "FOREGROUND_SERVICE",
-      "FOREGROUND_SERVICE_LOCATION",
+
     ],
     intentFilters: [
       {
@@ -174,14 +170,14 @@ const config: ExpoConfig = {
     ["@react-native-google-signin/google-signin", {
       iosUrlScheme: "com.googleusercontent.apps.525433155057-m3b87hddvrqmoe5jjlun01hb5kdula6d",
     }],
-    // expo-location config for background location + foreground service
+    // expo-location config for foreground-only location
     [
       "expo-location",
       {
-        locationAlwaysAndWhenInUsePermission:
-          "FitMonster tracks your location in the background to match you with nearby trainers.",
-        isAndroidBackgroundLocationEnabled: true,
-        isAndroidForegroundServiceEnabled: true,
+        locationWhenInUsePermission:
+          "FitMonster uses your location to find nearby trainers on the map for battles and friend matching. For example, when you open the Nearby Trainers screen, the app shows trainers within your selected radius.",
+        isAndroidBackgroundLocationEnabled: false,
+        isAndroidForegroundServiceEnabled: false,
       },
     ],
     // HealthKit (iOS) — react-native-health config plugin

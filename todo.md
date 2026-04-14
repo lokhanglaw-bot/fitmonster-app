@@ -1359,3 +1359,9 @@
 - [x] Get user approval on designs before integrating into app
 - [x] Generate all 36 expression images via parallel processing
 - [x] Integrate new monsters into app (selection, battle, expressions, server, database)
+
+## Bug Fix - Round 135 (Google Play Permission Issues)
+- [x] Remove ACCESS_BACKGROUND_LOCATION permission (not used in code)
+- [x] Remove FOREGROUND_SERVICE_LOCATION permission (not used in code)
+- [x] Remove iOS background location permission strings (not used)
+- [x] Audit all other permissions for unnecessary declarations
