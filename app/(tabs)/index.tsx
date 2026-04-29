@@ -30,6 +30,8 @@ import { trpc } from "@/lib/trpc";
 import { MonsterCaringPanel } from "@/components/monster-caring-panel";
 import { useCaring } from "@/lib/caring-context";
 import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
+import { BodyTypeIndicator } from "@/components/body-type-indicator";
+import type { BodyType } from "@/types/game";
 
 // MONSTER_TYPES is built inside the component to use i18n
 
@@ -626,6 +628,13 @@ export default function HomeScreen() {
           <View style={styles.monsterStat}><Text style={styles.monsterStatIcon}>🛡️</Text><Text style={[styles.monsterStatValue, { color: colors.foreground }]}>{monster.defense}</Text></View>
           <View style={styles.monsterStat}><Text style={styles.monsterStatIcon}>⚡</Text><Text style={[styles.monsterStatValue, { color: colors.foreground }]}>{monster.agility}</Text></View>
         </View>
+
+        {/* Body Type Indicator (v2.0) */}
+        <BodyTypeIndicator
+          bodyType={((monster as any).bodyType as BodyType) || "standard"}
+          muscleScore={(monster as any).muscleScore ?? 50}
+          fatScore={(monster as any).fatScore ?? 20}
+        />
 
         <View style={styles.barContainer}>
           <View style={styles.barLabelRow}>

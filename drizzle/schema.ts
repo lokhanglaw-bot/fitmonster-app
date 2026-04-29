@@ -9,6 +9,20 @@ import {
   float,
   json,
 } from "drizzle-orm/mysql-core";
+import { randomUUID } from "crypto";
+
+// Fitness bonus type for battle system
+export type FitnessBonuses = {
+  workedOut: boolean;
+  proteinMet: boolean;
+  steps10k: boolean;
+  bodyFatLow: boolean;
+  peakState: boolean;
+  streak7days: boolean;
+  damageMultiplier: number;
+  extraHp: number;
+  tieBreakAdvantage: boolean;
+};
 
 /**
  * Core user table backing auth flow.
@@ -94,6 +108,10 @@ export const monsters = mysqlTable("monsters", {
   status: mysqlEnum("status", ["rookie", "in_battle", "training", "resting"]).default("rookie").notNull(),
   isActive: boolean("isActive").default(true).notNull(),
   imageUrl: text("imageUrl"),
+  // v2.0 body type fields
+  muscleScore: float("muscleScore").default(50).notNull(),
+  fatScore: float("fatScore").default(50).notNull(),
+  bodyType: varchar("bodyType", { length: 20 }).default("standard").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -140,6 +158,12 @@ export const foodLogs = mysqlTable("foodLogs", {
   imageUrl: text("imageUrl"),
   mealType: mysqlEnum("mealType", ["breakfast", "lunch", "dinner", "snack"]),
   expEarned: int("expEarned").default(0).notNull(),
+  // v2.0 sugar tracking fields
+  addedSugar: float("addedSugar"),
+  saturatedFat: float("saturatedFat"),
+  sodium: float("sodium"),
+  glycemicIndex: varchar("glycemicIndex", { length: 10 }),
+  fiber: float("fiber"),
   date: timestamp("date").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -182,6 +206,12 @@ export const battles = mysqlTable("battles", {
   expReward: int("expReward").default(0).notNull(),
   coinReward: int("coinReward").default(0).notNull(),
   battleLog: json("battleLog"),
+  // v2.0 RPS battle fields
+  player1Hp: float("player1Hp").default(100).notNull(),
+  player2Hp: float("player2Hp").default(100).notNull(),
+  currentRound: int("currentRound").default(0).notNull(),
+  player1FitnessBonus: json("p1FitnessBonus").$type<FitnessBonuses>(),
+  player2FitnessBonus: json("p2FitnessBonus").$type<FitnessBonuses>(),
   startedAt: timestamp("startedAt"),
   completedAt: timestamp("completedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -320,3 +350,107 @@ export type InsertChatMessage = typeof chatMessages.$inferInsert;
 
 export type PushToken = typeof pushTokens.$inferSelect;
 export type InsertPushToken = typeof pushTokens.$inferInsert;
+
+// ============================================
+// v2.0 Body Stats (daily body composition tracking)
+// ============================================
+export const bodyStats = mysqlTable("bodyStats", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
+  muscleScore: float("muscleScore").default(50).notNull(),
+  fatScore: float("fatScore").default(50).notNull(),
+  bodyType: varchar("bodyType", { length: 20 }).default("standard").notNull(),
+  calorieBalance: int("calorieBalance").default(0).notNull(),
+  proteinAdequate: boolean("proteinAdequate").default(false).notNull(),
+  hadStrengthTraining: boolean("hadStrengthTraining").default(false).notNull(),
+  hadCardio: boolean("hadCardio").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BodyStats = typeof bodyStats.$inferSelect;
+export type InsertBodyStats = typeof bodyStats.$inferInsert;
+
+// ============================================
+// v2.0 Exercise Library (150+ exercises)
+// ============================================
+export const exercises = mysqlTable("exercises", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  nameZh: varchar("nameZh", { length: 100 }),
+  category: varchar("category", { length: 50 }).notNull(), // chest, back, legs, shoulders, arms, core, cardio
+  muscleGroup: varchar("muscleGroup", { length: 50 }).notNull(), // primary muscle group
+  secondaryMuscles: varchar("secondaryMuscles", { length: 200 }), // comma-separated
+  equipment: varchar("equipment", { length: 50 }), // barbell, dumbbell, cable, machine, bodyweight
+  difficulty: mysqlEnum("difficulty", ["beginner", "intermediate", "advanced"]).default("beginner").notNull(),
+  instructions: text("instructions"),
+  isCompound: boolean("isCompound").default(false).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Exercise = typeof exercises.$inferSelect;
+export type InsertExercise = typeof exercises.$inferInsert;
+
+// ============================================
+// v2.0 Workout Sets (per-set tracking)
+// ============================================
+export const workoutSets = mysqlTable("workoutSets", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  workoutId: int("workoutId").references(() => workouts.id, { onDelete: "cascade" }),
+  exerciseId: int("exerciseId").references(() => exercises.id),
+  exerciseName: varchar("exerciseName", { length: 100 }).notNull(),
+  setNumber: int("setNumber").notNull(),
+  setType: mysqlEnum("setType", ["warmup", "working", "failure", "drop", "super"]).default("working").notNull(),
+  weight: float("weight"), // kg
+  reps: int("reps"),
+  duration: int("duration"), // seconds (for timed exercises)
+  rpe: float("rpe"), // rate of perceived exertion 1-10
+  isPR: boolean("isPR").default(false).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WorkoutSet = typeof workoutSets.$inferSelect;
+export type InsertWorkoutSet = typeof workoutSets.$inferInsert;
+
+// ============================================
+// v2.0 Personal Records
+// ============================================
+export const personalRecords = mysqlTable("personalRecords", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  exerciseId: int("exerciseId").references(() => exercises.id),
+  exerciseName: varchar("exerciseName", { length: 100 }).notNull(),
+  recordType: mysqlEnum("recordType", ["weight", "reps", "volume", "duration"]).default("weight").notNull(),
+  value: float("value").notNull(),
+  previousValue: float("previousValue"),
+  workoutSetId: int("workoutSetId").references(() => workoutSets.id),
+  achievedAt: timestamp("achievedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PersonalRecord = typeof personalRecords.$inferSelect;
+export type InsertPersonalRecord = typeof personalRecords.$inferInsert;
+
+// ============================================
+// v2.0 Battle Rounds (RPS per-round tracking)
+// ============================================
+export const battleRounds = mysqlTable("battleRounds", {
+  id: int("id").autoincrement().primaryKey(),
+  battleId: int("battleId").notNull().references(() => battles.id, { onDelete: "cascade" }),
+  roundNumber: int("roundNumber").notNull(),
+  player1Move: varchar("player1Move", { length: 20 }), // powerStrike, evade, counter
+  player2Move: varchar("player2Move", { length: 20 }),
+  player1Damage: float("player1Damage").default(0).notNull(), // damage taken by p1
+  player2Damage: float("player2Damage").default(0).notNull(), // damage taken by p2
+  result: varchar("result", { length: 10 }), // p1win, p2win, draw
+  player1HpAfter: float("player1HpAfter"),
+  player2HpAfter: float("player2HpAfter"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type BattleRound = typeof battleRounds.$inferSelect;
+export type InsertBattleRound = typeof battleRounds.$inferInsert;

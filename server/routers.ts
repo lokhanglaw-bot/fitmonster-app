@@ -16,6 +16,11 @@ import { sendToUser, getOnlineStatuses, isUserOnline } from "./websocket";
 import { sendPushNotification, sendChatPushNotification } from "./push-notifications";
 import * as caringDb from "./caring-db";
 import { getMonsterAdvicePrompt, getMonsterAdviceUserPrompt, getQuickStatusDialogue } from "./caring-prompt";
+// v2.0 imports
+import { settleDailyBodyStats, getWeeklyBodyReport } from "./body-type";
+import { getExercises, seedExercises } from "./exercise-library";
+import { logWorkoutSet, getLastSessionSets, getUserPRs, getMuscleGroupVolume, getWorkoutSets } from "./workout-sets";
+import { createRPSBattle, submitMove, getBattleState } from "./battle-engine";
 // Round 116 Issue 2: Module-level imports (initialized once, not per-request)
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { OAuth2Client } from "google-auth-library";
@@ -1400,6 +1405,99 @@ Always return valid JSON.`;
         const { date, ...data } = input;
         const id = await db.upsertDailyStats(ctx.user.id, date, data);
         return { id };
+      }),
+  }),
+
+  // ── v2.0 Body Type System ──────────────────────────────────
+  bodyType: router({
+    settle: protectedProcedure
+      .input(z.object({ date: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const date = input.date ?? new Date().toISOString().split("T")[0];
+        const result = await settleDailyBodyStats(ctx.user.id, date);
+        return result ?? { muscleScore: 50, fatScore: 50, bodyType: "standard" };
+      }),
+    weeklyReport: protectedProcedure.query(async ({ ctx }) => {
+      return await getWeeklyBodyReport(ctx.user.id);
+    }),
+  }),
+
+  // ── v2.0 Exercise Library ─────────────────────────────────
+  exerciseLibrary: router({
+    list: protectedProcedure
+      .input(z.object({ category: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return await getExercises(input?.category);
+      }),
+    seed: protectedProcedure.mutation(async () => {
+      await seedExercises();
+      return { success: true };
+    }),
+  }),
+
+  // ── v2.0 Workout Sets (per-set tracking) ──────────────────
+  workoutSets: router({
+    log: protectedProcedure
+      .input(
+        z.object({
+          workoutId: z.number().optional(),
+          exerciseId: z.number().optional(),
+          exerciseName: z.string(),
+          setNumber: z.number(),
+          setType: z.enum(["warmup", "working", "failure", "drop", "super"]).default("working"),
+          weight: z.number().optional(),
+          reps: z.number().optional(),
+          duration: z.number().optional(),
+          rpe: z.number().optional(),
+          notes: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return await logWorkoutSet({ userId: ctx.user.id, ...input });
+      }),
+    lastSession: protectedProcedure
+      .input(z.object({ exerciseName: z.string() }))
+      .query(async ({ ctx, input }) => {
+        return await getLastSessionSets(ctx.user.id, input.exerciseName);
+      }),
+    prs: protectedProcedure
+      .input(z.object({ exerciseName: z.string().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await getUserPRs(ctx.user.id, input?.exerciseName);
+      }),
+    muscleVolume: protectedProcedure
+      .input(z.object({ days: z.number().default(7) }).optional())
+      .query(async ({ ctx, input }) => {
+        return await getMuscleGroupVolume(ctx.user.id, input?.days ?? 7);
+      }),
+    byWorkout: protectedProcedure
+      .input(z.object({ workoutId: z.number() }))
+      .query(async ({ input }) => {
+        return await getWorkoutSets(input.workoutId);
+      }),
+  }),
+
+  // ── v2.0 Battle RPS System ────────────────────────────────
+  battleRps: router({
+    create: protectedProcedure
+      .input(z.object({ opponentId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return await createRPSBattle(ctx.user.id, input.opponentId);
+      }),
+    submitMove: protectedProcedure
+      .input(
+        z.object({
+          battleId: z.number(),
+          move: z.enum(["powerStrike", "evade", "counter"]),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return await submitMove(input.battleId, ctx.user.id, input.move);
+      }),
+    state: protectedProcedure
+      .input(z.object({ battleId: z.number() }))
+      .query(async ({ input }) => {
+        return await getBattleState(input.battleId);
       }),
   }),
 });

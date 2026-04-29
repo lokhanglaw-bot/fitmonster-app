@@ -1365,3 +1365,52 @@
 - [x] Remove FOREGROUND_SERVICE_LOCATION permission (not used in code)
 - [x] Remove iOS background location permission strings (not used)
 - [x] Audit all other permissions for unnecessary declarations
+
+## Bug Fix - Round 136 (Gradle Build Failure)
+- [ ] Fix: react-native-google-signin Gradle build fails with "Cannot query the value of this provider because it has no value available"
+
+## BRD v2.0 Upgrade — Module 1: Body Type System (P1)
+- [x] Add bodyStats table to schema
+- [x] Add muscleScore, fatScore, bodyType columns to monsters table
+- [x] Update types/game.ts with BodyType, FitnessBonuses, BattleState, BattleRound types
+- [x] Create server/body-type.ts (resolveBodyType, calculateDailyDelta, settleDailyBodyStats, getWeeklyBodyReport)
+- [x] Create components/body-type-indicator.tsx
+- [x] Integrate body type display on home screen
+
+## BRD v2.0 Upgrade — Module 2: Training Record Professionalization (P1)
+- [x] Add exercises table to schema (55 exercise seed data)
+- [x] Add workoutSets table to schema
+- [x] Add personalRecords table to schema
+- [ ] Add workoutPlans, workoutPlanDays, workoutPlanExercises, userWorkoutPlans tables (deferred)
+- [x] Update types/workout.ts with SetType, WorkoutSet, ExerciseBlock, PersonalRecord, WorkoutPlan types
+- [x] Create server/exercise-library.ts (55 exercise seed data)
+- [x] Create server/workout-sets.ts (set logging + PR detection)
+- [x] Create components/set-tracker-card.tsx
+- [x] Create components/rest-timer-sheet.tsx
+- [x] Create components/muscle-heatmap.tsx
+- [x] Create app/workout-sets.tsx
+- [x] Add workout-sets tRPC routers
+
+## BRD v2.0 Upgrade — Module 3: Monster Real-time Reactive Dialogue (P1)
+- [ ] Update server/caring-prompt.ts with context-aware dialogue triggers (deferred)
+- [x] Update server/food-prompt.ts with sugar tracking context
+
+## BRD v2.0 Upgrade — Module 4: Food Scan Upgrade - Sugar Tracking (P2)
+- [x] Add addedSugar, saturatedFat, sodium, glycemicIndex columns to foodLogs table
+- [x] Update types/nutrition.ts with FoodLabel, getFoodLabels, sugar limits
+- [x] Update food analysis prompt to return sugar/sodium/saturated fat data
+
+## BRD v2.0 Upgrade — Module 5: Diet Share Cards (P2)
+- [x] Create components/share-card.tsx
+
+## BRD v2.0 Upgrade — Module 8: Battle System Redesign - RPS (P1)
+- [x] Add battleRounds table to schema
+- [x] Add player1Hp, player2Hp, currentRound, status, fitnessBonus columns to battles table
+- [x] Create server/battle-engine.ts (RPS resolve, fitness bonus calculation)
+- [x] Redesign app/(tabs)/battle.tsx with RPS mechanics
+- [x] Add battle tRPC routers (create, submitMove, getState)
+
+## BRD v2.0 Upgrade — Module 9: Monster Image Assets (P1)
+- [ ] Generate body type state images (deferred — using fallback with transform for now)
+- [ ] Generate battle action images (deferred — using emoji indicators for now)
+- [ ] Generate battle reaction images (deferred — using emoji indicators for now)

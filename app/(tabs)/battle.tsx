@@ -25,6 +25,8 @@ import { useAuthContext } from "@/lib/auth-context";
 import * as Location from "expo-location";
 import { useCaring } from "@/lib/caring-context";
 import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
+import { BATTLE_MOVES, RPS_RESOLUTION, BATTLE_CONFIG } from "@/types/game";
+import type { BattleMove, RoundResult } from "@/types/game";
 
 // Opponent type used for battle system
 type Opponent = {
@@ -142,17 +144,23 @@ function getGradientForType(type: string): readonly [string, string] {
   return gradients[type.toLowerCase()] || gradients.bodybuilder;
 }
 
-type BattleState = {
-  phase: "intro" | "fighting" | "result";
+type RPSBattleState = {
+  phase: "intro" | "prep" | "selecting" | "revealing" | "result";
   playerHp: number;
   playerMaxHp: number;
   enemyHp: number;
   enemyMaxHp: number;
-  turn: "player" | "enemy";
+  currentRound: number;
+  maxRounds: number;
   log: string[];
   opponent: Opponent;
-  result?: "win" | "lose";
-  actionLock: boolean;
+  result?: "win" | "lose" | "draw";
+  myMove: BattleMove | null;
+  enemyMove: BattleMove | null;
+  roundResult: RoundResult | null;
+  timeLeft: number;
+  rounds: Array<{ round: number; myMove: BattleMove; enemyMove: BattleMove; result: RoundResult; myDmg: number; enemyDmg: number }>;
+  fitnessBonus: { workedOut: boolean; proteinMet: boolean; steps10k: boolean; streak7days: boolean; damageMultiplier: number; extraHp: number };
 };
 
 export default function BattleScreen() {
@@ -169,7 +177,8 @@ export default function BattleScreen() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [showBattle, setShowBattle] = useState(false);
-  const [battle, setBattle] = useState<BattleState | null>(null);
+  const [battle, setBattle] = useState<RPSBattleState | null>(null);
+  const roundTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [locationTooltip, setLocationTooltip] = useState<{ friendId: number; text: string } | null>(null);
   const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [unfriendTarget, setUnfriendTarget] = useState<Friend | null>(null);
@@ -472,18 +481,38 @@ export default function BattleScreen() {
   }, [rejectMutation, pendingQuery]);
 
   const startBattle = useCallback((opp: Opponent) => {
-    const hp = playerMonster ? playerMonster.maxHp : 150;
+    const playerLevel = playerMonster?.level || 1;
+    const playerHp = BATTLE_CONFIG.BASE_HP + playerLevel * BATTLE_CONFIG.HP_PER_LEVEL;
+    const enemyHp = BATTLE_CONFIG.BASE_HP + opp.level * BATTLE_CONFIG.HP_PER_LEVEL;
+    // Calculate fitness bonuses from activity state
+    const workedOut = (activityState.todayWorkoutMinutes || 0) > 0;
+    const proteinMet = (activityState.todayProtein || 0) >= 100;
+    const steps10k = (activityState.todaySteps || 0) >= 10000;
+    const streak7days = false; // TODO: implement streak tracking in activity context
+    let dmgMult = 1.0;
+    let extraHp = 0;
+    if (workedOut) dmgMult += 0.15;
+    if (streak7days) dmgMult += 0.20;
+    if (proteinMet) extraHp = 15;
+    const finalPlayerHp = playerHp + extraHp;
+
     setBattle({
-      phase: "intro", playerHp: hp, playerMaxHp: hp,
-      enemyHp: opp.hp, enemyMaxHp: opp.hp, turn: "player",
+      phase: "intro", playerHp: finalPlayerHp, playerMaxHp: finalPlayerHp,
+      enemyHp, enemyMaxHp: enemyHp, currentRound: 0, maxRounds: BATTLE_CONFIG.MAX_ROUNDS,
       log: [tr("battleStartedLog", { name: opp.name, type: opp.monsterType })],
-      opponent: opp, actionLock: false,
+      opponent: opp, myMove: null, enemyMove: null, roundResult: null, timeLeft: 10,
+      rounds: [],
+      fitnessBonus: { workedOut, proteinMet, steps10k, streak7days, damageMultiplier: dmgMult, extraHp },
     });
     setShowBattle(true);
+    // Intro → Prep → Selecting
     setTimeout(() => {
-      setBattle((prev) => prev ? { ...prev, phase: "fighting" } : null);
+      setBattle((prev: RPSBattleState | null) => prev ? { ...prev, phase: "prep" } : null);
+      setTimeout(() => {
+        startRoundTimer();
+      }, BATTLE_CONFIG.PREP_TIME_MS);
     }, 1500);
-  }, []);
+  }, [activityState]);
 
   const handleWildBattle = useCallback(() => {
     if (nearbyOpponents.length > 0) {
@@ -518,60 +547,118 @@ export default function BattleScreen() {
     }
   }, [startBattle, nearbyOpponents, playerMonster]);
 
-  const handleBattleAction = useCallback((action: "attack" | "defend" | "special") => {
-    if (!battle || battle.turn !== "player" || battle.actionLock) return;
-    setBattle((prev) => prev ? { ...prev, actionLock: true } : null);
-
-    if (action === "attack") {
-      shakeAnimation(enemyShake);
-      flashAnimation(attackFlash);
-    } else if (action === "defend") {
-      flashAnimation(defendFlash);
-    } else {
-      shakeAnimation(enemyShake);
-      flashAnimation(specialFlash);
+  // --- RPS Battle Logic ---
+  const clearRoundTimer = useCallback(() => {
+    if (roundTimerRef.current) {
+      clearInterval(roundTimerRef.current);
+      roundTimerRef.current = null;
     }
+  }, []);
 
-    setTimeout(() => {
-      setBattle((prev) => {
-        if (!prev) return null;
-        const newLog = [...prev.log];
-        let newEnemyHp = prev.enemyHp;
-        let newPlayerHp = prev.playerHp;
+  const resolveRound = useCallback((myMove: BattleMove) => {
+    clearRoundTimer();
+    const moves: BattleMove[] = ["powerStrike", "evade", "counter"];
+    const enemyMove = moves[Math.floor(Math.random() * 3)];
+    const result = RPS_RESOLUTION[myMove][enemyMove];
 
-        if (action === "attack") {
-          const dmg = Math.floor(Math.random() * 20) + 15;
-          newEnemyHp = Math.max(0, newEnemyHp - dmg);
-          newLog.push(tr("yourMonsterAttacksLog", { dmg: String(dmg) }));
-        } else if (action === "defend") {
-          newLog.push(t.yourMonsterDefendsLog);
-        } else {
-          const dmg = Math.floor(Math.random() * 35) + 25;
-          newEnemyHp = Math.max(0, newEnemyHp - dmg);
-          newLog.push(tr("specialAttackLog", { dmg: String(dmg) }));
-        }
+    setBattle((prev: RPSBattleState | null) => {
+      if (!prev) return null;
+      const round = prev.currentRound + 1;
+      const playerLevel = playerMonster?.level || 1;
+      const enemyLevel = prev.opponent.level;
+      const baseDmgPlayer = (playerLevel * 2) + Math.floor(Math.random() * 10) + 1;
+      const baseDmgEnemy = (enemyLevel * 2) + Math.floor(Math.random() * 10) + 1;
 
-        if (newEnemyHp <= 0) {
-          newLog.push(tr("youDefeatedLog", { name: prev.opponent.name }));
-          return { ...prev, enemyHp: 0, log: newLog, phase: "result", result: "win", turn: "player", actionLock: false };
-        }
+      let myDmg = 0;
+      let enemyDmg = 0;
+      const newLog = [...prev.log];
 
-        const isDefending = action === "defend";
-        const enemyDmg = Math.max(5, Math.floor(Math.random() * 18) + 10 - (isDefending ? 10 : 0));
-        newPlayerHp = Math.max(0, newPlayerHp - enemyDmg);
-        newLog.push(tr("enemyAttacksLog", { name: prev.opponent.name, dmg: String(enemyDmg) }));
-
+      if (result === "p1win") {
+        // I win: enemy takes damage
+        const mult = myMove === "counter" && enemyMove === "powerStrike" ? 2.0 : 1.5;
+        enemyDmg = Math.round(baseDmgPlayer * mult * prev.fitnessBonus.damageMultiplier);
+        newLog.push(`R${round}: ${BATTLE_MOVES[myMove].zh} vs ${BATTLE_MOVES[enemyMove].zh} → 勝利! 造成 ${enemyDmg} 傷害`);
+        shakeAnimation(enemyShake);
+        flashAnimation(attackFlash);
+      } else if (result === "p2win") {
+        // I lose: I take damage
+        const mult = enemyMove === "counter" && myMove === "powerStrike" ? 2.0 : 1.0;
+        myDmg = Math.round(baseDmgEnemy * mult);
+        newLog.push(`R${round}: ${BATTLE_MOVES[myMove].zh} vs ${BATTLE_MOVES[enemyMove].zh} → 落敗! 受到 ${myDmg} 傷害`);
         setTimeout(() => shakeAnimation(playerShake), 200);
+        flashAnimation(defendFlash);
+      } else {
+        // Draw
+        enemyDmg = Math.round(baseDmgPlayer * 0.5 * prev.fitnessBonus.damageMultiplier);
+        myDmg = Math.round(baseDmgEnemy * 0.5);
+        newLog.push(`R${round}: ${BATTLE_MOVES[myMove].zh} vs ${BATTLE_MOVES[enemyMove].zh} → 平手! 雙方各受 ${myDmg}/${enemyDmg} 傷害`);
+        flashAnimation(specialFlash);
+      }
 
-        if (newPlayerHp <= 0) {
-          newLog.push(t.yourMonsterDefeatedLog);
-          return { ...prev, playerHp: 0, enemyHp: newEnemyHp, log: newLog, phase: "result", result: "lose", turn: "player", actionLock: false };
+      const newPlayerHp = Math.max(0, prev.playerHp - myDmg);
+      const newEnemyHp = Math.max(0, prev.enemyHp - enemyDmg);
+      const newRounds = [...prev.rounds, { round, myMove, enemyMove, result, myDmg, enemyDmg }];
+
+      // Check end conditions
+      if (newPlayerHp <= 0 && newEnemyHp <= 0) {
+        return { ...prev, playerHp: 0, enemyHp: 0, currentRound: round, rounds: newRounds, log: newLog, phase: "result" as const, result: "draw" as const, myMove, enemyMove, roundResult: result };
+      }
+      if (newEnemyHp <= 0) {
+        return { ...prev, playerHp: newPlayerHp, enemyHp: 0, currentRound: round, rounds: newRounds, log: newLog, phase: "result" as const, result: "win" as const, myMove, enemyMove, roundResult: result };
+      }
+      if (newPlayerHp <= 0) {
+        return { ...prev, playerHp: 0, enemyHp: newEnemyHp, currentRound: round, rounds: newRounds, log: newLog, phase: "result" as const, result: "lose" as const, myMove, enemyMove, roundResult: result };
+      }
+      if (round >= prev.maxRounds) {
+        const finalResult = newPlayerHp > newEnemyHp ? "win" : newPlayerHp < newEnemyHp ? "lose" : "draw";
+        return { ...prev, playerHp: newPlayerHp, enemyHp: newEnemyHp, currentRound: round, rounds: newRounds, log: newLog, phase: "result" as const, result: finalResult as any, myMove, enemyMove, roundResult: result };
+      }
+
+      // Show reveal briefly, then start next round
+      return { ...prev, playerHp: newPlayerHp, enemyHp: newEnemyHp, currentRound: round, rounds: newRounds, log: newLog, phase: "revealing" as const, myMove, enemyMove, roundResult: result };
+    });
+
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+  }, [clearRoundTimer, playerMonster, enemyShake, playerShake, attackFlash, defendFlash, specialFlash]);
+
+  const startRoundTimer = useCallback(() => {
+    clearRoundTimer();
+    setBattle((prev: RPSBattleState | null) => prev ? { ...prev, phase: "selecting" as const, myMove: null, enemyMove: null, roundResult: null, timeLeft: 10 } : null);
+    roundTimerRef.current = setInterval(() => {
+      setBattle((prev: RPSBattleState | null) => {
+        if (!prev || prev.phase !== "selecting") return prev;
+        if (prev.timeLeft <= 1) {
+          // Timeout: auto Power Strike
+          setTimeout(() => resolveRound(BATTLE_CONFIG.DEFAULT_MOVE), 0);
+          return prev;
         }
-
-        return { ...prev, playerHp: newPlayerHp, enemyHp: newEnemyHp, log: newLog, turn: "player", actionLock: false };
+        return { ...prev, timeLeft: prev.timeLeft - 1 };
       });
-    }, 500);
-  }, [battle, enemyShake, playerShake, attackFlash, defendFlash, specialFlash]);
+    }, 1000);
+  }, [clearRoundTimer, resolveRound]);
+
+  // When revealing phase ends, start next round
+  useEffect(() => {
+    if (battle?.phase === "revealing") {
+      const timer = setTimeout(() => {
+        startRoundTimer();
+      }, BATTLE_CONFIG.REVEAL_TIME_MS);
+      return () => clearTimeout(timer);
+    }
+  }, [battle?.phase, battle?.currentRound]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => clearRoundTimer();
+  }, [clearRoundTimer]);
+
+  const handleRPSMove = useCallback((move: BattleMove) => {
+    if (!battle || battle.phase !== "selecting" || battle.myMove) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    resolveRound(move);
+  }, [battle, resolveRound]);
 
   // Unfriend handler — opens inline Modal confirmation (works on web + native)
   const handleUnfriend = useCallback((friend: Friend) => {
@@ -995,10 +1082,11 @@ export default function BattleScreen() {
         </View>
       </ScrollView>
 
-      {/* Battle Modal */}
+      {/* RPS Battle Modal */}
       <Modal visible={showBattle} animationType="fade" transparent>
         <View style={styles.battleOverlay}>
           <View style={[styles.battleContainer, { backgroundColor: colors.background }]}>
+            {/* Intro Phase */}
             {battle?.phase === "intro" && (
               <View style={styles.battleIntro}>
                 <Text style={styles.battleIntroEmoji}>⚔️</Text>
@@ -1007,8 +1095,39 @@ export default function BattleScreen() {
               </View>
             )}
 
-            {battle?.phase === "fighting" && (
+            {/* Prep Phase - show fitness bonuses */}
+            {battle?.phase === "prep" && (
+              <View style={styles.battleIntro}>
+                <Text style={{ fontSize: 32, fontWeight: "900", color: colors.foreground, marginBottom: 12 }}>準備對戰</Text>
+                <View style={{ gap: 6, alignItems: "center" }}>
+                  {battle.fitnessBonus.workedOut && <Text style={{ fontSize: 14, color: "#22C55E" }}>💪 今日已訓練 → 傷害 +15%</Text>}
+                  {battle.fitnessBonus.proteinMet && <Text style={{ fontSize: 14, color: "#3B82F6" }}>🥩 蛋白質達標 → HP +15</Text>}
+                  {battle.fitnessBonus.steps10k && <Text style={{ fontSize: 14, color: "#F59E0B" }}>🚶 萬步達成 → 先手優勢</Text>}
+                  {battle.fitnessBonus.streak7days && <Text style={{ fontSize: 14, color: "#8B5CF6" }}>🔥 7天連續 → 全傷害 +20%</Text>}
+                  {!battle.fitnessBonus.workedOut && !battle.fitnessBonus.proteinMet && !battle.fitnessBonus.steps10k && !battle.fitnessBonus.streak7days && (
+                    <Text style={{ fontSize: 14, color: colors.muted }}>今天還沒有健身加成，去運動吧！</Text>
+                  )}
+                </View>
+                <Text style={{ fontSize: 13, color: colors.muted, marginTop: 16 }}>即將開始...</Text>
+              </View>
+            )}
+
+            {/* Selecting & Revealing Phases - main battle UI */}
+            {(battle?.phase === "selecting" || battle?.phase === "revealing") && (
               <>
+                {/* Round & Timer header */}
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 4 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground }}>回合 {battle.currentRound + (battle.phase === "selecting" ? 1 : 0)}/{battle.maxRounds}</Text>
+                  {battle.phase === "selecting" && (
+                    <View style={{ backgroundColor: battle.timeLeft <= 3 ? "#FEE2E2" : colors.surface, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
+                      <Text style={{ fontSize: 16, fontWeight: "800", color: battle.timeLeft <= 3 ? "#EF4444" : colors.foreground, fontVariant: ["tabular-nums"] }}>
+                        ⏱ {battle.timeLeft}s
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Enemy side */}
                 <View style={styles.battleSide}>
                   <RNAnimated.View style={[styles.battleMonsterRow, { transform: [{ translateX: enemyShake }] }]}>
                     <LinearGradient colors={[battle.opponent.gradient[0], battle.opponent.gradient[1]]} style={styles.battleGradient}>
@@ -1016,9 +1135,9 @@ export default function BattleScreen() {
                     </LinearGradient>
                     <View style={styles.battleInfo}>
                       <Text style={[styles.battleName, { color: colors.foreground }]}>{battle.opponent.name}</Text>
-                      <Text style={[styles.battleType, { color: colors.muted }]}>{(t as any)[battle.opponent.monsterType.toLowerCase()] || battle.opponent.monsterType} Lv.{battle.opponent.level}</Text>
+                      <Text style={[styles.battleType, { color: colors.muted }]}>Lv.{battle.opponent.level}</Text>
                       <View style={[styles.hpBar, { backgroundColor: colors.border }]}>
-                        <View style={[styles.hpFill, { width: `${(battle.enemyHp / battle.enemyMaxHp) * 100}%`, backgroundColor: battle.enemyHp > battle.enemyMaxHp * 0.3 ? "#22C55E" : "#EF4444" }]} />
+                        <View style={[styles.hpFill, { width: `${Math.max(0, (battle.enemyHp / battle.enemyMaxHp) * 100)}%`, backgroundColor: battle.enemyHp > battle.enemyMaxHp * 0.3 ? "#22C55E" : "#EF4444" }]} />
                       </View>
                       <Text style={[styles.hpText, { color: colors.muted }]}>{battle.enemyHp}/{battle.enemyMaxHp} HP</Text>
                     </View>
@@ -1027,6 +1146,7 @@ export default function BattleScreen() {
 
                 <Text style={[styles.vsText, { color: colors.primary }]}>VS</Text>
 
+                {/* Player side */}
                 <View style={styles.battleSide}>
                   <RNAnimated.View style={[styles.battleMonsterRow, { transform: [{ translateX: playerShake }] }]}>
                     <LinearGradient colors={playerMonster ? getGradientForType(playerMonster.type) : ["#DCFCE7", "#BBF7D0"]} style={styles.battleGradient}>
@@ -1034,56 +1154,106 @@ export default function BattleScreen() {
                     </LinearGradient>
                     <View style={styles.battleInfo}>
                       <Text style={[styles.battleName, { color: colors.foreground }]}>{playerMonster?.name || 'Flexo'}</Text>
-                      <Text style={[styles.battleType, { color: colors.muted }]}>{(t as any)[(playerMonster?.type || 'bodybuilder').toLowerCase()] || playerMonster?.type || t.bodybuilder} Lv.{playerMonster?.level || 1}</Text>
+                      <Text style={[styles.battleType, { color: colors.muted }]}>Lv.{playerMonster?.level || 1}</Text>
                       <View style={[styles.hpBar, { backgroundColor: colors.border }]}>
-                        <View style={[styles.hpFill, { width: `${(battle.playerHp / battle.playerMaxHp) * 100}%`, backgroundColor: battle.playerHp > battle.playerMaxHp * 0.3 ? "#22C55E" : "#EF4444" }]} />
+                        <View style={[styles.hpFill, { width: `${Math.max(0, (battle.playerHp / battle.playerMaxHp) * 100)}%`, backgroundColor: battle.playerHp > battle.playerMaxHp * 0.3 ? "#22C55E" : "#EF4444" }]} />
                       </View>
                       <Text style={[styles.hpText, { color: colors.muted }]}>{battle.playerHp}/{battle.playerMaxHp} HP</Text>
                     </View>
                   </RNAnimated.View>
                 </View>
 
+                {/* Flash overlays */}
                 <RNAnimated.View pointerEvents="none" style={[styles.flashOverlay, { backgroundColor: "#EF4444", opacity: attackFlash }]} />
                 <RNAnimated.View pointerEvents="none" style={[styles.flashOverlay, { backgroundColor: "#3B82F6", opacity: defendFlash }]} />
                 <RNAnimated.View pointerEvents="none" style={[styles.flashOverlay, { backgroundColor: "#F59E0B", opacity: specialFlash }]} />
 
+                {/* Reveal result */}
+                {battle.phase === "revealing" && battle.myMove && battle.enemyMove && (
+                  <View style={{ alignItems: "center", paddingVertical: 8, gap: 4 }}>
+                    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>
+                      {BATTLE_MOVES[battle.myMove].emoji} {BATTLE_MOVES[battle.myMove].zh} vs {BATTLE_MOVES[battle.enemyMove].emoji} {BATTLE_MOVES[battle.enemyMove].zh}
+                    </Text>
+                    <Text style={{ fontSize: 20, fontWeight: "800", color: battle.roundResult === "p1win" ? "#22C55E" : battle.roundResult === "p2win" ? "#EF4444" : "#F59E0B" }}>
+                      {battle.roundResult === "p1win" ? "勝利!" : battle.roundResult === "p2win" ? "落敗!" : "平手!"}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Battle log */}
                 <View style={[styles.battleLog, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  {battle.log.slice(-3).map((msg, i) => (
+                  {battle.log.slice(-3).map((msg: string, i: number) => (
                     <Text key={i} style={[styles.logMsg, { color: colors.foreground }]}>{msg}</Text>
                   ))}
                 </View>
 
-                <View style={styles.battleActions}>
-                  <TouchableOpacity style={[styles.battleActionBtn, { backgroundColor: battle.actionLock ? "#999" : "#EF4444" }]} onPress={() => handleBattleAction("attack")} disabled={battle.actionLock}>
-                    <Text style={styles.battleActionIcon}>⚔️</Text>
-                    <Text style={styles.battleActionLabel}>{t.attack}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.battleActionBtn, { backgroundColor: battle.actionLock ? "#999" : "#3B82F6" }]} onPress={() => handleBattleAction("defend")} disabled={battle.actionLock}>
-                    <Text style={styles.battleActionIcon}>🛡️</Text>
-                    <Text style={styles.battleActionLabel}>{t.defend}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.battleActionBtn, { backgroundColor: battle.actionLock ? "#999" : "#F59E0B" }]} onPress={() => handleBattleAction("special")} disabled={battle.actionLock}>
-                    <Text style={styles.battleActionIcon}>🔥</Text>
-                    <Text style={styles.battleActionLabel}>{t.special}</Text>
-                  </TouchableOpacity>
-                </View>
+                {/* RPS Move Selection */}
+                {battle.phase === "selecting" && (
+                  <View style={styles.battleActions}>
+                    <TouchableOpacity
+                      style={[styles.battleActionBtn, { backgroundColor: battle.myMove ? "#999" : "#EF4444" }]}
+                      onPress={() => handleRPSMove("powerStrike")}
+                      disabled={!!battle.myMove}
+                    >
+                      <Text style={styles.battleActionIcon}>⚔️</Text>
+                      <Text style={styles.battleActionLabel}>猛攻</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.battleActionBtn, { backgroundColor: battle.myMove ? "#999" : "#3B82F6" }]}
+                      onPress={() => handleRPSMove("evade")}
+                      disabled={!!battle.myMove}
+                    >
+                      <Text style={styles.battleActionIcon}>💨</Text>
+                      <Text style={styles.battleActionLabel}>閃避</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.battleActionBtn, { backgroundColor: battle.myMove ? "#999" : "#F59E0B" }]}
+                      onPress={() => handleRPSMove("counter")}
+                      disabled={!!battle.myMove}
+                    >
+                      <Text style={styles.battleActionIcon}>🛡️</Text>
+                      <Text style={styles.battleActionLabel}>反擊</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* RPS hint */}
+                {battle.phase === "selecting" && !battle.myMove && (
+                  <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center" }}>
+                    猛攻 &gt; 閃避 &gt; 反擊 &gt; 猛攻
+                  </Text>
+                )}
               </>
             )}
 
+            {/* Result Phase */}
             {battle?.phase === "result" && (
               <View style={styles.battleResult}>
-                <Text style={styles.resultEmoji}>{battle.result === "win" ? "🏆" : "💀"}</Text>
+                <Text style={styles.resultEmoji}>
+                  {battle.result === "win" ? "🏆" : battle.result === "draw" ? "🤝" : "💀"}
+                </Text>
                 <Text style={[styles.resultTitle, { color: colors.foreground }]}>
-                  {battle.result === "win" ? t.victory : t.defeat}
+                  {battle.result === "win" ? t.victory : battle.result === "draw" ? "平手" : t.defeat}
                 </Text>
                 <Text style={[styles.resultSub, { color: colors.muted }]}>
                   {battle.result === "win"
-                    ? `${t.victoryMessage}\n+50 EXP`
-                    : t.defeatMessage}
+                    ? `${t.victoryMessage}\n+${BATTLE_CONFIG.WIN_EXP} EXP`
+                    : battle.result === "draw"
+                    ? `勢均力敵！\n+${BATTLE_CONFIG.DRAW_EXP} EXP`
+                    : `${t.defeatMessage}\n+${BATTLE_CONFIG.LOSE_EXP} EXP`}
                 </Text>
+                {/* Round summary */}
+                <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 12, width: "100%", gap: 4, marginTop: 8 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>對戰紀錄 ({battle.rounds.length} 回合)</Text>
+                  {battle.rounds.slice(-5).map((r, i) => (
+                    <Text key={i} style={{ fontSize: 12, color: colors.muted }}>
+                      R{r.round}: {BATTLE_MOVES[r.myMove].emoji}{BATTLE_MOVES[r.myMove].zh} vs {BATTLE_MOVES[r.enemyMove].emoji}{BATTLE_MOVES[r.enemyMove].zh} → {r.result === "p1win" ? "✅" : r.result === "p2win" ? "❌" : "➖"}
+                    </Text>
+                  ))}
+                </View>
                 <TouchableOpacity
                   style={[styles.resultBtn, { backgroundColor: colors.primary }]}
-                  onPress={() => { setShowBattle(false); setBattle(null); }}
+                  onPress={() => { clearRoundTimer(); setShowBattle(false); setBattle(null); }}
                 >
                   <Text style={styles.resultBtnText}>{t.continueBtn}</Text>
                 </TouchableOpacity>

@@ -218,6 +218,25 @@ export default function WorkoutScreen() {
             </View>
           </View>
 
+          {/* Set Tracking Mode Entry */}
+          <TouchableOpacity
+            onPress={() => router.push("/workout-sets" as any)}
+            style={[
+              styles.setTrackingEntry,
+              { backgroundColor: colors.surface, borderColor: colors.primary },
+            ]}
+            activeOpacity={0.8}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Text style={{ fontSize: 24 }}>🏋️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground }}>組數追蹤模式</Text>
+                <Text style={{ fontSize: 12, color: colors.muted }}>逐組記錄重量 × 次數，自動休息計時</Text>
+              </View>
+              <Text style={{ fontSize: 18, color: colors.primary }}>▶</Text>
+            </View>
+          </TouchableOpacity>
+
           {/* Workout Type Filters */}
           <ScrollView
             horizontal
@@ -442,6 +461,8 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, marginTop: 2 },
   headerBtn: { width: 48, height: 48, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   headerBtnIcon: { fontSize: 20 },
+
+  setTrackingEntry: { padding: 14, borderRadius: 14, borderWidth: 1.5 },
 
   filterScroll: { maxHeight: 44 },
   filterRow: { gap: 8, paddingVertical: 2, alignItems: "center" },
