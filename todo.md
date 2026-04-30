@@ -1434,3 +1434,15 @@
 - [x] Include monster name on share card
 - [x] Auto-generate share card image on button press
 - [x] Remove old share card from camera tab (move to nutrition page)
+
+## Share Card Modal Completion — Round 139
+- [x] Add Share import from react-native
+- [x] Add selectedMealType state for manual meal type selection
+- [x] Add showShareCard state for modal visibility
+- [x] Add meal type selector UI (早餐/午餐/晚餐) in food scan results
+- [x] Update handleSaveLog to use selectedMealType instead of AI-detected mealType
+- [x] Add Today's 3 Meals boxes above idle camera area (breakfast/lunch/dinner with photo/emoji)
+- [x] Add share button (locked until all 3 meals recorded)
+- [x] Add share card Modal with dark gradient, monster image, 3 meal photos, macro bars, total kcal, sugar warning, brand footer
+- [x] Add Share.share() integration for text-based sharing
+- [x] Add all styles for meal selector, meal boxes, share button, and share card modal

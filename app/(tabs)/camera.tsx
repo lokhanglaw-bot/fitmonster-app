@@ -13,6 +13,7 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
+  Share,
 } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -62,6 +63,10 @@ export default function CameraScreen() {
   const [analysisState, setAnalysisState] = useState<AnalysisState>({ status: "idle" });
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Meal type selection (user chooses which meal to assign)
+  const [selectedMealType, setSelectedMealType] = useState<"breakfast" | "lunch" | "dinner">("breakfast");
+  const [showShareCard, setShowShareCard] = useState(false);
 
   // Edit food item state
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -197,7 +202,7 @@ export default function CameraScreen() {
       fat: analysis.totalFat,
       sugar: (analysis as any).totalSugar || 0,
       expEarned,
-      mealType: analysis.mealType || "snack",
+      mealType: selectedMealType,
       imageUri: imageUrl || selectedImageUri || undefined,
     });
 
@@ -410,10 +415,30 @@ export default function CameraScreen() {
               <Text style={[styles.summaryText, { color: colors.foreground }]}>
                 {analysisState.analysis.summary}
               </Text>
-              <View style={styles.mealTypeBadge}>
-                <Text style={styles.mealTypeText}>
-                  {analysisState.analysis.mealType === "breakfast" ? t.mealBreakfast : analysisState.analysis.mealType === "lunch" ? t.mealLunch : analysisState.analysis.mealType === "dinner" ? t.mealDinner : t.mealSnack}
-                </Text>
+            </View>
+
+            {/* Meal Type Selector */}
+            <View style={[styles.mealSelectorCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[{ fontSize: 14, fontWeight: "700", marginBottom: 8 }, { color: colors.foreground }]}>選擇餐別</Text>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {(["breakfast", "lunch", "dinner"] as const).map((mt) => {
+                  const labels = { breakfast: "🌅 早餐", lunch: "☀️ 午餐", dinner: "🌙 晚餐" };
+                  const isSelected = selectedMealType === mt;
+                  return (
+                    <TouchableOpacity
+                      key={mt}
+                      onPress={() => setSelectedMealType(mt)}
+                      activeOpacity={0.7}
+                      style={[{
+                        flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 2, alignItems: "center" as const,
+                        borderColor: isSelected ? colors.primary : colors.border,
+                        backgroundColor: isSelected ? `${colors.primary}15` : colors.background,
+                      }]}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: isSelected ? "700" : "500", color: isSelected ? colors.primary : colors.foreground }}>{labels[mt]}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
@@ -516,6 +541,60 @@ export default function CameraScreen() {
             </View>
           </View>
         )}
+
+        {/* Today's 3 Meals + Share */}
+        {analysisState.status === "idle" && (() => {
+          const logs = activityState.todayFoodLogs || [];
+          const breakfastLog = logs.find((l: any) => l.mealType === "breakfast");
+          const lunchLog = logs.find((l: any) => l.mealType === "lunch");
+          const dinnerLog = logs.find((l: any) => l.mealType === "dinner");
+          const allMealsRecorded = !!(breakfastLog && lunchLog && dinnerLog);
+          const meals = [
+            { key: "breakfast", emoji: "🌅", label: "早餐", log: breakfastLog },
+            { key: "lunch", emoji: "☀️", label: "午餐", log: lunchLog },
+            { key: "dinner", emoji: "🌙", label: "晚餐", log: dinnerLog },
+          ];
+          return (
+            <View style={[styles.mealBoxesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.mealBoxesTitle, { color: colors.foreground }]}>今日三餐</Text>
+              <Text style={[styles.mealBoxesSubtitle, { color: colors.muted }]}>
+                拍完早午晚三餐即可解鎖分享功能
+              </Text>
+              <View style={styles.mealBoxesRow}>
+                {meals.map((m) => (
+                  <View key={m.key} style={[styles.mealBox, { borderColor: m.log ? colors.primary : colors.border, backgroundColor: m.log ? `${colors.primary}10` : colors.background }]}>
+                    {m.log?.imageUri ? (
+                      <Image source={{ uri: m.log.imageUri }} style={styles.mealBoxImage} contentFit="cover" />
+                    ) : (
+                      <View style={[styles.mealBoxPlaceholder, { backgroundColor: colors.background }]}>
+                        <Text style={styles.mealBoxPlaceholderEmoji}>{m.emoji}</Text>
+                      </View>
+                    )}
+                    <Text style={[styles.mealBoxLabel, { color: m.log ? colors.primary : colors.foreground }]}>{m.label}</Text>
+                    {m.log ? (
+                      <Text style={[styles.mealBoxKcal, { color: colors.primary }]}>{m.log.calories} kcal</Text>
+                    ) : (
+                      <Text style={[styles.mealBoxEmpty, { color: colors.muted }]}>未記錄</Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+              {allMealsRecorded ? (
+                <TouchableOpacity
+                  style={[styles.shareBtn, { backgroundColor: "#22C55E" }]}
+                  onPress={() => setShowShareCard(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.shareBtnText}>📸 分享今日操野成果</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={[styles.shareBtnLocked, { borderColor: colors.border }]}>
+                  <Text style={[styles.shareBtnLockedText, { color: colors.muted }]}>🔒 完成三餐記錄後解鎖分享</Text>
+                </View>
+              )}
+            </View>
+          );
+        })()}
 
         {/* Idle State */}
         {analysisState.status === "idle" && (
@@ -696,6 +775,96 @@ export default function CameraScreen() {
           </Animated.View>
         </View>
       )}
+
+      {/* Share Card Modal */}
+      <Modal visible={showShareCard} transparent animationType="fade" onRequestClose={() => setShowShareCard(false)}>
+        {(() => {
+          const logs = activityState.todayFoodLogs || [];
+          const bLog = logs.find((l: any) => l.mealType === "breakfast");
+          const lLog = logs.find((l: any) => l.mealType === "lunch");
+          const dLog = logs.find((l: any) => l.mealType === "dinner");
+          const tCal = logs.reduce((s: number, l: any) => s + (l.calories || 0), 0);
+          const tProtein = logs.reduce((s: number, l: any) => s + (l.protein || 0), 0);
+          const tCarbs = logs.reduce((s: number, l: any) => s + (l.carbs || 0), 0);
+          const tFat = logs.reduce((s: number, l: any) => s + (l.fat || 0), 0);
+          const tSugar = logs.reduce((s: number, l: any) => s + (l.sugar || 0), 0);
+          const maxMacro = Math.max(tProtein, tCarbs, tFat, 1);
+          const monsterName = cameraMonster?.name || cameraMonster?.type || "我的怪獸";
+          const mealItems = [
+            { emoji: "🌅", label: "早餐", log: bLog },
+            { emoji: "☀️", label: "午餐", log: lLog },
+            { emoji: "🌙", label: "晚餐", log: dLog },
+          ];
+          const handleShare = async () => {
+            try {
+              await Share.share({
+                message: `🍕 ${monsterName} 的今日飲食\n━━━━━━━━━━\n🌅 早餐: ${bLog ? `${bLog.calories} kcal` : "未記錄"}\n☀️ 午餐: ${lLog ? `${lLog.calories} kcal` : "未記錄"}\n🌙 晚餐: ${dLog ? `${dLog.calories} kcal` : "未記錄"}\n━━━━━━━━━━\n🔥 總熱量: ${tCal} kcal\n🧑‍🍳 蛋白質: ${tProtein}g | 碳水: ${tCarbs}g | 脂肪: ${tFat}g${tSugar > 25 ? `\n⚠️ 糖分: ${tSugar}g (超標!)` : `\n🍬 糖分: ${tSugar}g`}\n\n— My Fit Monster 👾`,
+              });
+            } catch (_e) { /* user cancelled */ }
+          };
+          return (
+            <View style={styles.shareOverlay}>
+              <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.shareCardContainer}>
+                <View style={styles.shareCardHeader}>
+                  <Image
+                    source={getMonsterImageForCaringState(cameraMonster?.type || "bodybuilder", cameraMonster?.stage || 1, caringState.fullness, caringState.energy, caringState.mood, caringState.peakStateBuff)}
+                    style={styles.shareCardMonsterImg}
+                    contentFit="contain"
+                  />
+                  <Text style={styles.shareCardTitle}>{monsterName}</Text>
+                </View>
+                <View style={styles.shareCardMeals}>
+                  {mealItems.map((m, i) => (
+                    <View key={i} style={styles.shareCardMealBox}>
+                      {m.log?.imageUri ? (
+                        <Image source={{ uri: m.log.imageUri }} style={styles.shareCardMealImg} contentFit="cover" />
+                      ) : (
+                        <View style={[styles.shareCardMealImg, { backgroundColor: "rgba(255,255,255,0.1)", alignItems: "center" as const, justifyContent: "center" as const }]}>
+                          <Text style={{ fontSize: 28 }}>{m.emoji}</Text>
+                        </View>
+                      )}
+                      <Text style={styles.shareCardMealLabel}>{m.label}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.shareCardMacros}>
+                  {[
+                    { label: "蛋白質", value: tProtein, color: "#4ADE80" },
+                    { label: "碳水", value: tCarbs, color: "#60A5FA" },
+                    { label: "脂肪", value: tFat, color: "#FBBF24" },
+                  ].map((macro, i) => (
+                    <View key={i} style={styles.shareCardMacroItem}>
+                      <Text style={styles.shareCardMacroLabel}>{macro.label}</Text>
+                      <View style={styles.shareCardMacroBar}>
+                        <View style={[styles.shareCardMacroFill, { width: `${Math.min((macro.value / maxMacro) * 100, 100)}%`, backgroundColor: macro.color }]} />
+                      </View>
+                      <Text style={styles.shareCardMacroValue}>{macro.value}g</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.shareCardKcal}>
+                  <Text style={styles.shareCardKcalText}>{tCal}</Text>
+                  <Text style={styles.shareCardKcalUnit}>kcal 總熱量</Text>
+                </View>
+                {tSugar > 25 && (
+                  <View style={styles.shareCardSugar}>
+                    <Text style={styles.shareCardSugarText}>⚠️ 糖分 {tSugar}g 超過建議量!</Text>
+                  </View>
+                )}
+                <View style={styles.shareCardBrand}>
+                  <Text style={styles.shareCardBrandText}>👾 My Fit Monster</Text>
+                  <TouchableOpacity onPress={handleShare} activeOpacity={0.8}>
+                    <Text style={{ color: "#4ADE80", fontSize: 14, fontWeight: "700" }}>分享 →</Text>
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+              <TouchableOpacity style={styles.shareCardCloseBtn} onPress={() => setShowShareCard(false)} activeOpacity={0.8}>
+                <Text style={styles.shareCardCloseText}>關閉</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })()}
+      </Modal>
 
     </ScreenContainer>
   );
@@ -954,4 +1123,52 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline" as const,
     marginBottom: 4,
   },
+
+  // Meal Selector
+  mealSelectorCard: { borderRadius: 16, borderWidth: 1, padding: 16 },
+
+  // Meal Boxes (Today's 3 Meals)
+  mealBoxesCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
+  mealBoxesTitle: { fontSize: 18, fontWeight: "800" },
+  mealBoxesSubtitle: { fontSize: 13 },
+  mealBoxesRow: { flexDirection: "row" as const, gap: 10 },
+  mealBox: { flex: 1, borderRadius: 14, borderWidth: 2, padding: 8, alignItems: "center" as const, gap: 4 },
+  mealBoxImage: { width: 60, height: 60, borderRadius: 10 },
+  mealBoxPlaceholder: { width: 60, height: 60, borderRadius: 10, alignItems: "center" as const, justifyContent: "center" as const },
+  mealBoxPlaceholderEmoji: { fontSize: 28 },
+  mealBoxLabel: { fontSize: 13, fontWeight: "700" },
+  mealBoxKcal: { fontSize: 11, fontWeight: "600" },
+  mealBoxEmpty: { fontSize: 11 },
+
+  // Share Button
+  shareBtn: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "center" as const, padding: 16, borderRadius: 16, gap: 8 },
+  shareBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  shareBtnLocked: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "center" as const, padding: 14, borderRadius: 16, borderWidth: 1, gap: 8 },
+  shareBtnLockedText: { fontSize: 14, fontWeight: "600" },
+
+  // Share Card Modal
+  shareOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center" as const, alignItems: "center" as const, padding: 20 },
+  shareCardContainer: { width: "100%" as const, maxWidth: 380, borderRadius: 24, overflow: "hidden" as const },
+  shareCardHeader: { padding: 20, alignItems: "center" as const, gap: 8 },
+  shareCardTitle: { fontSize: 22, fontWeight: "900", color: "#fff" },
+  shareCardMeals: { flexDirection: "row" as const, paddingHorizontal: 16, gap: 8 },
+  shareCardMealBox: { flex: 1, alignItems: "center" as const, gap: 4 },
+  shareCardMealImg: { width: 80, height: 80, borderRadius: 12, borderWidth: 2, borderColor: "rgba(255,255,255,0.3)" },
+  shareCardMealLabel: { fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: "600" },
+  shareCardMacros: { flexDirection: "row" as const, paddingHorizontal: 20, paddingVertical: 16, gap: 8 },
+  shareCardMacroItem: { flex: 1, alignItems: "center" as const, gap: 4 },
+  shareCardMacroLabel: { fontSize: 11, color: "rgba(255,255,255,0.7)" },
+  shareCardMacroBar: { width: "100%" as const, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.2)" },
+  shareCardMacroFill: { height: "100%" as const, borderRadius: 3 },
+  shareCardMacroValue: { fontSize: 12, color: "#fff", fontWeight: "700" },
+  shareCardMonsterImg: { width: 100, height: 100 },
+  shareCardKcal: { alignItems: "center" as const, paddingVertical: 8 },
+  shareCardKcalText: { fontSize: 36, fontWeight: "900", color: "#fff" },
+  shareCardKcalUnit: { fontSize: 14, color: "rgba(255,255,255,0.7)" },
+  shareCardSugar: { alignItems: "center" as const, paddingBottom: 12 },
+  shareCardSugarText: { fontSize: 16, fontWeight: "700", color: "#FBBF24" },
+  shareCardBrand: { flexDirection: "row" as const, justifyContent: "space-between" as const, alignItems: "center" as const, paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.1)" },
+  shareCardBrandText: { fontSize: 18, fontWeight: "900", color: "#4ADE80" },
+  shareCardCloseBtn: { marginTop: 20, paddingVertical: 14, paddingHorizontal: 40, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
+  shareCardCloseText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 });
