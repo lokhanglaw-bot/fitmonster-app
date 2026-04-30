@@ -748,6 +748,26 @@ export default function BattleScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Quick access buttons */}
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+            <TouchableOpacity
+              style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}
+              onPress={() => router.push("/nearby-players" as any)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 16 }}>📡</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>附近玩家</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}
+              onPress={() => router.push("/gym-challenges" as any)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 16 }}>🏆</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>實體挑戰</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Tab Navigation - 3 tabs */}
           <View style={[styles.tabRow, { backgroundColor: colors.surface }]}>
             <TouchableOpacity

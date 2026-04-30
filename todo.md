@@ -1392,7 +1392,7 @@
 - [x] Add workout-sets tRPC routers
 
 ## BRD v2.0 Upgrade — Module 3: Monster Real-time Reactive Dialogue (P1)
-- [ ] Update server/caring-prompt.ts with context-aware dialogue triggers (deferred)
+- [x] Update server/caring-prompt.ts with context-aware dialogue triggers
 - [x] Update server/food-prompt.ts with sugar tracking context
 
 ## BRD v2.0 Upgrade — Module 4: Food Scan Upgrade - Sugar Tracking (P2)
@@ -1414,3 +1414,13 @@
 - [ ] Generate body type state images (deferred — using fallback with transform for now)
 - [ ] Generate battle action images (deferred — using emoji indicators for now)
 - [ ] Generate battle reaction images (deferred — using emoji indicators for now)
+
+## BRD v2.0 Continuation — Round 137
+- [x] Remove quick action buttons from home screen (拍照餵食, 快速對戰, 健康同步)
+- [x] Remove daily quests section from home screen
+- [x] Add sugar tracking to dashboard nutrition card (total nutrition)
+- [x] Add sugar to history tab stats and charts
+- [x] Integrate share card into food log result (camera tab)
+- [x] Implement Module 3: Monster caring dialogue context-aware triggers
+- [x] Implement Module 6: Nearby player auto-match (P2) — UI + mock data
+- [x] Implement Module 7: Physical challenge system (P3) — UI + local challenges

@@ -13,6 +13,7 @@ export interface FoodLogEntry {
   protein: number;
   carbs: number;
   fat: number;
+  sugar: number;
   expEarned: number;
   timestamp: string; // ISO string
 }
@@ -47,6 +48,7 @@ export interface ActivityState {
   todayProtein: number;      // grams
   todayCarbs: number;        // grams
   todayFat: number;          // grams
+  todaySugar: number;        // grams
   todayCaloriesIn: number;   // kcal consumed
   todayCaloriesBurned: number; // kcal burned
   todayWorkoutMinutes: number;
@@ -60,6 +62,7 @@ export interface ActivityState {
   weeklyProtein: number[];
   weeklyCarbs: number[];     // last 7 days
   weeklyFat: number[];       // last 7 days
+  weeklySugar: number[];     // last 7 days
   weeklyWorkout: number[];   // minutes per day
   // Date tracking
   lastResetDate: string;     // YYYY-MM-DD
@@ -87,6 +90,7 @@ const initialState: ActivityState = {
   todayProtein: 0,
   todayCarbs: 0,
   todayFat: 0,
+  todaySugar: 0,
   todayCaloriesIn: 0,
   todayCaloriesBurned: 0,
   todayWorkoutMinutes: 0,
@@ -99,6 +103,7 @@ const initialState: ActivityState = {
   weeklyProtein: [0, 0, 0, 0, 0, 0, 0],
   weeklyCarbs: [0, 0, 0, 0, 0, 0, 0],
   weeklyFat: [0, 0, 0, 0, 0, 0, 0],
+  weeklySugar: [0, 0, 0, 0, 0, 0, 0],
   weeklyWorkout: [0, 0, 0, 0, 0, 0, 0],
   lastResetDate: getToday(),
   monsters: [],
@@ -128,10 +133,10 @@ type Action =
 function activityReducer(state: ActivityState, action: Action): ActivityState {
   switch (action.type) {
     case "LOG_FOOD": {
-      const { name, calories, protein, carbs, fat, expEarned } = action.payload;
+      const { name, calories, protein, carbs, fat, sugar, expEarned } = action.payload;
       const entry: FoodLogEntry = {
         id: `food-${Date.now()}`,
-        name, calories, protein, carbs, fat, expEarned,
+        name, calories, protein, carbs, fat, sugar: sugar || 0, expEarned,
         timestamp: getLocalTimestamp(),
       };
       const foodResult = {
@@ -139,6 +144,7 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
         todayProtein: state.todayProtein + protein,
         todayCarbs: (state.todayCarbs || 0) + carbs,
         todayFat: (state.todayFat || 0) + fat,
+        todaySugar: (state.todaySugar || 0) + (sugar || 0),
         todayCaloriesIn: state.todayCaloriesIn + calories,
         todayMealCount: state.todayMealCount + 1,
         todayTotalExp: state.todayTotalExp + expEarned,
@@ -147,6 +153,7 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
         weeklyProtein: updateWeeklyLast(state.weeklyProtein, protein),
         weeklyCarbs: updateWeeklyLast(state.weeklyCarbs || [0,0,0,0,0,0,0], carbs),
         weeklyFat: updateWeeklyLast(state.weeklyFat || [0,0,0,0,0,0,0], fat),
+        weeklySugar: updateWeeklyLast(state.weeklySugar || [0,0,0,0,0,0,0], sugar || 0),
       };
       // Add EXP to active monster's evolution progress
       return addEvolutionExp(foodResult, expEarned);
@@ -218,7 +225,7 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
       const exp = Math.round(calories * 0.05);
       const entry: FoodLogEntry = {
         id: `food-${Date.now()}`,
-        name, calories, protein, carbs: 0, fat: 0, expEarned: exp,
+        name, calories, protein, carbs: 0, fat: 0, sugar: 0, expEarned: exp,
         timestamp: getLocalTimestamp(),
       };
       return {

@@ -27,6 +27,7 @@ import { useI18n } from "@/lib/i18n-context";
 import { useCaring } from "@/lib/caring-context";
 import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
 import * as Linking from "expo-linking";
+import { ShareCard } from "@/components/share-card";
 
 type FoodItem = {
   name: string;
@@ -71,6 +72,7 @@ export default function CameraScreen() {
   // Feed monster animation state
   const [showFeedAnimation, setShowFeedAnimation] = useState(false);
   const [feedExp, setFeedExp] = useState(0);
+  const [showShareCard, setShowShareCard] = useState(false);
   const feedScale = useRef(new Animated.Value(0)).current;
   const feedOpacity = useRef(new Animated.Value(0)).current;
   const sparkleRotate = useRef(new Animated.Value(0)).current;
@@ -195,6 +197,7 @@ export default function CameraScreen() {
       protein: analysis.totalProtein,
       carbs: analysis.totalCarbs,
       fat: analysis.totalFat,
+      sugar: (analysis as any).totalSugar || 0,
       expEarned,
     });
 
@@ -501,6 +504,16 @@ export default function CameraScreen() {
                   <Text style={styles.savedText}>✅ {t.monsterFed}</Text>
                 </View>
               )}
+              {saved && (
+                <TouchableOpacity
+                  style={[styles.newScanBtn, { borderColor: "#8B5CF6", marginTop: 8 }]}
+                  onPress={() => setShowShareCard(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 16 }}>📱</Text>
+                  <Text style={[styles.newScanBtnText, { color: "#8B5CF6" }]}>分享飲食卡片</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.newScanBtn, { borderColor: colors.primary }]}
                 onPress={handleReset}
@@ -692,6 +705,31 @@ export default function CameraScreen() {
           </Animated.View>
         </View>
       )}
+      {/* Share Card Modal */}
+      <Modal visible={showShareCard} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 20 }}>
+          <View style={{ backgroundColor: colors.background, borderRadius: 20, padding: 20, width: "100%", maxWidth: 360 }}>
+            <ShareCard
+              type="food"
+              title={analysisState.status === "done" ? (analysisState.analysis.summary || analysisState.analysis.foods.map(f => f.name).join(", ")) : ""}
+              nutrition={analysisState.status === "done" ? {
+                calories: analysisState.analysis.totalCalories,
+                protein: analysisState.analysis.totalProtein,
+                carbs: analysisState.analysis.totalCarbs,
+                fat: analysisState.analysis.totalFat,
+                sugar: (analysisState.analysis as any).totalSugar || 0,
+              } : undefined}
+              healthScore={analysisState.status === "done" ? analysisState.analysis.healthScore : undefined}
+            />
+            <TouchableOpacity
+              style={{ marginTop: 16, padding: 14, backgroundColor: colors.primary, borderRadius: 12, alignItems: "center" }}
+              onPress={() => setShowShareCard(false)}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>關閉</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }

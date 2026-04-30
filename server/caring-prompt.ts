@@ -117,15 +117,104 @@ Please give me a nutrition tip in character.`;
  * Generate a quick status dialogue based on caring state (no LLM needed).
  * Returns a pre-written dialogue line based on the monster's current state.
  */
+/** Context for triggering reactive dialogue */
+export interface DialogueContext {
+  fullness: number;
+  energy: number;
+  mood: number;
+  bodyType?: string;
+  muscleScore?: number;
+  fatScore?: number;
+  todayWorkoutDone?: boolean;
+  todayProteinMet?: boolean;
+  streak?: number;
+  lastPR?: boolean;
+  sugarOverLimit?: boolean;
+  idleHours?: number;
+  battleWon?: boolean;
+  battleLost?: boolean;
+}
+
 export function getQuickStatusDialogue(
   language: "en" | "zh",
   monsterName: string,
   monsterType: string,
   fullness: number,
   energy: number,
-  mood: number
+  mood: number,
+  context?: Partial<DialogueContext>
 ): string {
   const isZh = language === "zh";
+  const ctx = context || {};
+
+  // ── Priority 1: Event-triggered dialogues ──
+
+  // PR achieved!
+  if (ctx.lastPR) {
+    if (isZh) return `${monsterName}：哇！！新紀錄！！🏆🎉 你太強了！我感覺自己也變強了！`;
+    return `${monsterName}: WOW!! NEW PR!! 🏆🎉 You're incredible! I feel myself getting stronger too!`;
+  }
+
+  // Battle won
+  if (ctx.battleWon) {
+    if (isZh) return `${monsterName}：嘿嘿，贏了！💪✨ 這就是我們平時訓練的成果！`;
+    return `${monsterName}: Hehe, we won! 💪✨ This is the result of our daily training!`;
+  }
+
+  // Battle lost
+  if (ctx.battleLost) {
+    if (isZh) return `${monsterName}：嗚...輸了...😤 沒關係！下次一定贏回來！繼續練！`;
+    return `${monsterName}: Ugh... we lost... 😤 No worries! We'll win next time! Keep training!`;
+  }
+
+  // Sugar over limit warning
+  if (ctx.sugarOverLimit) {
+    if (isZh) return `${monsterName}：欸...今天糖吃太多了吧？🍬😰 我感覺牙齒在痛...`;
+    return `${monsterName}: Hey... too much sugar today? 🍬😰 My teeth are starting to hurt...`;
+  }
+
+  // Idle too long (> 3 hours)
+  if (ctx.idleHours && ctx.idleHours >= 3) {
+    const idleDialogues = isZh ? [
+      `${monsterName}：你還在嗎...？😢 好無聊啊...陪我動一動嘛！`,
+      `${monsterName}：已經${ctx.idleHours}小時沒動了！🥱 起來走走吧～`,
+      `${monsterName}：喂～別忘了我！😤 我們說好要一起變強的！`,
+    ] : [
+      `${monsterName}: Are you still there...? 😢 I'm so bored... let's move!`,
+      `${monsterName}: It's been ${ctx.idleHours} hours! 🥱 Let's get up and move~`,
+      `${monsterName}: Hey~ Don't forget about me! 😤 We promised to get stronger together!`,
+    ];
+    return idleDialogues[Math.floor(Math.random() * idleDialogues.length)];
+  }
+
+  // Workout completed today
+  if (ctx.todayWorkoutDone && ctx.todayProteinMet) {
+    if (isZh) return `${monsterName}：今天練了也吃夠蛋白質了！🥩💪 完美的一天！`;
+    return `${monsterName}: Trained AND hit protein goal today! 🥩💪 Perfect day!`;
+  }
+
+  if (ctx.todayWorkoutDone) {
+    if (isZh) return `${monsterName}：練完了！🔥 記得補充蛋白質喔～肌肉在等營養！`;
+    return `${monsterName}: Workout done! 🔥 Remember to get your protein~ Muscles need fuel!`;
+  }
+
+  // Streak celebration
+  if (ctx.streak && ctx.streak >= 7) {
+    if (isZh) return `${monsterName}：連續${ctx.streak}天了！🔥🔥🔥 我們是最強搭檔！`;
+    return `${monsterName}: ${ctx.streak} days in a row! 🔥🔥🔥 We're the ultimate duo!`;
+  }
+
+  // Body type specific
+  if (ctx.bodyType === "peak") {
+    if (isZh) return `${monsterName}：巔峰狀態！✨ 我現在超帥的吧？繼續保持！`;
+    return `${monsterName}: Peak form! ✨ I look amazing right? Keep it up!`;
+  }
+  if (ctx.bodyType === "obese") {
+    if (isZh) return `${monsterName}：嗯...最近吃太多了...🥲 一起控制一下吧？`;
+    return `${monsterName}: Hmm... been eating too much lately... 🥲 Let's control it together?`;
+  }
+
+  // ── Priority 2: Status-based dialogues (original logic) ──
 
   // Starving (fullness = 0)
   if (fullness === 0) {

@@ -280,6 +280,17 @@ export default function DashboardScreen() {
             <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
               <View style={[styles.progressFill, { width: `${proteinPercent}%`, backgroundColor: "#22C55E" }]} />
             </View>
+            <View style={[styles.nutritionDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.nutritionRow}>
+              <Text style={[styles.nutritionLabel, { color: colors.muted }]}>🍬 糖分攝取</Text>
+              <Text style={[styles.nutritionValue, { color: (activity.todaySugar || 0) > 25 ? colors.error : colors.foreground }]}>{activity.todaySugar || 0}g / 25g</Text>
+            </View>
+            <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
+              <View style={[styles.progressFill, { width: `${Math.min(((activity.todaySugar || 0) / 25) * 100, 100)}%`, backgroundColor: (activity.todaySugar || 0) > 25 ? colors.error : "#F59E0B" }]} />
+            </View>
+            {(activity.todaySugar || 0) > 25 && (
+              <Text style={{ color: colors.error, fontSize: 11, marginTop: 4 }}>⚠️ 超過 WHO 建議每日添加糖上限 (25g)</Text>
+            )}
           </View>
 
           {/* Monster Growth Status */}

@@ -225,7 +225,7 @@ export default function HomeScreen() {
 
   // History tab state
   const [historySubTab, setHistorySubTab] = useState<"calories" | "macros" | "workout">("calories");
-  const [macroSubTab, setMacroSubTab] = useState<"protein" | "carbs" | "fat">("protein");
+  const [macroSubTab, setMacroSubTab] = useState<"protein" | "carbs" | "fat" | "sugar">("protein");
   const [dailyTaskView, setDailyTaskView] = useState<"workout" | "diet">("workout");
   const [historyViewMode, setHistoryViewMode] = useState<"chart" | "calendar" | "list">("chart");
   // Derive history stats from shared activity state
@@ -321,6 +321,7 @@ export default function HomeScreen() {
     protein: activity.weeklyProtein,
     carbs: activity.weeklyCarbs || [0,0,0,0,0,0,0],
     fat: activity.weeklyFat || [0,0,0,0,0,0,0],
+    sugar: activity.weeklySugar || [0,0,0,0,0,0,0],
   };
   const chartData = {
     calories: activity.weeklyCalories,
@@ -527,7 +528,7 @@ export default function HomeScreen() {
       const carbs = aiAnalysisResult.totalCarbs || 0;
       const fat = aiAnalysisResult.totalFat || 0;
       const exp = Math.round(calories * 0.05);
-      logFood({ name: recordName.trim(), calories, protein, carbs, fat, expEarned: exp });
+      logFood({ name: recordName.trim(), calories, protein, carbs, fat, sugar: 0, expEarned: exp });
       // Auto-feed monster via caring system
       caringFeedMonster(calories, protein, carbs, fat, "meal").then((result) => {
         if (result) {
@@ -778,53 +779,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Quick Actions */}
-      <LinearGradient colors={["#22C55E", "#16A34A"]} style={styles.actionBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-        <TouchableOpacity style={styles.actionBtnInner} onPress={() => router.push("/(tabs)/camera")}>
-          <Text style={styles.actionIcon}>📸</Text>
-          <View><Text style={styles.actionTitle}>{t.photoFeed}</Text><Text style={styles.actionSubtitle}>{t.scanFoodAnalysis}</Text></View>
-        </TouchableOpacity>
-      </LinearGradient>
 
-      <LinearGradient colors={["#3B82F6", "#2563EB"]} style={styles.actionBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-        <TouchableOpacity style={styles.actionBtnInner} onPress={() => router.push("/(tabs)/battle")}>
-          <Text style={styles.actionIcon}>⚔️</Text>
-          <View><Text style={styles.actionTitle}>{t.quickBattle}</Text><Text style={styles.actionSubtitle}>{t.pvpMatching}</Text></View>
-        </TouchableOpacity>
-      </LinearGradient>
-
-      <LinearGradient colors={["#8B5CF6", "#7C3AED"]} style={[styles.actionBtn, { opacity: 0.7 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-        <View style={styles.actionBtnInner}>
-          <Text style={styles.actionIcon}>❤️</Text>
-          <View style={{ flex: 1 }}><Text style={styles.actionTitle}>{t.healthSync}</Text><Text style={styles.actionSubtitle}>{t.healthSyncDesc}</Text></View>
-          <View style={{ backgroundColor: "rgba(255,255,255,0.25)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-            <Text style={{ color: "#fff", fontSize: 11, fontWeight: "600" }}>{t.comingSoon}</Text>
-          </View>
-        </View>
-      </LinearGradient>
-
-      {/* Daily Quests */}
-      <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t.dailyQuests}</Text>
-        <Text style={[styles.questCount, { color: colors.muted }]}>{completedQuests}/3 {t.completed}</Text>
-      </View>
-
-      {quests.map((quest) => (
-        <View key={quest.id} style={[styles.questCard, { backgroundColor: quest.bgColor }]}>
-          <View style={styles.questHeader}>
-            <Text style={styles.questIcon}>{quest.icon}</Text>
-            <View style={styles.questInfo}>
-              <Text style={styles.questTitle}>{quest.title}</Text>
-              <Text style={styles.questDesc}>{quest.description}</Text>
-            </View>
-            <View style={styles.questReward}><Text style={styles.rewardText}>+{quest.reward} EXP</Text></View>
-          </View>
-          <View style={[styles.questBarTrack, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
-            <View style={[styles.questBarFill, { width: `${quest.target > 0 ? Math.min((quest.progress / quest.target) * 100, 100) : 0}%` }]} />
-          </View>
-          <Text style={styles.questProgress}>{quest.progress}/{quest.target}</Text>
-        </View>
-      ))}
     </>
   );
 
@@ -983,6 +938,18 @@ export default function HomeScreen() {
           <Text style={[styles.historyStatSub, { color: colors.muted }]}>{t.dailyAvg}</Text>
         </View>
       </View>
+      <View style={styles.historyStatsRow}>
+        <View style={[styles.historyStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.historyStatLabel, { color: "#F59E0B" }]}>🍬 糖分</Text>
+          <Text style={[styles.historyStatValue, { color: (activity.todaySugar || 0) > 25 ? colors.error : colors.foreground }]}>{activity.todaySugar || 0}g</Text>
+          <Text style={[styles.historyStatSub, { color: colors.muted }]}>今日 / 25g 上限</Text>
+        </View>
+        <View style={[styles.historyStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.historyStatLabel, { color: "#F59E0B" }]}>🍬 週平均糖</Text>
+          <Text style={[styles.historyStatValue, { color: colors.foreground }]}>{Math.round((activity.weeklySugar || [0,0,0,0,0,0,0]).reduce((s, v) => s + v, 0) / Math.max((activity.weeklySugar || [0,0,0,0,0,0,0]).filter(v => v > 0).length, 1))}g</Text>
+          <Text style={[styles.historyStatSub, { color: colors.muted }]}>{t.dailyAvg}</Text>
+        </View>
+      </View>
 
       {/* Sub-tabs */}
       <View style={[styles.subTabRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -1002,14 +969,14 @@ export default function HomeScreen() {
       {/* Macro sub-tabs (protein/carbs/fat) */}
       {historySubTab === "macros" && (
         <View style={[styles.subTabRow, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 8 }]}>
-          {(["protein", "carbs", "fat"] as const).map((tab) => (
+          {(["protein", "carbs", "fat", "sugar"] as const).map((tab) => (
             <TouchableOpacity
               key={tab}
-              style={[styles.subTab, macroSubTab === tab && { backgroundColor: tab === "protein" ? "#22C55E" : tab === "carbs" ? "#3B82F6" : "#8B5CF6" }]}
+              style={[styles.subTab, macroSubTab === tab && { backgroundColor: tab === "protein" ? "#22C55E" : tab === "carbs" ? "#3B82F6" : tab === "sugar" ? "#F59E0B" : "#8B5CF6" }]}
               onPress={() => setMacroSubTab(tab)}
             >
               <Text style={[styles.subTabText, { color: macroSubTab === tab ? "#fff" : colors.muted }]}>
-                {tab === "protein" ? t.proteinShort : tab === "carbs" ? t.carbsShort : t.fatShort}
+                {tab === "protein" ? t.proteinShort : tab === "carbs" ? t.carbsShort : tab === "sugar" ? "🍬糖" : t.fatShort}
               </Text>
             </TouchableOpacity>
           ))}
@@ -1040,7 +1007,7 @@ export default function HomeScreen() {
       {historyViewMode === "chart" && (
         <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.chartTitle, { color: colors.foreground }]}>
-            {historySubTab === "calories" ? `🔥 ${t.dailyCalorieTrend}` : historySubTab === "macros" ? (macroSubTab === "protein" ? `🥩 ${t.dailyProteinTrend}` : macroSubTab === "carbs" ? `🍞 ${t.dailyCarbsTrend}` : `🧈 ${t.dailyFatTrend}`) : `🏋️ ${t.workoutDurationTrend}`}
+            {historySubTab === "calories" ? `🔥 ${t.dailyCalorieTrend}` : historySubTab === "macros" ? (macroSubTab === "protein" ? `🥩 ${t.dailyProteinTrend}` : macroSubTab === "carbs" ? `🍞 ${t.dailyCarbsTrend}` : macroSubTab === "sugar" ? `🍬 每日糖分趨勢` : `🧈 ${t.dailyFatTrend}`) : `🏋️ ${t.workoutDurationTrend}`}
           </Text>
           <View style={styles.chartArea}>
             {weekDayLabels.map((day, i) => {
@@ -1089,7 +1056,7 @@ export default function HomeScreen() {
           <Text style={[styles.chartTitle, { color: colors.foreground }]}>📋 {t.dailyRecords}</Text>
           {weekDayLabels.map((day, i) => {
             const data = chartData[historySubTab];
-            const unit = historySubTab === "calories" ? t.kcalUnit : historySubTab === "macros" ? (macroSubTab === "protein" ? t.gProtein : macroSubTab === "carbs" ? t.gCarbs : t.gFat) : t.minUnit;
+            const unit = historySubTab === "calories" ? t.kcalUnit : historySubTab === "macros" ? (macroSubTab === "protein" ? t.gProtein : macroSubTab === "carbs" ? t.gCarbs : macroSubTab === "sugar" ? "g 糖" : t.gFat) : t.minUnit;
             const isToday = i === 6;
             return (
               <View key={day} style={[styles.listRow, { borderBottomColor: colors.border }]}>
