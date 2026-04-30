@@ -1,5 +1,6 @@
-import { ScrollView, Text, View, StyleSheet, TouchableOpacity, Linking } from "react-native";
-import { useCallback, useMemo } from "react";
+import { ScrollView, Text, View, StyleSheet, TouchableOpacity, Linking, Modal } from "react-native";
+import { useState, useCallback, useMemo } from "react";
+import type { FoodLogEntry } from "@/lib/activity-context";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -80,6 +81,243 @@ function WeeklyWorkoutStatsCard() {
           </View>
         </View>
       )}
+    </View>
+  );
+}
+
+// ── Meal type labels ──
+const MEAL_LABELS: Record<string, { emoji: string; label: string; labelEn: string }> = {
+  breakfast: { emoji: "🌅", label: "早餐", labelEn: "Breakfast" },
+  lunch:     { emoji: "☀️", label: "午餐", labelEn: "Lunch" },
+  dinner:    { emoji: "🌙", label: "晚餐", labelEn: "Dinner" },
+};
+
+function getMealLog(logs: FoodLogEntry[], mealType: string): FoodLogEntry | undefined {
+  return logs.find((l) => l.mealType === mealType);
+}
+
+function MealBoxes({ activity, colors }: { activity: any; colors: any }) {
+  const logs: FoodLogEntry[] = activity.todayFoodLogs || [];
+  const breakfastLog = getMealLog(logs, "breakfast");
+  const lunchLog = getMealLog(logs, "lunch");
+  const dinnerLog = getMealLog(logs, "dinner");
+  const allThreeDone = !!(breakfastLog && lunchLog && dinnerLog);
+  const [showShareCard, setShowShareCard] = useState(false);
+
+  const meals = [
+    { key: "breakfast", log: breakfastLog },
+    { key: "lunch", log: lunchLog },
+    { key: "dinner", log: dinnerLog },
+  ];
+
+  const totalCal = logs.reduce((s, l) => s + l.calories, 0);
+  const totalProtein = logs.reduce((s, l) => s + l.protein, 0);
+  const totalCarbs = logs.reduce((s, l) => s + l.carbs, 0);
+  const totalFat = logs.reduce((s, l) => s + l.fat, 0);
+  const totalSugar = logs.reduce((s, l) => s + (l.sugar || 0), 0);
+
+  return (
+    <View style={[mealStyles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Text style={[styles.cardTitle, { color: colors.foreground }]}>今日三餐</Text>
+      <Text style={[mealStyles.hint, { color: colors.muted }]}>
+        {allThreeDone ? "三餐已記錄完成！可以分享今日成果 🎉" : "拍完早午晚三餐即可解鎖分享功能"}
+      </Text>
+
+      {/* 3 Meal Boxes */}
+      <View style={mealStyles.boxRow}>
+        {meals.map(({ key, log }) => {
+          const info = MEAL_LABELS[key];
+          return (
+            <View
+              key={key}
+              style={[
+                mealStyles.mealBox,
+                {
+                  backgroundColor: log ? colors.primary + "10" : colors.background,
+                  borderColor: log ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              {log?.imageUri ? (
+                <Image source={{ uri: log.imageUri }} style={mealStyles.mealImage} contentFit="cover" />
+              ) : (
+                <View style={[mealStyles.mealPlaceholder, { backgroundColor: colors.background }]}>
+                  <Text style={{ fontSize: 28 }}>{info.emoji}</Text>
+                </View>
+              )}
+              <Text style={[mealStyles.mealLabel, { color: log ? colors.primary : colors.muted }]}>
+                {info.label}
+              </Text>
+              {log ? (
+                <Text style={[mealStyles.mealCal, { color: colors.foreground }]}>{log.calories} kcal</Text>
+              ) : (
+                <Text style={[mealStyles.mealCal, { color: colors.muted }]}>未記錄</Text>
+              )}
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Share Button */}
+      <TouchableOpacity
+        style={[
+          mealStyles.shareBtn,
+          {
+            backgroundColor: allThreeDone ? "#22C55E" : colors.border,
+            opacity: allThreeDone ? 1 : 0.5,
+          },
+        ]}
+        onPress={() => allThreeDone && setShowShareCard(true)}
+        activeOpacity={allThreeDone ? 0.7 : 1}
+        disabled={!allThreeDone}
+      >
+        <Text style={mealStyles.shareBtnText}>
+          {allThreeDone ? "📤 分享今日操野成果" : "🔒 完成三餐記錄後解鎖分享"}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Share Card Modal */}
+      <Modal visible={showShareCard} animationType="slide" transparent>
+        <View style={mealStyles.modalOverlay}>
+          <View style={[mealStyles.modalContent, { backgroundColor: colors.background }]}>
+            <DailyShareCard
+              meals={meals.map(({ key, log }) => ({
+                type: key as "breakfast" | "lunch" | "dinner",
+                log,
+              }))}
+              totalCal={totalCal}
+              totalProtein={totalProtein}
+              totalCarbs={totalCarbs}
+              totalFat={totalFat}
+              totalSugar={totalSugar}
+              monsterName={activity.monsters?.[activity.activeMonsterIndex]?.name || "怪獸"}
+              monsterLevel={activity.monsters?.[activity.activeMonsterIndex]?.level || 1}
+              todayExp={activity.todayTotalExp}
+            />
+            <TouchableOpacity
+              style={[mealStyles.closeBtn, { backgroundColor: colors.primary }]}
+              onPress={() => setShowShareCard(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={mealStyles.closeBtnText}>關閉</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+// ── Daily Share Card (matches reference design) ──
+function DailyShareCard({
+  meals,
+  totalCal,
+  totalProtein,
+  totalCarbs,
+  totalFat,
+  totalSugar,
+  monsterName,
+  monsterLevel,
+  todayExp,
+}: {
+  meals: { type: "breakfast" | "lunch" | "dinner"; log?: FoodLogEntry }[];
+  totalCal: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+  totalSugar: number;
+  monsterName: string;
+  monsterLevel: number;
+  todayExp: number;
+}) {
+  const handleShare = useCallback(async () => {
+    const { Share } = require("react-native");
+    const msg =
+      `🍽️ 今日操野成果\n` +
+      `🔥 ${totalCal} kcal\n` +
+      `🥩 蛋白質 ${totalProtein}g | 🍚 碳水 ${totalCarbs}g | 🧈 脂肪 ${totalFat}g\n` +
+      (totalSugar > 25 ? `⚠️ 糖份 ${totalSugar}g\n` : `🍬 糖份 ${totalSugar}g\n`) +
+      `\n🐾 ${monsterName} Lv.${monsterLevel} | +${todayExp} EXP\n` +
+      `\n#MyFitMonster #健身怪獸`;
+    try {
+      await Share.share({ message: msg });
+    } catch {}
+  }, [totalCal, totalProtein, totalCarbs, totalFat, totalSugar, monsterName, monsterLevel, todayExp]);
+
+  return (
+    <View style={shareStyles.card}>
+      <LinearGradient
+        colors={["#0F2027", "#203A43", "#2C5364"]}
+        style={shareStyles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+      >
+        {/* Title */}
+        <Text style={shareStyles.title}>今日操野成果</Text>
+
+        {/* 3 Meal Photos */}
+        <View style={shareStyles.mealRow}>
+          {meals.map(({ type, log }) => (
+            <View key={type} style={shareStyles.mealPhotoBox}>
+              {log?.imageUri ? (
+                <Image source={{ uri: log.imageUri }} style={shareStyles.mealPhoto} contentFit="cover" />
+              ) : (
+                <View style={[shareStyles.mealPhoto, shareStyles.mealPhotoEmpty]}>
+                  <Text style={{ fontSize: 24 }}>{MEAL_LABELS[type].emoji}</Text>
+                </View>
+              )}
+              <Text style={shareStyles.mealPhotoLabel}>{MEAL_LABELS[type].label}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Macro Bars */}
+        <View style={shareStyles.macroRow}>
+          <MacroBar label="Protein" value={Math.min(totalProtein / 120, 1)} percent={Math.round((totalProtein / 120) * 100)} color="#22C55E" />
+          <MacroBar label="Carbs" value={Math.min(totalCarbs / 250, 1)} percent={Math.round((totalCarbs / 250) * 100)} color="#3B82F6" />
+          <MacroBar label="Fat" value={Math.min(totalFat / 65, 1)} percent={Math.round((totalFat / 65) * 100)} color="#F59E0B" />
+        </View>
+
+        {/* Monster + Stats */}
+        <View style={shareStyles.statsSection}>
+          <View style={shareStyles.monsterInfo}>
+            <Text style={shareStyles.monsterName}>🐾 {monsterName}</Text>
+            <Text style={shareStyles.levelBadge}>Level {monsterLevel} ⬆</Text>
+            <Text style={shareStyles.expBadge}>+{todayExp} EXP</Text>
+          </View>
+        </View>
+
+        {/* Total Calories */}
+        <Text style={shareStyles.totalCal}>{totalCal.toLocaleString()}</Text>
+        <Text style={shareStyles.totalCalUnit}>KCAL</Text>
+
+        {/* Sugar Warning */}
+        {totalSugar > 25 && (
+          <Text style={shareStyles.sugarWarning}>⚠️ 糖份 {totalSugar}g ⚠️</Text>
+        )}
+
+        {/* Branding */}
+        <View style={shareStyles.branding}>
+          <Text style={shareStyles.brandName}>My Fit{"\n"}Monster</Text>
+        </View>
+
+        {/* Share action */}
+        <TouchableOpacity style={shareStyles.shareAction} onPress={handleShare} activeOpacity={0.7}>
+          <Text style={shareStyles.shareActionText}>📤 分享到社交媒體</Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    </View>
+  );
+}
+
+function MacroBar({ label, value, percent, color }: { label: string; value: number; percent: number; color: string }) {
+  return (
+    <View style={shareStyles.macroItem}>
+      <Text style={shareStyles.macroLabel}>{label}</Text>
+      <View style={shareStyles.macroBarBg}>
+        <View style={[shareStyles.macroBarFill, { width: `${Math.min(percent, 100)}%`, backgroundColor: color }]} />
+      </View>
+      <Text style={shareStyles.macroPercent}>{percent}%</Text>
     </View>
   );
 }
@@ -226,6 +464,9 @@ export default function DashboardScreen() {
 
           {/* Weekly Workout Stats Card */}
           <WeeklyWorkoutStatsCard />
+
+          {/* Today's Meals — 3 Meal Boxes */}
+          <MealBoxes activity={activity} colors={colors} />
 
           {/* Nutrition Card */}
           <View style={[styles.nutritionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -712,5 +953,235 @@ const weeklyStyles = StyleSheet.create({
   emptyText: {
     fontSize: 13,
     textAlign: "center" as const,
+  },
+});
+
+const mealStyles = StyleSheet.create({
+  container: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  hint: {
+    fontSize: 12,
+    marginTop: -4,
+  },
+  boxRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  mealBox: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    overflow: "hidden",
+    alignItems: "center",
+    paddingBottom: 8,
+  },
+  mealImage: {
+    width: "100%",
+    height: 80,
+  },
+  mealPlaceholder: {
+    width: "100%",
+    height: 80,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mealLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 6,
+  },
+  mealCal: {
+    fontSize: 11,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  shareBtn: {
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  shareBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  modalContent: {
+    borderRadius: 20,
+    padding: 16,
+    width: "100%",
+    maxWidth: 380,
+    maxHeight: "90%",
+  },
+  closeBtn: {
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  closeBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+});
+
+const shareStyles = StyleSheet.create({
+  card: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  gradient: {
+    padding: 20,
+    gap: 14,
+    alignItems: "center",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#4ADE80",
+    textAlign: "center",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 4,
+  },
+  mealRow: {
+    flexDirection: "row",
+    gap: 8,
+    width: "100%",
+  },
+  mealPhotoBox: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
+  },
+  mealPhoto: {
+    width: "100%",
+    height: 80,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#4ADE80",
+  },
+  mealPhotoEmpty: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mealPhotoLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.8)",
+  },
+  macroRow: {
+    width: "100%",
+    gap: 6,
+  },
+  macroItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  macroLabel: {
+    width: 55,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.8)",
+  },
+  macroBarBg: {
+    flex: 1,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    overflow: "hidden",
+  },
+  macroBarFill: {
+    height: "100%",
+    borderRadius: 5,
+  },
+  macroPercent: {
+    width: 36,
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#fff",
+    textAlign: "right",
+  },
+  statsSection: {
+    width: "100%",
+    alignItems: "center",
+    gap: 8,
+  },
+  monsterInfo: {
+    alignItems: "center",
+    gap: 4,
+  },
+  monsterName: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  levelBadge: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#4ADE80",
+  },
+  expBadge: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFD700",
+  },
+  totalCal: {
+    fontSize: 48,
+    fontWeight: "900",
+    color: "#fff",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 6,
+    marginTop: -4,
+  },
+  totalCalUnit: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.6)",
+    marginTop: -8,
+  },
+  sugarWarning: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#FBBF24",
+    textAlign: "center",
+  },
+  branding: {
+    marginTop: 8,
+    alignItems: "flex-start",
+    width: "100%",
+  },
+  brandName: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#4ADE80",
+    lineHeight: 26,
+  },
+  shareAction: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    width: "100%",
+    alignItems: "center",
+  },
+  shareActionText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#fff",
   },
 });

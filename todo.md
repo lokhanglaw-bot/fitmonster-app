@@ -1424,3 +1424,13 @@
 - [x] Implement Module 3: Monster caring dialogue context-aware triggers
 - [x] Implement Module 6: Nearby player auto-match (P2) — UI + mock data
 - [x] Implement Module 7: Physical challenge system (P3) — UI + local challenges
+
+## Share Card Redesign — Round 138
+- [x] Redesign nutrition page with 3 meal boxes (breakfast/lunch/dinner) showing photo status
+- [x] Add meal type (breakfast/lunch/dinner) to food log entries in activity context
+- [x] Show "record 3 meals to unlock share" message on nutrition page
+- [x] Add prominent share button on nutrition page (unlocked after 3 meals)
+- [x] Rebuild share card component to match reference design (dark bg, meal photos, monster, macros, branding)
+- [x] Include monster name on share card
+- [x] Auto-generate share card image on button press
+- [x] Remove old share card from camera tab (move to nutrition page)

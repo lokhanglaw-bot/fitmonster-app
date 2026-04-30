@@ -16,6 +16,8 @@ export interface FoodLogEntry {
   sugar: number;
   expEarned: number;
   timestamp: string; // ISO string
+  mealType?: "breakfast" | "lunch" | "dinner" | "snack";
+  imageUri?: string; // local photo URI
 }
 
 export interface WorkoutLogEntry {
@@ -133,11 +135,13 @@ type Action =
 function activityReducer(state: ActivityState, action: Action): ActivityState {
   switch (action.type) {
     case "LOG_FOOD": {
-      const { name, calories, protein, carbs, fat, sugar, expEarned } = action.payload;
+      const { name, calories, protein, carbs, fat, sugar, expEarned, mealType, imageUri } = action.payload;
       const entry: FoodLogEntry = {
         id: `food-${Date.now()}`,
         name, calories, protein, carbs, fat, sugar: sugar || 0, expEarned,
         timestamp: getLocalTimestamp(),
+        mealType,
+        imageUri,
       };
       const foodResult = {
         ...state,
