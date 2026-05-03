@@ -1446,3 +1446,8 @@
 - [x] Add share card Modal with dark gradient, monster image, 3 meal photos, macro bars, total kcal, sugar warning, brand footer
 - [x] Add Share.share() integration for text-based sharing
 - [x] Add all styles for meal selector, meal boxes, share button, and share card modal
+
+## Round 140 — Three Feature Upgrades
+- [x] Install react-native-view-shot and implement share card screenshot as image sharing
+- [x] Integrate expo-location for real nearby player positioning (replace mock data)
+- [x] Generate body-type-specific monster images (skinny/lean/fat/obese variants for all 3 monster types)

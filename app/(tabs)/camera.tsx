@@ -28,6 +28,8 @@ import { useI18n } from "@/lib/i18n-context";
 import { useCaring } from "@/lib/caring-context";
 import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
 import * as Linking from "expo-linking";
+import ViewShot from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 
 type FoodItem = {
   name: string;
@@ -67,6 +69,8 @@ export default function CameraScreen() {
   // Meal type selection (user chooses which meal to assign)
   const [selectedMealType, setSelectedMealType] = useState<"breakfast" | "lunch" | "dinner">("breakfast");
   const [showShareCard, setShowShareCard] = useState(false);
+  const shareCardRef = useRef<any>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
 
   // Edit food item state
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -797,13 +801,34 @@ export default function CameraScreen() {
           ];
           const handleShare = async () => {
             try {
-              await Share.share({
-                message: `🍕 ${monsterName} 的今日飲食\n━━━━━━━━━━\n🌅 早餐: ${bLog ? `${bLog.calories} kcal` : "未記錄"}\n☀️ 午餐: ${lLog ? `${lLog.calories} kcal` : "未記錄"}\n🌙 晚餐: ${dLog ? `${dLog.calories} kcal` : "未記錄"}\n━━━━━━━━━━\n🔥 總熱量: ${tCal} kcal\n🧑‍🍳 蛋白質: ${tProtein}g | 碳水: ${tCarbs}g | 脂肪: ${tFat}g${tSugar > 25 ? `\n⚠️ 糖分: ${tSugar}g (超標!)` : `\n🍬 糖分: ${tSugar}g`}\n\n— My Fit Monster 👾`,
-              });
-            } catch (_e) { /* user cancelled */ }
+              setIsCapturing(true);
+              // Capture the share card as an image
+              const uri = await (shareCardRef.current as any)?.capture?.();
+              setIsCapturing(false);
+              if (uri && await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(uri, {
+                  mimeType: "image/png",
+                  dialogTitle: `${monsterName} 的今日飲食`,
+                });
+              } else {
+                // Fallback to text share if image capture fails
+                await Share.share({
+                  message: `🍕 ${monsterName} 的今日飲食\n━━━━━━━━━━\n🌅 早餐: ${bLog ? `${bLog.calories} kcal` : "未記錄"}\n☀️ 午餐: ${lLog ? `${lLog.calories} kcal` : "未記錄"}\n🌙 晚餐: ${dLog ? `${dLog.calories} kcal` : "未記錄"}\n━━━━━━━━━━\n🔥 總熱量: ${tCal} kcal\n🧑‍🍳 蛋白質: ${tProtein}g | 碳水: ${tCarbs}g | 脂肪: ${tFat}g${tSugar > 25 ? `\n⚠️ 糖分: ${tSugar}g (超標!)` : `\n🍬 糖分: ${tSugar}g`}\n\n— My Fit Monster 👾`,
+                });
+              }
+            } catch (_e) {
+              setIsCapturing(false);
+              // Fallback to text share
+              try {
+                await Share.share({
+                  message: `🍕 ${monsterName} 的今日飲食\n━━━━━━━━━━\n🌅 早餐: ${bLog ? `${bLog.calories} kcal` : "未記錄"}\n☀️ 午餐: ${lLog ? `${lLog.calories} kcal` : "未記錄"}\n🌙 晚餐: ${dLog ? `${dLog.calories} kcal` : "未記錄"}\n━━━━━━━━━━\n🔥 總熱量: ${tCal} kcal\n🧑‍🍳 蛋白質: ${tProtein}g | 碳水: ${tCarbs}g | 脂肪: ${tFat}g${tSugar > 25 ? `\n⚠️ 糖分: ${tSugar}g (超標!)` : `\n🍬 糖分: ${tSugar}g`}\n\n— My Fit Monster 👾`,
+                });
+              } catch (_e2) { /* user cancelled */ }
+            }
           };
           return (
             <View style={styles.shareOverlay}>
+              <ViewShot ref={shareCardRef} options={{ format: "png", quality: 1 }}>
               <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.shareCardContainer}>
                 <View style={styles.shareCardHeader}>
                   <Image
@@ -853,11 +878,12 @@ export default function CameraScreen() {
                 )}
                 <View style={styles.shareCardBrand}>
                   <Text style={styles.shareCardBrandText}>👾 My Fit Monster</Text>
-                  <TouchableOpacity onPress={handleShare} activeOpacity={0.8}>
-                    <Text style={{ color: "#4ADE80", fontSize: 14, fontWeight: "700" }}>分享 →</Text>
-                  </TouchableOpacity>
                 </View>
               </LinearGradient>
+              </ViewShot>
+              <TouchableOpacity style={[styles.shareCardShareBtn, { opacity: isCapturing ? 0.6 : 1 }]} onPress={handleShare} activeOpacity={0.8} disabled={isCapturing}>
+                <Text style={styles.shareCardShareBtnText}>{isCapturing ? "截圖中..." : "📸 分享圖片"}</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.shareCardCloseBtn} onPress={() => setShowShareCard(false)} activeOpacity={0.8}>
                 <Text style={styles.shareCardCloseText}>關閉</Text>
               </TouchableOpacity>
@@ -1171,4 +1197,6 @@ const styles = StyleSheet.create({
   shareCardBrandText: { fontSize: 18, fontWeight: "900", color: "#4ADE80" },
   shareCardCloseBtn: { marginTop: 20, paddingVertical: 14, paddingHorizontal: 40, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
   shareCardCloseText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  shareCardShareBtn: { marginTop: 16, paddingVertical: 14, paddingHorizontal: 40, borderRadius: 14, backgroundColor: "#22C55E" },
+  shareCardShareBtnText: { color: "#fff", fontSize: 16, fontWeight: "700", textAlign: "center" as const },
 });

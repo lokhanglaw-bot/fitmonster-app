@@ -7,24 +7,65 @@
  * Image naming convention:
  *   assets/monsters/body-types/{monsterType}-stage{1|2|3}-{bodyType}.png
  *
- * For now, most body types fall back to the default image.
- * As body-type-specific images are generated, add them to BODY_TYPE_IMAGES below.
+ * Body-type-specific images are now available for stage 1 of all 3 base monster types.
+ * Stages 2 and 3 still fall back to the default image.
  */
 
 import type { BodyType } from "@/types/game";
 
-// ── Body type images (add as they are generated) ──────────────────────────
+// ── Body type images ─────────────────────────────────────────────────────────
 // Structure: monsterType -> stage -> bodyType -> require()
-// Only populated entries will be used; everything else falls back to default.
 const BODY_TYPE_IMAGES: Record<string, Record<number, Partial<Record<BodyType, any>>>> = {
-  // Example: when bodybuilder body type images are generated, add them here:
-  // bodybuilder: {
-  //   1: {
-  //     peak: require("@/assets/monsters/body-types/bodybuilder-stage1-peak.png"),
-  //     fat: require("@/assets/monsters/body-types/bodybuilder-stage1-fat.png"),
-  //   },
-  //   ...
-  // },
+  bodybuilder: {
+    1: {
+      skinny: require("@/assets/monsters/body-types/bodybuilder-stage1-skinny.png"),
+      lean: require("@/assets/monsters/body-types/bodybuilder-stage1-lean.png"),
+      fat: require("@/assets/monsters/body-types/bodybuilder-stage1-fat.png"),
+      obese: require("@/assets/monsters/body-types/bodybuilder-stage1-obese.png"),
+    },
+  },
+  physique: {
+    1: {
+      skinny: require("@/assets/monsters/body-types/physique-stage1-skinny.png"),
+      lean: require("@/assets/monsters/body-types/physique-stage1-lean.png"),
+      fat: require("@/assets/monsters/body-types/physique-stage1-fat.png"),
+      obese: require("@/assets/monsters/body-types/physique-stage1-obese.png"),
+    },
+  },
+  powerlifter: {
+    1: {
+      skinny: require("@/assets/monsters/body-types/powerlifter-stage1-skinny.png"),
+      lean: require("@/assets/monsters/body-types/powerlifter-stage1-lean.png"),
+      fat: require("@/assets/monsters/body-types/powerlifter-stage1-fat.png"),
+      obese: require("@/assets/monsters/body-types/powerlifter-stage1-obese.png"),
+    },
+  },
+  // "2" variants (bodybuilder2, physique2, powerlifter2) share the same body type images
+  // as their base types for now
+  bodybuilder2: {
+    1: {
+      skinny: require("@/assets/monsters/body-types/bodybuilder-stage1-skinny.png"),
+      lean: require("@/assets/monsters/body-types/bodybuilder-stage1-lean.png"),
+      fat: require("@/assets/monsters/body-types/bodybuilder-stage1-fat.png"),
+      obese: require("@/assets/monsters/body-types/bodybuilder-stage1-obese.png"),
+    },
+  },
+  physique2: {
+    1: {
+      skinny: require("@/assets/monsters/body-types/physique-stage1-skinny.png"),
+      lean: require("@/assets/monsters/body-types/physique-stage1-lean.png"),
+      fat: require("@/assets/monsters/body-types/physique-stage1-fat.png"),
+      obese: require("@/assets/monsters/body-types/physique-stage1-obese.png"),
+    },
+  },
+  powerlifter2: {
+    1: {
+      skinny: require("@/assets/monsters/body-types/powerlifter-stage1-skinny.png"),
+      lean: require("@/assets/monsters/body-types/powerlifter-stage1-lean.png"),
+      fat: require("@/assets/monsters/body-types/powerlifter-stage1-fat.png"),
+      obese: require("@/assets/monsters/body-types/powerlifter-stage1-obese.png"),
+    },
+  },
 };
 
 // ── Default images (same as monster-expressions.ts) ───────────────────────
@@ -72,6 +113,12 @@ export function getMonsterBodyTypeImage(
 ): any {
   const normalizedType = type.toLowerCase();
   const clampedStage = Math.max(1, Math.min(3, stage));
+
+  // "peak" and "standard" body types use the default image (they represent the ideal form)
+  if (bodyType === "peak" || bodyType === "standard") {
+    return DEFAULT_IMAGES[normalizedType]?.[clampedStage]
+      ?? DEFAULT_IMAGES.bodybuilder[1];
+  }
 
   // Try body-type-specific image first
   const bodyTypeImage = BODY_TYPE_IMAGES[normalizedType]?.[clampedStage]?.[bodyType];

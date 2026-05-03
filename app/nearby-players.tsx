@@ -15,8 +15,9 @@ import { useColors } from "@/hooks/use-colors";
 import { useI18n } from "@/lib/i18n-context";
 import { useActivity } from "@/lib/activity-context";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Location from "expo-location";
+import { trpc } from "@/lib/trpc";
 
-// Simulated nearby players (in production, this would use location + server matching)
 interface NearbyPlayer {
   id: string;
   name: string;
@@ -24,19 +25,11 @@ interface NearbyPlayer {
   monsterType: string;
   monsterLevel: number;
   bodyType: string;
-  distance: string; // e.g. "50m", "200m"
+  distance: string;
   isOnline: boolean;
   lastActive: string;
   winRate: number;
 }
-
-const MOCK_NEARBY: NearbyPlayer[] = [
-  { id: "1", name: "健身達人A", monsterName: "鐵拳熊", monsterType: "powerlifter2", monsterLevel: 12, bodyType: "lean", distance: "50m", isOnline: true, lastActive: "剛剛", winRate: 0.65 },
-  { id: "2", name: "肌肉狂人B", monsterName: "火龍", monsterType: "bodybuilder2", monsterLevel: 18, bodyType: "peak", distance: "120m", isOnline: true, lastActive: "2分鐘前", winRate: 0.72 },
-  { id: "3", name: "瑜珈女神C", monsterName: "玉狐", monsterType: "physique2", monsterLevel: 9, bodyType: "standard", distance: "300m", isOnline: false, lastActive: "15分鐘前", winRate: 0.55 },
-  { id: "4", name: "跑步王D", monsterName: "雷獅", monsterType: "athlete", monsterLevel: 14, bodyType: "lean", distance: "500m", isOnline: true, lastActive: "剛剛", winRate: 0.60 },
-  { id: "5", name: "新手E", monsterName: "冰企鵝", monsterType: "colossus", monsterLevel: 3, bodyType: "overweight", distance: "800m", isOnline: false, lastActive: "1小時前", winRate: 0.40 },
-];
 
 const MONSTER_EMOJIS: Record<string, string> = {
   powerlifter2: "🐻",
@@ -58,6 +51,24 @@ const BODY_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   obese: { label: "肥胖", color: "#EF4444" },
 };
 
+function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)}m`;
+  return `${km.toFixed(1)}km`;
+}
+
+function getTimeAgo(lastUpdated: Date | string): { text: string; isOnline: boolean } {
+  const now = Date.now();
+  const updated = new Date(lastUpdated).getTime();
+  const diffMs = now - updated;
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 5) return { text: "剛剛", isOnline: true };
+  if (diffMin < 60) return { text: `${diffMin}分鐘前`, isOnline: false };
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return { text: `${diffHours}小時前`, isOnline: false };
+  return { text: `${Math.floor(diffHours / 24)}天前`, isOnline: false };
+}
+
 export default function NearbyPlayersScreen() {
   const colors = useColors();
   const router = useRouter();
@@ -66,16 +77,85 @@ export default function NearbyPlayersScreen() {
   const [isScanning, setIsScanning] = useState(false);
   const [players, setPlayers] = useState<NearbyPlayer[]>([]);
   const [hasPermission, setHasPermission] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // tRPC: update own location + query nearby
+  const locationUpdateMutation = trpc.location.update.useMutation();
 
   const startScan = useCallback(async () => {
     setIsScanning(true);
-    // Simulate location permission request
-    setTimeout(() => {
+    try {
+      // Request real location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("位置權限", "需要位置權限才能掃描附近玩家。請在設定中開啟位置存取。");
+        setIsScanning(false);
+        return;
+      }
+
+      // Get real device location
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+      setUserLocation(coords);
+
+      // Update own location to server
+      try {
+        await locationUpdateMutation.mutateAsync({
+          latitude: coords.lat,
+          longitude: coords.lng,
+          isSharing: true,
+        });
+      } catch (err) {
+        console.warn("[NearbyPlayers] Failed to update location:", err);
+      }
+
       setHasPermission(true);
-      setPlayers(MOCK_NEARBY);
       setIsScanning(false);
-    }, 2000);
-  }, []);
+    } catch (err) {
+      console.warn("[NearbyPlayers] Location error:", err);
+      Alert.alert("定位失敗", "無法取得您的位置，請確認已開啟定位服務。");
+      setIsScanning(false);
+    }
+  }, [locationUpdateMutation]);
+
+  // Query nearby users from server when we have location
+  const nearbyQuery = trpc.location.nearby.useQuery(
+    {
+      latitude: userLocation?.lat ?? 0,
+      longitude: userLocation?.lng ?? 0,
+      radiusKm: 5,
+      includeFriends: false,
+      genderFilter: "all",
+    },
+    {
+      enabled: !!userLocation && hasPermission,
+      refetchInterval: 30000, // Refresh every 30s
+    }
+  );
+
+  // Transform server data to NearbyPlayer format
+  useEffect(() => {
+    if (nearbyQuery.data && Array.isArray(nearbyQuery.data)) {
+      const transformed: NearbyPlayer[] = (nearbyQuery.data as any[]).map((user: any) => {
+        const timeInfo = getTimeAgo(user.lastUpdated);
+        return {
+          id: String(user.userId),
+          name: user.name || "訓練師",
+          monsterName: user.monsterName || "怪獸",
+          monsterType: user.monsterType || "bodybuilder",
+          monsterLevel: user.monsterLevel || 1,
+          bodyType: user.bodyType || "standard",
+          distance: formatDistance(user.distanceKm || 0),
+          isOnline: timeInfo.isOnline,
+          lastActive: timeInfo.text,
+          winRate: user.winRate || 0.5,
+        };
+      });
+      setPlayers(transformed);
+    }
+  }, [nearbyQuery.data]);
 
   const handleChallenge = useCallback((player: NearbyPlayer) => {
     if (!player.isOnline) {
@@ -178,24 +258,45 @@ export default function NearbyPlayersScreen() {
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
             <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: "#F59E0B" }]}>1km</Text>
+              <Text style={[styles.statValue, { color: "#F59E0B" }]}>5km</Text>
               <Text style={[styles.statLabel, { color: colors.muted }]}>範圍</Text>
             </View>
           </LinearGradient>
 
+          {/* Loading state */}
+          {nearbyQuery.isLoading && (
+            <View style={styles.loadingState}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.muted }]}>搜尋附近玩家中...</Text>
+            </View>
+          )}
+
+          {/* Empty state when no players found */}
+          {!nearbyQuery.isLoading && players.length === 0 && (
+            <View style={styles.noPlayersState}>
+              <Text style={styles.noPlayersEmoji}>🏜️</Text>
+              <Text style={[styles.noPlayersTitle, { color: colors.foreground }]}>附近暫無玩家</Text>
+              <Text style={[styles.noPlayersDesc, { color: colors.muted }]}>
+                目前 5km 範圍內沒有其他正在分享位置的玩家。試試稍後再掃描！
+              </Text>
+            </View>
+          )}
+
           {/* Player list */}
-          <FlatList
-            data={players}
-            renderItem={renderPlayer}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            ListFooterComponent={
-              <TouchableOpacity style={[styles.refreshBtn, { borderColor: colors.border }]} onPress={startScan}>
-                <Text style={[styles.refreshText, { color: colors.primary }]}>🔄 重新掃描</Text>
-              </TouchableOpacity>
-            }
-          />
+          {players.length > 0 && (
+            <FlatList
+              data={players}
+              renderItem={renderPlayer}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              ListFooterComponent={
+                <TouchableOpacity style={[styles.refreshBtn, { borderColor: colors.border }]} onPress={startScan}>
+                  <Text style={[styles.refreshText, { color: colors.primary }]}>🔄 重新掃描</Text>
+                </TouchableOpacity>
+              }
+            />
+          )}
         </>
       )}
     </ScreenContainer>
@@ -236,4 +337,10 @@ const styles = StyleSheet.create({
   challengeBtnText: { fontSize: 18 },
   refreshBtn: { alignItems: "center", padding: 14, borderRadius: 12, borderWidth: 1, marginTop: 8 },
   refreshText: { fontSize: 14, fontWeight: "600" },
+  loadingState: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
+  loadingText: { fontSize: 14 },
+  noPlayersState: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 40 },
+  noPlayersEmoji: { fontSize: 48, marginBottom: 12 },
+  noPlayersTitle: { fontSize: 18, fontWeight: "700", marginBottom: 8 },
+  noPlayersDesc: { fontSize: 14, textAlign: "center", lineHeight: 22 },
 });
