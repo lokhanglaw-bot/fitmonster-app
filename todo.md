@@ -1451,3 +1451,13 @@
 - [x] Install react-native-view-shot and implement share card screenshot as image sharing
 - [x] Integrate expo-location for real nearby player positioning (replace mock data)
 - [x] Generate body-type-specific monster images (skinny/lean/fat/obese variants for all 3 monster types)
+
+## Round 141 — UI Fixes & Workout Redesign
+- [x] Fix i18n: Chinese text showing in English locale (糖分, 週平均糖, 每日糖分趨勢, 標準, 肌肉, 脂肪)
+- [x] Fix i18n: Set tracker Chinese text in English (組數追蹤, 動作, 組數, 取消, 完成訓練, etc.)
+- [x] Fix Daily Calorie Trend to start from Sunday (fixed to Sun-Sat order)
+- [x] Shorten Home page (removed exercise grid from workout tab, streamlined)
+- [x] Fix set tracker Complete/Cancel buttons (Alert dialogs work, navigate to summary on finish)
+- [x] Add post-workout details summary (workout-summary.tsx with full exercise/set breakdown)
+- [x] Add workout history calendar (monthly calendar with green dots, tap to see details)
+- [x] Redesign Workout tab: calendar + Personal Records (max weight, max reps, best set volume)

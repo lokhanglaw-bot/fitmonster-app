@@ -202,14 +202,10 @@ export default function HomeScreen() {
 
   // Dynamic day labels: weekly array is [6 days ago, 5 days ago, ..., yesterday, today]
   // We compute the correct day name for each slot based on today's actual day-of-week
+  // Fixed week: always Sun-Sat, highlight today
   const allDayLabels = [t.daySun, t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri, t.daySat];
   const todayDow = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  const weekDayLabels = Array.from({ length: 7 }, (_, i) => {
-    // i=0 is 6 days ago, i=6 is today
-    const daysAgo = 6 - i;
-    const dow = ((todayDow - daysAgo) % 7 + 7) % 7;
-    return allDayLabels[dow];
-  });
+  const weekDayLabels = allDayLabels; // Always Sun through Sat
 
   const [activeTab, setActiveTab] = useState<"home" | "daily" | "history">("home");
 
@@ -317,16 +313,28 @@ export default function HomeScreen() {
   const analyzeTextMutation = trpc.foodLogs.analyzeText.useMutation();
 
   // Chart data from shared activity state (weekly arrays)
+  // Remap weekly arrays from [6 days ago...today] to [Sun...Sat]
+  // The raw arrays are stored as: index 6 = today, index 5 = yesterday, etc.
+  // We need to place each day's data at its correct day-of-week index (0=Sun...6=Sat)
+  function remapToWeek(raw: number[]): number[] {
+    const result = [0, 0, 0, 0, 0, 0, 0];
+    for (let i = 0; i < 7; i++) {
+      const daysAgo = 6 - i;
+      const dow = ((todayDow - daysAgo) % 7 + 7) % 7;
+      result[dow] = raw[i] || 0;
+    }
+    return result;
+  }
   const macroData = {
-    protein: activity.weeklyProtein,
-    carbs: activity.weeklyCarbs || [0,0,0,0,0,0,0],
-    fat: activity.weeklyFat || [0,0,0,0,0,0,0],
-    sugar: activity.weeklySugar || [0,0,0,0,0,0,0],
+    protein: remapToWeek(activity.weeklyProtein),
+    carbs: remapToWeek(activity.weeklyCarbs || [0,0,0,0,0,0,0]),
+    fat: remapToWeek(activity.weeklyFat || [0,0,0,0,0,0,0]),
+    sugar: remapToWeek(activity.weeklySugar || [0,0,0,0,0,0,0]),
   };
   const chartData = {
-    calories: activity.weeklyCalories,
+    calories: remapToWeek(activity.weeklyCalories),
     macros: macroData[macroSubTab],
-    workout: activity.weeklyWorkout,
+    workout: remapToWeek(activity.weeklyWorkout),
   };
 
   const quests = [
@@ -940,12 +948,12 @@ export default function HomeScreen() {
       </View>
       <View style={styles.historyStatsRow}>
         <View style={[styles.historyStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.historyStatLabel, { color: "#F59E0B" }]}>🍬 糖分</Text>
+          <Text style={[styles.historyStatLabel, { color: "#F59E0B" }]}>🍬 {language === "zh" ? "糖分" : "Sugar"}</Text>
           <Text style={[styles.historyStatValue, { color: (activity.todaySugar || 0) > 25 ? colors.error : colors.foreground }]}>{activity.todaySugar || 0}g</Text>
-          <Text style={[styles.historyStatSub, { color: colors.muted }]}>今日 / 25g 上限</Text>
+          <Text style={[styles.historyStatSub, { color: colors.muted }]}>{language === "zh" ? "今日 / 25g 上限" : "Today / 25g limit"}</Text>
         </View>
         <View style={[styles.historyStatCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.historyStatLabel, { color: "#F59E0B" }]}>🍬 週平均糖</Text>
+          <Text style={[styles.historyStatLabel, { color: "#F59E0B" }]}>🍬 {language === "zh" ? "週平均糖" : "Avg Sugar"}</Text>
           <Text style={[styles.historyStatValue, { color: colors.foreground }]}>{Math.round((activity.weeklySugar || [0,0,0,0,0,0,0]).reduce((s, v) => s + v, 0) / Math.max((activity.weeklySugar || [0,0,0,0,0,0,0]).filter(v => v > 0).length, 1))}g</Text>
           <Text style={[styles.historyStatSub, { color: colors.muted }]}>{t.dailyAvg}</Text>
         </View>
@@ -976,7 +984,7 @@ export default function HomeScreen() {
               onPress={() => setMacroSubTab(tab)}
             >
               <Text style={[styles.subTabText, { color: macroSubTab === tab ? "#fff" : colors.muted }]}>
-                {tab === "protein" ? t.proteinShort : tab === "carbs" ? t.carbsShort : tab === "sugar" ? "🍬糖" : t.fatShort}
+                {tab === "protein" ? t.proteinShort : tab === "carbs" ? t.carbsShort : tab === "sugar" ? (language === "zh" ? "🍬糖" : "🍬Sugar") : t.fatShort}
               </Text>
             </TouchableOpacity>
           ))}
@@ -1007,14 +1015,14 @@ export default function HomeScreen() {
       {historyViewMode === "chart" && (
         <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.chartTitle, { color: colors.foreground }]}>
-            {historySubTab === "calories" ? `🔥 ${t.dailyCalorieTrend}` : historySubTab === "macros" ? (macroSubTab === "protein" ? `🥩 ${t.dailyProteinTrend}` : macroSubTab === "carbs" ? `🍞 ${t.dailyCarbsTrend}` : macroSubTab === "sugar" ? `🍬 每日糖分趨勢` : `🧈 ${t.dailyFatTrend}`) : `🏋️ ${t.workoutDurationTrend}`}
+            {historySubTab === "calories" ? `🔥 ${t.dailyCalorieTrend}` : historySubTab === "macros" ? (macroSubTab === "protein" ? `🥩 ${t.dailyProteinTrend}` : macroSubTab === "carbs" ? `🍞 ${t.dailyCarbsTrend}` : macroSubTab === "sugar" ? `🍬 ${language === "zh" ? "每日糖分趨勢" : "Daily Sugar Trend"}` : `🧈 ${t.dailyFatTrend}`) : `🏋️ ${t.workoutDurationTrend}`}
           </Text>
           <View style={styles.chartArea}>
             {weekDayLabels.map((day, i) => {
               const data = chartData[historySubTab];
               const maxVal = Math.max(...data);
               const barHeight = maxVal > 0 ? Math.max(4, (data[i] / maxVal) * 70) : 4;
-              const isToday = i === 6;
+              const isToday = i === todayDow;
               return (
                 <View key={day} style={styles.chartCol}>
                   <Text style={[styles.chartBarValue, { color: colors.muted }]}>
@@ -1036,7 +1044,7 @@ export default function HomeScreen() {
             {weekDayLabels.map((day, i) => {
               const data = chartData[historySubTab];
               const hasData = data[i] > 0;
-              const isToday = i === 6;
+              const isToday = i === todayDow;
               return (
                 <View key={day} style={[styles.calendarDay, { backgroundColor: isToday ? colors.primary : hasData ? "#DCFCE7" : colors.background, borderColor: colors.border }]}>
                   <Text style={[styles.calendarDayLabel, { color: isToday ? "#fff" : colors.muted }]}>{day}</Text>
@@ -1056,8 +1064,8 @@ export default function HomeScreen() {
           <Text style={[styles.chartTitle, { color: colors.foreground }]}>📋 {t.dailyRecords}</Text>
           {weekDayLabels.map((day, i) => {
             const data = chartData[historySubTab];
-            const unit = historySubTab === "calories" ? t.kcalUnit : historySubTab === "macros" ? (macroSubTab === "protein" ? t.gProtein : macroSubTab === "carbs" ? t.gCarbs : macroSubTab === "sugar" ? "g 糖" : t.gFat) : t.minUnit;
-            const isToday = i === 6;
+            const unit = historySubTab === "calories" ? t.kcalUnit : historySubTab === "macros" ? (macroSubTab === "protein" ? t.gProtein : macroSubTab === "carbs" ? t.gCarbs : macroSubTab === "sugar" ? (language === "zh" ? "g 糖" : "g sugar") : t.gFat) : t.minUnit;
+            const isToday = i === todayDow;
             return (
               <View key={day} style={[styles.listRow, { borderBottomColor: colors.border }]}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>

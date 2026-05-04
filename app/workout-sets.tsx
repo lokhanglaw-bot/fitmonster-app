@@ -77,15 +77,18 @@ const EXERCISE_LIBRARY: Array<{
   { name: "Ab Wheel Rollout", nameZh: "健腹輪", category: "core", muscleGroup: "core", equipment: "bodyweight" },
 ];
 
-const CATEGORY_LABELS: Record<string, string> = {
+const CATEGORY_LABELS_ZH: Record<string, string> = {
   chest: "胸", back: "背", legs: "腿", shoulders: "肩", arms: "手臂", core: "核心",
+};
+const CATEGORY_LABELS_EN: Record<string, string> = {
+  chest: "Chest", back: "Back", legs: "Legs", shoulders: "Shoulders", arms: "Arms", core: "Core",
 };
 
 export default function WorkoutSetsScreen() {
   useKeepAwake();
   const router = useRouter();
   const colors = useColors();
-  const { t, tr } = useI18n();
+  const { t, tr, language } = useI18n();
   const insets = useSafeAreaInsets();
   const { logWorkout } = useActivity();
   const { exerciseMonster } = useCaring();
@@ -209,17 +212,21 @@ export default function WorkoutSetsScreen() {
 
   // Remove exercise block
   const handleRemoveBlock = useCallback((blockIndex: number) => {
-    Alert.alert("移除動作", "確定要移除這個動作和所有組數嗎？", [
-      { text: "取消", style: "cancel" },
-      {
-        text: "移除",
-        style: "destructive",
-        onPress: () => {
-          setBlocks((prev) => prev.filter((_, i) => i !== blockIndex));
+    Alert.alert(
+      language === "zh" ? "移除動作" : "Remove Exercise",
+      language === "zh" ? "確定要移除這個動作和所有組數嗎？" : "Remove this exercise and all its sets?",
+      [
+        { text: language === "zh" ? "取消" : "Cancel", style: "cancel" },
+        {
+          text: language === "zh" ? "移除" : "Remove",
+          style: "destructive",
+          onPress: () => {
+            setBlocks((prev) => prev.filter((_, i) => i !== blockIndex));
+          },
         },
-      },
-    ]);
-  }, []);
+      ]
+    );
+  }, [language]);
 
   // Calculate totals
   const totalSets = useMemo(
@@ -243,17 +250,37 @@ export default function WorkoutSetsScreen() {
   // Finish workout
   const handleFinish = useCallback(() => {
     if (blocks.length === 0 || totalSets === 0) {
-      Alert.alert("尚無記錄", "請至少完成一組訓練再結束。");
+      Alert.alert(
+        language === "zh" ? "尚無記錄" : "No Records",
+        language === "zh" ? "請至少完成一組訓練再結束。" : "Please complete at least one set before finishing."
+      );
       return;
     }
 
     const durationMinutes = Math.max(1, Math.ceil(elapsedSeconds / 60));
     const expEarned = Math.round(totalSets * 15 + totalVolume * 0.01);
 
+    // Build detailed exercise data
+    const exerciseDetails = blocks.map((b) => ({
+      exerciseName: b.exerciseName,
+      exerciseNameZh: b.exerciseNameZh,
+      category: b.category,
+      sets: b.sets.filter(s => s.weight || s.reps).map(s => ({
+        setNumber: s.setNumber,
+        weight: s.weight,
+        reps: s.reps,
+        rpe: s.rpe,
+        setType: s.setType,
+      })),
+    }));
+
     logWorkout({
-      exercise: blocks.map((b) => b.exerciseNameZh || b.exerciseName).join(", "),
+      exercise: blocks.map((b) => language === "zh" ? (b.exerciseNameZh || b.exerciseName) : b.exerciseName).join(", "),
       duration: durationMinutes,
       expEarned,
+      totalVolume,
+      totalSets,
+      exercises: exerciseDetails,
     });
 
     exerciseMonster(durationMinutes, Math.round(totalVolume * 0.05), 5).catch(() => {});
@@ -262,12 +289,29 @@ export default function WorkoutSetsScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
 
+    // Navigate to workout summary with details
+    router.replace({
+      pathname: "/workout-summary" as any,
+      params: {
+        duration: String(durationMinutes),
+        exercises: String(blocks.length),
+        totalSets: String(totalSets),
+        totalVolume: String(totalVolume),
+        expEarned: String(expEarned),
+        details: JSON.stringify(exerciseDetails),
+      },
+    });
+  }, [blocks, totalSets, totalVolume, elapsedSeconds, logWorkout, exerciseMonster, router, language]);
+
+  const handleCancel = useCallback(() => {
     Alert.alert(
-      "訓練完成! 💪",
-      `時長: ${durationMinutes} 分鐘\n動作: ${blocks.length} 個\n總組數: ${totalSets} 組\n總訓練量: ${totalVolume.toLocaleString()} kg\n獲得 +${expEarned} EXP`,
+      language === "zh" ? "取消訓練" : "Cancel Workout",
+      language === "zh" ? "確定要取消嗎？所有記錄將會遺失。" : "Are you sure? All records will be lost.",
       [
+        { text: language === "zh" ? "繼續訓練" : "Continue", style: "cancel" },
         {
-          text: "完成",
+          text: language === "zh" ? "取消" : "Cancel",
+          style: "destructive",
           onPress: () => {
             if (router.canGoBack()) router.back();
             else router.replace("/(tabs)");
@@ -275,21 +319,7 @@ export default function WorkoutSetsScreen() {
         },
       ]
     );
-  }, [blocks, totalSets, totalVolume, elapsedSeconds, logWorkout, exerciseMonster, router]);
-
-  const handleCancel = useCallback(() => {
-    Alert.alert("取消訓練", "確定要取消嗎？所有記錄將會遺失。", [
-      { text: "繼續訓練", style: "cancel" },
-      {
-        text: "取消",
-        style: "destructive",
-        onPress: () => {
-          if (router.canGoBack()) router.back();
-          else router.replace("/(tabs)");
-        },
-      },
-    ]);
-  }, [router]);
+  }, [router, language]);
 
   return (
     <ScreenContainer edges={["bottom", "left", "right"]}>
@@ -306,13 +336,13 @@ export default function WorkoutSetsScreen() {
             <IconSymbol name="arrow.left" size={20} color={colors.foreground} />
           </TouchableOpacity>
           <View style={{ alignItems: "center" }}>
-            <Text style={[styles.topTitle, { color: colors.foreground }]}>組數追蹤</Text>
+            <Text style={[styles.topTitle, { color: colors.foreground }]}>{language === "zh" ? "組數追蹤" : "Set Tracker"}</Text>
             <Text style={{ fontSize: 16, fontWeight: "700", color: colors.primary, fontVariant: ["tabular-nums"] }}>
               {formatTime(elapsedSeconds)}
             </Text>
           </View>
           <TouchableOpacity onPress={handleCancel} style={{ padding: 8 }} activeOpacity={0.7}>
-            <Text style={{ fontSize: 13, color: "#EF4444", fontWeight: "600" }}>取消</Text>
+            <Text style={{ fontSize: 13, color: "#EF4444", fontWeight: "600" }}>{language === "zh" ? "取消" : "Cancel"}</Text>
           </TouchableOpacity>
         </View>
 
@@ -320,12 +350,12 @@ export default function WorkoutSetsScreen() {
         <View style={[styles.statsBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: colors.primary }]}>{blocks.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.muted }]}>動作</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>{language === "zh" ? "動作" : "Exercises"}</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: colors.primary }]}>{totalSets}</Text>
-            <Text style={[styles.statLabel, { color: colors.muted }]}>組數</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>{language === "zh" ? "組數" : "Sets"}</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
@@ -345,11 +375,11 @@ export default function WorkoutSetsScreen() {
               <View style={styles.blockHeader}>
                 <View style={[styles.categoryBadge, { backgroundColor: colors.primary + "20" }]}>
                   <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>
-                    {CATEGORY_LABELS[block.category] || block.category}
+                    {(language === "zh" ? CATEGORY_LABELS_ZH : CATEGORY_LABELS_EN)[block.category] || block.category}
                   </Text>
                 </View>
                 <Text style={[styles.blockName, { color: colors.foreground }]}>
-                  {block.exerciseNameZh || block.exerciseName}
+                  {language === "zh" ? (block.exerciseNameZh || block.exerciseName) : block.exerciseName}
                 </Text>
                 <TouchableOpacity onPress={() => handleRemoveBlock(blockIdx)} style={{ padding: 4 }}>
                   <Text style={{ color: "#EF4444", fontSize: 14 }}>✕</Text>
@@ -375,7 +405,7 @@ export default function WorkoutSetsScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={{ fontSize: 16, color: colors.primary }}>+</Text>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>新增一組</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>{language === "zh" ? "新增一組" : "+ Add Set"}</Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -387,15 +417,15 @@ export default function WorkoutSetsScreen() {
             activeOpacity={0.7}
           >
             <Text style={{ fontSize: 24, color: colors.primary }}>+</Text>
-            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.primary }}>新增動作</Text>
+            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.primary }}>{language === "zh" ? "新增動作" : "Add Exercise"}</Text>
           </TouchableOpacity>
 
           {blocks.length === 0 && (
             <View style={{ alignItems: "center", paddingVertical: 40, gap: 8 }}>
               <Text style={{ fontSize: 48 }}>🏋️</Text>
-              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>開始你的訓練</Text>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>{language === "zh" ? "開始你的訓練" : "Start Your Workout"}</Text>
               <Text style={{ fontSize: 13, color: colors.muted, textAlign: "center" }}>
-                點擊「新增動作」選擇訓練動作{"\n"}然後逐組記錄重量和次數
+                {language === "zh" ? "點擊「新增動作」選擇訓練動作\n然後逐組記錄重量和次數" : "Tap \"Add Exercise\" to pick an exercise\nthen log weight and reps for each set"}
               </Text>
             </View>
           )}
@@ -410,7 +440,7 @@ export default function WorkoutSetsScreen() {
               activeOpacity={0.7}
             >
               <Text style={{ fontSize: 16 }}>⏱️</Text>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>休息</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{language === "zh" ? "休息" : "Rest"}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleFinish} activeOpacity={0.8} style={{ flex: 1 }}>
               <LinearGradient
@@ -419,7 +449,7 @@ export default function WorkoutSetsScreen() {
                 end={{ x: 1, y: 0 }}
                 style={styles.finishBtn}
               >
-                <Text style={styles.finishBtnText}>完成訓練</Text>
+                <Text style={styles.finishBtnText}>{language === "zh" ? "完成訓練" : "Finish Workout"}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -431,12 +461,12 @@ export default function WorkoutSetsScreen() {
         <View style={styles.pickerOverlay}>
           <View style={[styles.pickerSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.pickerHandle} />
-            <Text style={[styles.pickerTitle, { color: colors.foreground }]}>選擇動作</Text>
+            <Text style={[styles.pickerTitle, { color: colors.foreground }]}>{language === "zh" ? "選擇動作" : "Select Exercise"}</Text>
 
             {/* Search */}
             <TextInput
               style={[styles.searchInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-              placeholder="搜尋動作名稱..."
+              placeholder={language === "zh" ? "搜尋動作名稱..." : "Search exercises..."}
               placeholderTextColor={colors.muted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -446,13 +476,13 @@ export default function WorkoutSetsScreen() {
             {/* Category filter */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 4 }}>
               {[
-                { key: "all", label: "全部" },
-                { key: "chest", label: "胸" },
-                { key: "back", label: "背" },
-                { key: "legs", label: "腿" },
-                { key: "shoulders", label: "肩" },
-                { key: "arms", label: "手臂" },
-                { key: "core", label: "核心" },
+                { key: "all", label: language === "zh" ? "全部" : "All" },
+                { key: "chest", label: language === "zh" ? "胸" : "Chest" },
+                { key: "back", label: language === "zh" ? "背" : "Back" },
+                { key: "legs", label: language === "zh" ? "腿" : "Legs" },
+                { key: "shoulders", label: language === "zh" ? "肩" : "Shoulders" },
+                { key: "arms", label: language === "zh" ? "手臂" : "Arms" },
+                { key: "core", label: language === "zh" ? "核心" : "Core" },
               ].map((cat) => (
                 <TouchableOpacity
                   key={cat.key}
@@ -484,12 +514,12 @@ export default function WorkoutSetsScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.exerciseRowName, { color: colors.foreground }]}>{item.nameZh}</Text>
+                    <Text style={[styles.exerciseRowName, { color: colors.foreground }]}>{language === "zh" ? item.nameZh : item.name}</Text>
                     <Text style={{ fontSize: 12, color: colors.muted }}>{item.name} · {item.equipment}</Text>
                   </View>
                   <View style={[styles.exerciseRowCat, { backgroundColor: colors.primary + "15" }]}>
                     <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "600" }}>
-                      {CATEGORY_LABELS[item.category] || item.category}
+                      {(language === "zh" ? CATEGORY_LABELS_ZH : CATEGORY_LABELS_EN)[item.category] || item.category}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -507,7 +537,7 @@ export default function WorkoutSetsScreen() {
               style={[styles.closePickerBtn, { borderColor: colors.border }]}
               activeOpacity={0.7}
             >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>關閉</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>{language === "zh" ? "關閉" : "Close"}</Text>
             </TouchableOpacity>
           </View>
         </View>

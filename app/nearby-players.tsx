@@ -42,13 +42,14 @@ const MONSTER_EMOJIS: Record<string, string> = {
   physique: "🦊",
 };
 
-const BODY_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  peak: { label: "巔峰", color: "#FFD700" },
-  lean: { label: "精實", color: "#22C55E" },
-  standard: { label: "標準", color: "#3B82F6" },
-  skinny: { label: "偏瘦", color: "#94A3B8" },
-  overweight: { label: "偏胖", color: "#F59E0B" },
-  obese: { label: "肥胖", color: "#EF4444" },
+const BODY_TYPE_DISPLAY: Record<string, { en: string; zh: string; color: string }> = {
+  peak: { en: "Peak", zh: "巔峰", color: "#FFD700" },
+  lean: { en: "Lean", zh: "精實", color: "#22C55E" },
+  standard: { en: "Standard", zh: "標準", color: "#3B82F6" },
+  skinny: { en: "Skinny", zh: "偏瘦", color: "#94A3B8" },
+  overweight: { en: "Overweight", zh: "偏胖", color: "#F59E0B" },
+  fat: { en: "Overweight", zh: "偏胖", color: "#F59E0B" },
+  obese: { en: "Obese", zh: "肥胖", color: "#EF4444" },
 };
 
 function formatDistance(km: number): string {
@@ -72,7 +73,7 @@ function getTimeAgo(lastUpdated: Date | string): { text: string; isOnline: boole
 export default function NearbyPlayersScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { state: activity } = useActivity();
   const [isScanning, setIsScanning] = useState(false);
   const [players, setPlayers] = useState<NearbyPlayer[]>([]);
@@ -174,7 +175,8 @@ export default function NearbyPlayersScreen() {
 
   const renderPlayer = useCallback(({ item }: { item: NearbyPlayer }) => {
     const emoji = MONSTER_EMOJIS[item.monsterType] || "🐾";
-    const bodyInfo = BODY_TYPE_LABELS[item.bodyType] || BODY_TYPE_LABELS.standard;
+    const bodyDisplay = BODY_TYPE_DISPLAY[item.bodyType] || BODY_TYPE_DISPLAY.standard;
+    const bodyInfo = { label: (bodyDisplay as any)[language] as string, color: bodyDisplay.color };
     return (
       <TouchableOpacity
         style={[styles.playerCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -194,7 +196,7 @@ export default function NearbyPlayersScreen() {
               </View>
             </View>
             <Text style={[styles.monsterInfo, { color: colors.muted }]}>
-              {item.monsterName} Lv.{item.monsterLevel} • 勝率 {Math.round(item.winRate * 100)}%
+              {item.monsterName} Lv.{item.monsterLevel} • {language === "zh" ? "勝率" : "Win"} {Math.round(item.winRate * 100)}%
             </Text>
             <Text style={[styles.distanceText, { color: colors.muted }]}>
               📍 {item.distance} • {item.lastActive}

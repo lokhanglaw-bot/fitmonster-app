@@ -20,12 +20,30 @@ export interface FoodLogEntry {
   imageUri?: string; // local photo URI
 }
 
+export interface WorkoutSetDetail {
+  setNumber: number;
+  weight?: number;
+  reps?: number;
+  rpe?: number;
+  setType: string;
+}
+
+export interface WorkoutExerciseDetail {
+  exerciseName: string;
+  exerciseNameZh?: string;
+  category: string;
+  sets: WorkoutSetDetail[];
+}
+
 export interface WorkoutLogEntry {
   id: string;
   exercise: string;
   duration: number; // minutes
   expEarned: number;
   timestamp: string; // ISO string
+  totalVolume?: number; // kg
+  totalSets?: number;
+  exercises?: WorkoutExerciseDetail[];
 }
 
 export interface MonsterData {

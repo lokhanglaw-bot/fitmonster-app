@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
 import { useColors } from "@/hooks/use-colors";
+import { useI18n } from "@/lib/i18n-context";
 import type { BodyType } from "@/types/game";
 import { BODY_TYPE_LABELS, BODY_TYPE_ATTACK_MOD } from "@/types/game";
 
@@ -35,10 +36,14 @@ export function BodyTypeIndicator({
   compact = false,
 }: BodyTypeIndicatorProps) {
   const colors = useColors();
+  const { language } = useI18n();
   const btColor = BODY_TYPE_COLORS[bodyType] ?? "#6B7280";
-  const btLabel = BODY_TYPE_LABELS[bodyType]?.zh ?? bodyType;
+  const btLabel = BODY_TYPE_LABELS[bodyType]?.[language] ?? bodyType;
   const btEmoji = BODY_TYPE_EMOJIS[bodyType] ?? "⚖️";
   const atkMod = BODY_TYPE_ATTACK_MOD[bodyType] ?? 1.0;
+
+  const muscleLabel = language === "zh" ? "肌肉" : "Muscle";
+  const fatLabel = language === "zh" ? "脂肪" : "Fat";
 
   if (compact) {
     return (
@@ -65,7 +70,7 @@ export function BodyTypeIndicator({
 
       <View style={styles.barsRow}>
         <View style={styles.barGroup}>
-          <Text style={[styles.barLabel, { color: colors.muted }]}>💪 肌肉</Text>
+          <Text style={[styles.barLabel, { color: colors.muted }]}>💪 {muscleLabel}</Text>
           <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
             <View
               style={[
@@ -77,7 +82,7 @@ export function BodyTypeIndicator({
           <Text style={[styles.barValue, { color: colors.foreground }]}>{Math.round(muscleScore)}</Text>
         </View>
         <View style={styles.barGroup}>
-          <Text style={[styles.barLabel, { color: colors.muted }]}>🔥 脂肪</Text>
+          <Text style={[styles.barLabel, { color: colors.muted }]}>🔥 {fatLabel}</Text>
           <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
             <View
               style={[

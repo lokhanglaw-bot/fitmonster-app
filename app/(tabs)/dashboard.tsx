@@ -14,7 +14,7 @@ import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
 
 function WeeklyWorkoutStatsCard() {
   const colors = useColors();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { state: activity } = useActivity();
 
   const weeklyStats = useMemo(() => {
@@ -324,7 +324,7 @@ function MacroBar({ label, value, percent, color }: { label: string; value: numb
 
 export default function DashboardScreen() {
   const colors = useColors();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const router = useRouter();
   const { state: activity } = useActivity();
   const { state: dashCaring } = useCaring();
@@ -523,7 +523,7 @@ export default function DashboardScreen() {
             </View>
             <View style={[styles.nutritionDivider, { backgroundColor: colors.border }]} />
             <View style={styles.nutritionRow}>
-              <Text style={[styles.nutritionLabel, { color: colors.muted }]}>🍬 糖分攝取</Text>
+              <Text style={[styles.nutritionLabel, { color: colors.muted }]}>🍬 {language === "zh" ? "糖分攝取" : "Sugar Intake"}</Text>
               <Text style={[styles.nutritionValue, { color: (activity.todaySugar || 0) > 25 ? colors.error : colors.foreground }]}>{activity.todaySugar || 0}g / 25g</Text>
             </View>
             <View style={[styles.progressTrack, { backgroundColor: colors.background }]}>
