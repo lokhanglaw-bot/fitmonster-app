@@ -96,7 +96,8 @@ function getMealLog(logs: FoodLogEntry[], mealType: string): FoodLogEntry | unde
   return logs.find((l) => l.mealType === mealType);
 }
 
-function MealBoxes({ activity, colors }: { activity: any; colors: any }) {
+function MealBoxes({ activity, colors, language }: { activity: any; colors: any; language: string }) {
+  const isEn = language === 'en';
   const logs: FoodLogEntry[] = activity.todayFoodLogs || [];
   const breakfastLog = getMealLog(logs, "breakfast");
   const lunchLog = getMealLog(logs, "lunch");
@@ -118,9 +119,9 @@ function MealBoxes({ activity, colors }: { activity: any; colors: any }) {
 
   return (
     <View style={[mealStyles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Text style={[styles.cardTitle, { color: colors.foreground }]}>今日三餐</Text>
+      <Text style={[styles.cardTitle, { color: colors.foreground }]}>{isEn ? "Today's Meals" : "今日三餐"}</Text>
       <Text style={[mealStyles.hint, { color: colors.muted }]}>
-        {allThreeDone ? "三餐已記錄完成！可以分享今日成果 🎉" : "拍完早午晚三餐即可解鎖分享功能"}
+        {allThreeDone ? (isEn ? "All meals recorded! Share your results 🎉" : "三餐已記錄完成！可以分享今日成果 🎉") : (isEn ? "Complete all 3 meals to unlock sharing" : "拍完早午晚三餐即可解鎖分享功能")}
       </Text>
 
       {/* 3 Meal Boxes */}
@@ -146,12 +147,12 @@ function MealBoxes({ activity, colors }: { activity: any; colors: any }) {
                 </View>
               )}
               <Text style={[mealStyles.mealLabel, { color: log ? colors.primary : colors.muted }]}>
-                {info.label}
+                {isEn ? info.labelEn : info.label}
               </Text>
               {log ? (
                 <Text style={[mealStyles.mealCal, { color: colors.foreground }]}>{log.calories} kcal</Text>
               ) : (
-                <Text style={[mealStyles.mealCal, { color: colors.muted }]}>未記錄</Text>
+                <Text style={[mealStyles.mealCal, { color: colors.muted }]}>{isEn ? 'None' : '未記錄'}</Text>
               )}
             </View>
           );
@@ -172,7 +173,7 @@ function MealBoxes({ activity, colors }: { activity: any; colors: any }) {
         disabled={!allThreeDone}
       >
         <Text style={mealStyles.shareBtnText}>
-          {allThreeDone ? "📤 分享今日操野成果" : "🔒 完成三餐記錄後解鎖分享"}
+          {allThreeDone ? (isEn ? "📤 Share Today's Results" : "📤 分享今日操野成果") : (isEn ? "🔒 Complete all meals to unlock" : "🔒 完成三餐記錄後解鎖分享")}
         </Text>
       </TouchableOpacity>
 
@@ -190,16 +191,17 @@ function MealBoxes({ activity, colors }: { activity: any; colors: any }) {
               totalCarbs={totalCarbs}
               totalFat={totalFat}
               totalSugar={totalSugar}
-              monsterName={activity.monsters?.[activity.activeMonsterIndex]?.name || "怪獸"}
+              monsterName={activity.monsters?.[activity.activeMonsterIndex]?.name || (isEn ? "Monster" : "怪獸")}
               monsterLevel={activity.monsters?.[activity.activeMonsterIndex]?.level || 1}
               todayExp={activity.todayTotalExp}
+              language={language}
             />
             <TouchableOpacity
               style={[mealStyles.closeBtn, { backgroundColor: colors.primary }]}
               onPress={() => setShowShareCard(false)}
               activeOpacity={0.7}
             >
-              <Text style={mealStyles.closeBtnText}>關閉</Text>
+              <Text style={mealStyles.closeBtnText}>{isEn ? 'Close' : '關閉'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -219,6 +221,7 @@ function DailyShareCard({
   monsterName,
   monsterLevel,
   todayExp,
+  language,
 }: {
   meals: { type: "breakfast" | "lunch" | "dinner"; log?: FoodLogEntry }[];
   totalCal: number;
@@ -229,20 +232,27 @@ function DailyShareCard({
   monsterName: string;
   monsterLevel: number;
   todayExp: number;
+  language: string;
 }) {
   const handleShare = useCallback(async () => {
     const { Share } = require("react-native");
-    const msg =
-      `🍽️ 今日操野成果\n` +
-      `🔥 ${totalCal} kcal\n` +
-      `🥩 蛋白質 ${totalProtein}g | 🍚 碳水 ${totalCarbs}g | 🧈 脂肪 ${totalFat}g\n` +
-      (totalSugar > 25 ? `⚠️ 糖份 ${totalSugar}g\n` : `🍬 糖份 ${totalSugar}g\n`) +
-      `\n🐾 ${monsterName} Lv.${monsterLevel} | +${todayExp} EXP\n` +
-      `\n#MyFitMonster #健身怪獸`;
+    const msg = language === 'en'
+      ? `🍽️ Today's Results\n` +
+        `🔥 ${totalCal} kcal\n` +
+        `🥩 Protein ${totalProtein}g | 🍚 Carbs ${totalCarbs}g | 🧈 Fat ${totalFat}g\n` +
+        (totalSugar > 25 ? `⚠️ Sugar ${totalSugar}g\n` : `🍬 Sugar ${totalSugar}g\n`) +
+        `\n🐾 ${monsterName} Lv.${monsterLevel} | +${todayExp} EXP\n` +
+        `\n#MyFitMonster`
+      : `🍽️ 今日操野成果\n` +
+        `🔥 ${totalCal} kcal\n` +
+        `🥩 蛋白質 ${totalProtein}g | 🍚 碳水 ${totalCarbs}g | 🧈 脂肪 ${totalFat}g\n` +
+        (totalSugar > 25 ? `⚠️ 糖份 ${totalSugar}g\n` : `🍬 糖份 ${totalSugar}g\n`) +
+        `\n🐾 ${monsterName} Lv.${monsterLevel} | +${todayExp} EXP\n` +
+        `\n#MyFitMonster #健身怪獸`;
     try {
       await Share.share({ message: msg });
     } catch {}
-  }, [totalCal, totalProtein, totalCarbs, totalFat, totalSugar, monsterName, monsterLevel, todayExp]);
+  }, [totalCal, totalProtein, totalCarbs, totalFat, totalSugar, monsterName, monsterLevel, todayExp, language]);
 
   return (
     <View style={shareStyles.card}>
@@ -253,7 +263,7 @@ function DailyShareCard({
         end={{ x: 0.5, y: 1 }}
       >
         {/* Title */}
-        <Text style={shareStyles.title}>今日操野成果</Text>
+        <Text style={shareStyles.title}>{language === 'en' ? "Today's Results" : "今日操野成果"}</Text>
 
         {/* 3 Meal Photos */}
         <View style={shareStyles.mealRow}>
@@ -266,7 +276,7 @@ function DailyShareCard({
                   <Text style={{ fontSize: 24 }}>{MEAL_LABELS[type].emoji}</Text>
                 </View>
               )}
-              <Text style={shareStyles.mealPhotoLabel}>{MEAL_LABELS[type].label}</Text>
+              <Text style={shareStyles.mealPhotoLabel}>{language === 'en' ? MEAL_LABELS[type].labelEn : MEAL_LABELS[type].label}</Text>
             </View>
           ))}
         </View>
@@ -293,7 +303,7 @@ function DailyShareCard({
 
         {/* Sugar Warning */}
         {totalSugar > 25 && (
-          <Text style={shareStyles.sugarWarning}>⚠️ 糖份 {totalSugar}g ⚠️</Text>
+          <Text style={shareStyles.sugarWarning}>{language === 'en' ? `⚠️ Sugar ${totalSugar}g ⚠️` : `⚠️ 糖份 ${totalSugar}g ⚠️`}</Text>
         )}
 
         {/* Branding */}
@@ -303,7 +313,7 @@ function DailyShareCard({
 
         {/* Share action */}
         <TouchableOpacity style={shareStyles.shareAction} onPress={handleShare} activeOpacity={0.7}>
-          <Text style={shareStyles.shareActionText}>📤 分享到社交媒體</Text>
+          <Text style={shareStyles.shareActionText}>{language === 'en' ? '📤 Share to Social Media' : '📤 分享到社交媒體'}</Text>
         </TouchableOpacity>
       </LinearGradient>
     </View>
@@ -466,7 +476,7 @@ export default function DashboardScreen() {
           <WeeklyWorkoutStatsCard />
 
           {/* Today's Meals — 3 Meal Boxes */}
-          <MealBoxes activity={activity} colors={colors} />
+          <MealBoxes activity={activity} colors={colors} language={language} />
 
           {/* Nutrition Card */}
           <View style={[styles.nutritionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>

@@ -1461,3 +1461,12 @@
 - [x] Add post-workout details summary (workout-summary.tsx with full exercise/set breakdown)
 - [x] Add workout history calendar (monthly calendar with green dots, tap to see details)
 - [x] Redesign Workout tab: calendar + Personal Records (max weight, max reps, best set volume)
+
+## Round 142 — Remaining i18n Fixes + PR Logic
+- [x] Fix set tracker set types in English (熱身→Warm-up, 正式→Working, 力竭→Failure, 遞減→Drop, 超級組→Superset)
+- [x] Fix set tracker weight/reps labels in English (重量(kg)→Weight(kg), 次數→Reps)
+- [x] Fix rest timer all Chinese text (休息計時器, 力量 90s, 增肌 60s, 超級組 30s, 跳過休息)
+- [x] Fix battle page buttons (附近玩家→Nearby Players, 實體挑戰→Arena Challenge)
+- [x] Fix food/dashboard today's meals section (今日三餐, 早餐/午餐/晚餐, 未記錄, etc.)
+- [x] Fix workout calendar showing Chinese exercise names in English mode
+- [x] Fix Personal Records not showing data from existing workout logs

@@ -265,7 +265,7 @@ export default function WorkoutSetsScreen() {
       exerciseName: b.exerciseName,
       exerciseNameZh: b.exerciseNameZh,
       category: b.category,
-      sets: b.sets.filter(s => s.weight || s.reps).map(s => ({
+      sets: b.sets.filter(s => (s.weight && s.weight > 0) || (s.reps && s.reps > 0)).map(s => ({
         setNumber: s.setNumber,
         weight: s.weight,
         reps: s.reps,

@@ -61,6 +61,7 @@ type AnalysisState =
 export default function CameraScreen() {
   const colors = useColors();
   const { t, language } = useI18n();
+  const isEn = language === 'en';
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [analysisState, setAnalysisState] = useState<AnalysisState>({ status: "idle" });
   const [isSaving, setIsSaving] = useState(false);
@@ -423,10 +424,10 @@ export default function CameraScreen() {
 
             {/* Meal Type Selector */}
             <View style={[styles.mealSelectorCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[{ fontSize: 14, fontWeight: "700", marginBottom: 8 }, { color: colors.foreground }]}>選擇餐別</Text>
+              <Text style={[{ fontSize: 14, fontWeight: "700", marginBottom: 8 }, { color: colors.foreground }]}>{isEn ? 'Select Meal' : '選擇餐別'}</Text>
               <View style={{ flexDirection: "row", gap: 8 }}>
                 {(["breakfast", "lunch", "dinner"] as const).map((mt) => {
-                  const labels = { breakfast: "🌅 早餐", lunch: "☀️ 午餐", dinner: "🌙 晚餐" };
+                  const labels = { breakfast: isEn ? "🌅 Breakfast" : "🌅 早餐", lunch: isEn ? "☀️ Lunch" : "☀️ 午餐", dinner: isEn ? "🌙 Dinner" : "🌙 晚餐" };
                   const isSelected = selectedMealType === mt;
                   return (
                     <TouchableOpacity
@@ -554,15 +555,15 @@ export default function CameraScreen() {
           const dinnerLog = logs.find((l: any) => l.mealType === "dinner");
           const allMealsRecorded = !!(breakfastLog && lunchLog && dinnerLog);
           const meals = [
-            { key: "breakfast", emoji: "🌅", label: "早餐", log: breakfastLog },
-            { key: "lunch", emoji: "☀️", label: "午餐", log: lunchLog },
-            { key: "dinner", emoji: "🌙", label: "晚餐", log: dinnerLog },
+            { key: "breakfast", emoji: "🌅", label: isEn ? "Breakfast" : "早餐", log: breakfastLog },
+            { key: "lunch", emoji: "☀️", label: isEn ? "Lunch" : "午餐", log: lunchLog },
+            { key: "dinner", emoji: "🌙", label: isEn ? "Dinner" : "晚餐", log: dinnerLog },
           ];
           return (
             <View style={[styles.mealBoxesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.mealBoxesTitle, { color: colors.foreground }]}>今日三餐</Text>
+              <Text style={[styles.mealBoxesTitle, { color: colors.foreground }]}>{isEn ? "Today's Meals" : "今日三餐"}</Text>
               <Text style={[styles.mealBoxesSubtitle, { color: colors.muted }]}>
-                拍完早午晚三餐即可解鎖分享功能
+                {isEn ? 'Complete all 3 meals to unlock sharing' : '拍完早午晚三餐即可解鎖分享功能'}
               </Text>
               <View style={styles.mealBoxesRow}>
                 {meals.map((m) => (
@@ -578,7 +579,7 @@ export default function CameraScreen() {
                     {m.log ? (
                       <Text style={[styles.mealBoxKcal, { color: colors.primary }]}>{m.log.calories} kcal</Text>
                     ) : (
-                      <Text style={[styles.mealBoxEmpty, { color: colors.muted }]}>未記錄</Text>
+                      <Text style={[styles.mealBoxEmpty, { color: colors.muted }]}>{isEn ? 'None' : '未記錄'}</Text>
                     )}
                   </View>
                 ))}
@@ -589,11 +590,11 @@ export default function CameraScreen() {
                   onPress={() => setShowShareCard(true)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.shareBtnText}>📸 分享今日操野成果</Text>
+                  <Text style={styles.shareBtnText}>{isEn ? '📸 Share Today\'s Results' : '📸 分享今日操野成果'}</Text>
                 </TouchableOpacity>
               ) : (
                 <View style={[styles.shareBtnLocked, { borderColor: colors.border }]}>
-                  <Text style={[styles.shareBtnLockedText, { color: colors.muted }]}>🔒 完成三餐記錄後解鎖分享</Text>
+                  <Text style={[styles.shareBtnLockedText, { color: colors.muted }]}>{isEn ? '🔒 Complete all meals to unlock sharing' : '🔒 完成三餐記錄後解鎖分享'}</Text>
                 </View>
               )}
             </View>
@@ -793,11 +794,11 @@ export default function CameraScreen() {
           const tFat = logs.reduce((s: number, l: any) => s + (l.fat || 0), 0);
           const tSugar = logs.reduce((s: number, l: any) => s + (l.sugar || 0), 0);
           const maxMacro = Math.max(tProtein, tCarbs, tFat, 1);
-          const monsterName = cameraMonster?.name || cameraMonster?.type || "我的怪獸";
+          const monsterName = cameraMonster?.name || cameraMonster?.type || (isEn ? "My Monster" : "我的怪獸");
           const mealItems = [
-            { emoji: "🌅", label: "早餐", log: bLog },
-            { emoji: "☀️", label: "午餐", log: lLog },
-            { emoji: "🌙", label: "晚餐", log: dLog },
+            { emoji: "🌅", label: isEn ? "Breakfast" : "早餐", log: bLog },
+            { emoji: "☀️", label: isEn ? "Lunch" : "午餐", log: lLog },
+            { emoji: "🌙", label: isEn ? "Dinner" : "晚餐", log: dLog },
           ];
           const handleShare = async () => {
             try {
@@ -808,21 +809,23 @@ export default function CameraScreen() {
               if (uri && await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(uri, {
                   mimeType: "image/png",
-                  dialogTitle: `${monsterName} 的今日飲食`,
+                  dialogTitle: isEn ? `${monsterName}'s Daily Diet` : `${monsterName} 的今日飲食`,
                 });
               } else {
                 // Fallback to text share if image capture fails
-                await Share.share({
-                  message: `🍕 ${monsterName} 的今日飲食\n━━━━━━━━━━\n🌅 早餐: ${bLog ? `${bLog.calories} kcal` : "未記錄"}\n☀️ 午餐: ${lLog ? `${lLog.calories} kcal` : "未記錄"}\n🌙 晚餐: ${dLog ? `${dLog.calories} kcal` : "未記錄"}\n━━━━━━━━━━\n🔥 總熱量: ${tCal} kcal\n🧑‍🍳 蛋白質: ${tProtein}g | 碳水: ${tCarbs}g | 脂肪: ${tFat}g${tSugar > 25 ? `\n⚠️ 糖分: ${tSugar}g (超標!)` : `\n🍬 糖分: ${tSugar}g`}\n\n— My Fit Monster 👾`,
-                });
+                const shareMsg = isEn
+                  ? `🍕 ${monsterName}'s Daily Diet\n━━━━━━━━━━\n🌅 Breakfast: ${bLog ? `${bLog.calories} kcal` : "None"}\n☀️ Lunch: ${lLog ? `${lLog.calories} kcal` : "None"}\n🌙 Dinner: ${dLog ? `${dLog.calories} kcal` : "None"}\n━━━━━━━━━━\n🔥 Total: ${tCal} kcal\nProtein: ${tProtein}g | Carbs: ${tCarbs}g | Fat: ${tFat}g${tSugar > 25 ? `\n⚠️ Sugar: ${tSugar}g (Over limit!)` : `\n🍬 Sugar: ${tSugar}g`}\n\n— My Fit Monster 👾`
+                  : `🍕 ${monsterName} 的今日飲食\n━━━━━━━━━━\n🌅 早餐: ${bLog ? `${bLog.calories} kcal` : "未記錄"}\n☀️ 午餐: ${lLog ? `${lLog.calories} kcal` : "未記錄"}\n🌙 晚餐: ${dLog ? `${dLog.calories} kcal` : "未記錄"}\n━━━━━━━━━━\n🔥 總熱量: ${tCal} kcal\n蛋白質: ${tProtein}g | 碳水: ${tCarbs}g | 脂肪: ${tFat}g${tSugar > 25 ? `\n⚠️ 糖分: ${tSugar}g (超標!)` : `\n🍬 糖分: ${tSugar}g`}\n\n— My Fit Monster 👾`;
+                await Share.share({ message: shareMsg });
               }
             } catch (_e) {
               setIsCapturing(false);
               // Fallback to text share
               try {
-                await Share.share({
-                  message: `🍕 ${monsterName} 的今日飲食\n━━━━━━━━━━\n🌅 早餐: ${bLog ? `${bLog.calories} kcal` : "未記錄"}\n☀️ 午餐: ${lLog ? `${lLog.calories} kcal` : "未記錄"}\n🌙 晚餐: ${dLog ? `${dLog.calories} kcal` : "未記錄"}\n━━━━━━━━━━\n🔥 總熱量: ${tCal} kcal\n🧑‍🍳 蛋白質: ${tProtein}g | 碳水: ${tCarbs}g | 脂肪: ${tFat}g${tSugar > 25 ? `\n⚠️ 糖分: ${tSugar}g (超標!)` : `\n🍬 糖分: ${tSugar}g`}\n\n— My Fit Monster 👾`,
-                });
+                const shareMsg = isEn
+                  ? `🍕 ${monsterName}'s Daily Diet\n━━━━━━━━━━\n🌅 Breakfast: ${bLog ? `${bLog.calories} kcal` : "None"}\n☀️ Lunch: ${lLog ? `${lLog.calories} kcal` : "None"}\n🌙 Dinner: ${dLog ? `${dLog.calories} kcal` : "None"}\n━━━━━━━━━━\n🔥 Total: ${tCal} kcal\nProtein: ${tProtein}g | Carbs: ${tCarbs}g | Fat: ${tFat}g${tSugar > 25 ? `\n⚠️ Sugar: ${tSugar}g (Over limit!)` : `\n🍬 Sugar: ${tSugar}g`}\n\n— My Fit Monster 👾`
+                  : `🍕 ${monsterName} 的今日飲食\n━━━━━━━━━━\n🌅 早餐: ${bLog ? `${bLog.calories} kcal` : "未記錄"}\n☀️ 午餐: ${lLog ? `${lLog.calories} kcal` : "未記錄"}\n🌙 晚餐: ${dLog ? `${dLog.calories} kcal` : "未記錄"}\n━━━━━━━━━━\n🔥 總熱量: ${tCal} kcal\n蛋白質: ${tProtein}g | 碳水: ${tCarbs}g | 脂肪: ${tFat}g${tSugar > 25 ? `\n⚠️ 糖分: ${tSugar}g (超標!)` : `\n🍬 糖分: ${tSugar}g`}\n\n— My Fit Monster 👾`;
+                await Share.share({ message: shareMsg });
               } catch (_e2) { /* user cancelled */ }
             }
           };
@@ -854,9 +857,9 @@ export default function CameraScreen() {
                 </View>
                 <View style={styles.shareCardMacros}>
                   {[
-                    { label: "蛋白質", value: tProtein, color: "#4ADE80" },
-                    { label: "碳水", value: tCarbs, color: "#60A5FA" },
-                    { label: "脂肪", value: tFat, color: "#FBBF24" },
+                    { label: isEn ? "Protein" : "蛋白質", value: tProtein, color: "#4ADE80" },
+                    { label: isEn ? "Carbs" : "碳水", value: tCarbs, color: "#60A5FA" },
+                    { label: isEn ? "Fat" : "脂肪", value: tFat, color: "#FBBF24" },
                   ].map((macro, i) => (
                     <View key={i} style={styles.shareCardMacroItem}>
                       <Text style={styles.shareCardMacroLabel}>{macro.label}</Text>
@@ -869,11 +872,11 @@ export default function CameraScreen() {
                 </View>
                 <View style={styles.shareCardKcal}>
                   <Text style={styles.shareCardKcalText}>{tCal}</Text>
-                  <Text style={styles.shareCardKcalUnit}>kcal 總熱量</Text>
+                  <Text style={styles.shareCardKcalUnit}>{isEn ? 'kcal Total' : 'kcal 總熱量'}</Text>
                 </View>
                 {tSugar > 25 && (
                   <View style={styles.shareCardSugar}>
-                    <Text style={styles.shareCardSugarText}>⚠️ 糖分 {tSugar}g 超過建議量!</Text>
+                    <Text style={styles.shareCardSugarText}>{isEn ? `⚠️ Sugar ${tSugar}g over limit!` : `⚠️ 糖分 ${tSugar}g 超過建議量!`}</Text>
                   </View>
                 )}
                 <View style={styles.shareCardBrand}>

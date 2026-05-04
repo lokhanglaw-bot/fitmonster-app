@@ -11,6 +11,7 @@ import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import type { SetType, WorkoutSetData } from "@/types/workout";
 import { SET_TYPE_LABELS } from "@/types/workout";
+import { useI18n } from "@/lib/i18n-context";
 
 interface SetTrackerCardProps {
   exerciseName: string;
@@ -28,6 +29,8 @@ export function SetTrackerCard({
   onRemove,
 }: SetTrackerCardProps) {
   const colors = useColors();
+  const { language } = useI18n();
+  const isEn = language === 'en';
   const [weight, setWeight] = useState(
     lastSessionSet?.weight?.toString() ?? ""
   );
@@ -106,7 +109,7 @@ export function SetTrackerCard({
                   },
                 ]}
               >
-                {SET_TYPE_LABELS[t].zh}
+                {isEn ? SET_TYPE_LABELS[t].en : SET_TYPE_LABELS[t].zh}
               </Text>
             </TouchableOpacity>
           ))}
@@ -123,7 +126,7 @@ export function SetTrackerCard({
       <View style={styles.inputRow}>
         <View style={styles.inputGroup}>
           <Text style={[styles.inputLabel, { color: colors.muted }]}>
-            重量 (kg)
+            {isEn ? 'Weight (kg)' : '重量 (kg)'}
           </Text>
           <TextInput
             style={[
@@ -147,7 +150,7 @@ export function SetTrackerCard({
         <Text style={[styles.separator, { color: colors.muted }]}>×</Text>
 
         <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: colors.muted }]}>次數</Text>
+          <Text style={[styles.inputLabel, { color: colors.muted }]}>{isEn ? 'Reps' : '次數'}</Text>
           <TextInput
             style={[
               styles.input,

@@ -11,6 +11,7 @@ import {
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import { REST_TIMER_PRESETS } from "@/types/workout";
+import { useI18n } from "@/lib/i18n-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -28,6 +29,8 @@ export function RestTimerSheet({
   defaultSeconds = 90,
 }: RestTimerSheetProps) {
   const colors = useColors();
+  const { language } = useI18n();
+  const isEn = language === 'en';
   const [totalSeconds, setTotalSeconds] = useState(defaultSeconds);
   const [remaining, setRemaining] = useState(defaultSeconds);
   const [isRunning, setIsRunning] = useState(false);
@@ -113,7 +116,7 @@ export function RestTimerSheet({
           {/* Header */}
           <View style={styles.handle} />
           <Text style={[styles.title, { color: colors.foreground }]}>
-            ⏱️ 休息計時器
+            ⏱️ {isEn ? 'Rest Timer' : '休息計時器'}
           </Text>
 
           {/* Timer display */}
@@ -219,7 +222,7 @@ export function RestTimerSheet({
                       },
                     ]}
                   >
-                    {preset.label}
+                    {isEn ? preset.en : preset.zh}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -232,7 +235,7 @@ export function RestTimerSheet({
             activeOpacity={0.7}
           >
             <Text style={[styles.skipBtnText, { color: colors.muted }]}>
-              跳過休息
+              {isEn ? 'Skip Rest' : '跳過休息'}
             </Text>
           </TouchableOpacity>
         </View>

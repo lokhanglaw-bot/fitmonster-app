@@ -166,7 +166,8 @@ type RPSBattleState = {
 export default function BattleScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { t, tr } = useI18n();
+  const { t, tr, language } = useI18n();
+  const isEn = language === 'en';
   const { state: activityState } = useActivity();
   const { state: caringState } = useCaring();
   const { user } = useAuthContext();
@@ -756,7 +757,7 @@ export default function BattleScreen() {
               activeOpacity={0.7}
             >
               <Text style={{ fontSize: 16 }}>📡</Text>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>附近玩家</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{isEn ? 'Nearby' : '附近玩家'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}
@@ -764,7 +765,7 @@ export default function BattleScreen() {
               activeOpacity={0.7}
             >
               <Text style={{ fontSize: 16 }}>🏆</Text>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>實體挑戰</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{isEn ? 'Arena' : '實體挑戰'}</Text>
             </TouchableOpacity>
           </View>
 

@@ -27,11 +27,11 @@ export const SET_TYPE_LABELS: Record<SetType, { en: string; zh: string; color: s
 };
 
 // v2.0 Rest Timer Presets
-export const REST_TIMER_PRESETS: Record<string, { seconds: number; label: string }> = {
-  strength: { seconds: 90, label: '力量 90s' },
-  hypertrophy: { seconds: 60, label: '增肌 60s' },
-  superset: { seconds: 30, label: '超級組 30s' },
-  custom: { seconds: 0, label: '自訂' },
+export const REST_TIMER_PRESETS: Record<string, { seconds: number; en: string; zh: string }> = {
+  strength: { seconds: 90, en: 'Strength 90s', zh: '力量 90s' },
+  hypertrophy: { seconds: 60, en: 'Hypertrophy 60s', zh: '增肌 60s' },
+  superset: { seconds: 30, en: 'Superset 30s', zh: '超級組 30s' },
+  custom: { seconds: 0, en: 'Custom', zh: '自訂' },
 };
 
 export interface Exercise {

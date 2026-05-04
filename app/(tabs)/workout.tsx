@@ -53,30 +53,54 @@ function computePersonalRecords(logs: WorkoutLogEntry[]): PersonalRecord[] {
   const prMap: Record<string, PersonalRecord> = {};
 
   for (const log of logs) {
-    if (!log.exercises) continue;
-    for (const ex of log.exercises) {
-      const key = ex.exerciseName;
-      if (!prMap[key]) {
-        prMap[key] = {
-          exerciseName: ex.exerciseName,
-          exerciseNameZh: ex.exerciseNameZh,
-          maxWeight: 0,
-          maxReps: 0,
-          maxVolume: 0,
-          lastDate: log.timestamp,
-        };
+    // Handle logs with detailed exercises array
+    if (log.exercises && log.exercises.length > 0) {
+      for (const ex of log.exercises) {
+        const key = ex.exerciseName;
+        if (!prMap[key]) {
+          prMap[key] = {
+            exerciseName: ex.exerciseName,
+            exerciseNameZh: ex.exerciseNameZh,
+            maxWeight: 0,
+            maxReps: 0,
+            maxVolume: 0,
+            lastDate: log.timestamp,
+          };
+        }
+        for (const set of ex.sets) {
+          const w = set.weight || 0;
+          const r = set.reps || 0;
+          if (w > prMap[key].maxWeight) prMap[key].maxWeight = w;
+          if (r > prMap[key].maxReps) prMap[key].maxReps = r;
+          const vol = w * r;
+          if (vol > prMap[key].maxVolume) prMap[key].maxVolume = vol;
+        }
+        prMap[key].lastDate = log.timestamp;
       }
-      for (const set of ex.sets) {
-        if ((set.weight || 0) > prMap[key].maxWeight) prMap[key].maxWeight = set.weight || 0;
-        if ((set.reps || 0) > prMap[key].maxReps) prMap[key].maxReps = set.reps || 0;
-        const vol = (set.weight || 0) * (set.reps || 0);
-        if (vol > prMap[key].maxVolume) prMap[key].maxVolume = vol;
+    } else if (log.exercise && log.totalVolume) {
+      // Handle legacy logs without exercises array but with volume data
+      // Parse exercise names from comma-separated string
+      const names = log.exercise.split(", ").filter(Boolean);
+      for (const name of names) {
+        const key = name;
+        if (!prMap[key]) {
+          prMap[key] = {
+            exerciseName: name,
+            maxWeight: 0,
+            maxReps: 0,
+            maxVolume: 0,
+            lastDate: log.timestamp,
+          };
+        }
+        prMap[key].lastDate = log.timestamp;
       }
-      prMap[key].lastDate = log.timestamp;
     }
   }
 
-  return Object.values(prMap).sort((a, b) => b.maxWeight - a.maxWeight);
+  // Filter out records with no actual weight/reps data
+  return Object.values(prMap)
+    .filter(pr => pr.maxWeight > 0 || pr.maxReps > 0 || pr.maxVolume > 0)
+    .sort((a, b) => b.maxWeight - a.maxWeight);
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -350,7 +374,11 @@ export default function WorkoutScreen() {
               {selectedDateLogs.map((log, idx) => (
                 <View key={log.id || idx} style={[styles.dayLogItem, { borderColor: colors.border }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.dayLogName, { color: colors.foreground }]}>{log.exercise}</Text>
+                    <Text style={[styles.dayLogName, { color: colors.foreground }]}>
+                      {log.exercises && log.exercises.length > 0
+                        ? log.exercises.map(ex => language === "zh" ? (ex.exerciseNameZh || ex.exerciseName) : ex.exerciseName).join(", ")
+                        : log.exercise}
+                    </Text>
                     <Text style={[styles.dayLogMeta, { color: colors.muted }]}>
                       {log.duration} {language === "zh" ? "分鐘" : "min"}
                       {log.totalVolume ? ` · ${log.totalVolume.toLocaleString()} kg` : ""}
