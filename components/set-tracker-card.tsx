@@ -115,9 +115,14 @@ export function SetTrackerCard({
           ))}
         </View>
 
-        {onRemove && !completed && (
-          <TouchableOpacity onPress={onRemove} style={styles.removeBtn}>
-            <Text style={{ color: "#EF4444", fontSize: 16 }}>✕</Text>
+        {onRemove && (
+          <TouchableOpacity
+            onPress={onRemove}
+            style={styles.removeBtn}
+            activeOpacity={0.6}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={{ color: "#EF4444", fontSize: 18, fontWeight: "700" }}>✕</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -256,7 +261,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   removeBtn: {
-    padding: 4,
+    padding: 8,
+    marginLeft: 4,
   },
   inputRow: {
     flexDirection: "row",

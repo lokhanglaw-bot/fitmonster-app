@@ -384,8 +384,13 @@ export default function WorkoutSetsScreen() {
                 <Text style={[styles.blockName, { color: colors.foreground }]}>
                   {language === "zh" ? (block.exerciseNameZh || block.exerciseName) : block.exerciseName}
                 </Text>
-                <TouchableOpacity onPress={() => handleRemoveBlock(blockIdx)} style={{ padding: 4 }}>
-                  <Text style={{ color: "#EF4444", fontSize: 14 }}>✕</Text>
+                <TouchableOpacity
+                  onPress={() => handleRemoveBlock(blockIdx)}
+                  style={{ padding: 8 }}
+                  activeOpacity={0.6}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={{ color: "#EF4444", fontSize: 18, fontWeight: "700" }}>✕</Text>
                 </TouchableOpacity>
               </View>
 
