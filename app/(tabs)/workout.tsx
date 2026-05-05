@@ -381,22 +381,30 @@ export default function WorkoutScreen() {
                     </Text>
                     <Text style={[styles.dayLogMeta, { color: colors.muted }]}>
                       {log.duration} {language === "zh" ? "分鐘" : "min"}
-                      {log.totalVolume ? ` · ${log.totalVolume.toLocaleString()} kg` : ""}
+                      {log.totalVolume ? ` · ${Math.round(log.totalVolume).toLocaleString()} kg` : ""}
                       {log.totalSets ? ` · ${log.totalSets} ${language === "zh" ? "組" : "sets"}` : ""}
                     </Text>
-                    {/* Show exercise details if available */}
-                    {log.exercises && log.exercises.map((ex, exIdx) => (
+                    {/* Show full exercise details with all sets */}
+                    {log.exercises && log.exercises.length > 0 && log.exercises.map((ex, exIdx) => (
                       <View key={exIdx} style={styles.dayExDetail}>
                         <Text style={[styles.dayExName, { color: colors.foreground }]}>
                           {language === "zh" ? (ex.exerciseNameZh || ex.exerciseName) : ex.exerciseName}
+                          {ex.category ? ` (${ex.category})` : ""}
                         </Text>
-                        {ex.sets.map((set, sIdx) => (
-                          <Text key={sIdx} style={[styles.daySetText, { color: colors.muted }]}>
-                            {language === "zh" ? "第" : "Set "}{set.setNumber}{language === "zh" ? "組: " : ": "}
-                            {set.weight ? `${set.weight}kg` : "—"} × {set.reps || "—"}
-                            {set.rpe ? ` @RPE${set.rpe}` : ""}
-                          </Text>
-                        ))}
+                        {ex.sets.map((set, sIdx) => {
+                          const setTypeLabel = set.setType === "warmup" ? (language === "zh" ? "熱身" : "W")
+                            : set.setType === "failure" ? (language === "zh" ? "力竭" : "F")
+                            : set.setType === "drop" ? (language === "zh" ? "遞減" : "D")
+                            : set.setType === "superset" ? (language === "zh" ? "超級組" : "SS")
+                            : "";
+                          return (
+                            <Text key={sIdx} style={[styles.daySetText, { color: colors.muted }]}>
+                              {language === "zh" ? "第" : "Set "}{set.setNumber}{language === "zh" ? "組" : ""}
+                              {setTypeLabel ? ` [${setTypeLabel}]` : ""}: {set.weight ? `${set.weight}kg` : "—"} × {set.reps || "—"}{language === "zh" ? "次" : " reps"}
+                              {set.rpe ? ` @RPE${set.rpe}` : ""}
+                            </Text>
+                          );
+                        })}
                       </View>
                     ))}
                   </View>

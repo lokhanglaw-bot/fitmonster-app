@@ -1494,3 +1494,7 @@
 
 ## Round 144b — Share Card Brand Layout Fix
 - [x] Fix share card bottom: logo image on left, "My Fit Monster" text on right (not full-width image only)
+
+## Round 145 — Workout PR Auto-Track + Calendar Detail
+- [x] Personal Records auto-tracks heaviest weight per exercise across all workout logs
+- [x] Calendar day detail shows full workout data (all sets, weights, reps, set types) not just exercise name and time

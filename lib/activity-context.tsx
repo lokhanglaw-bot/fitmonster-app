@@ -181,12 +181,15 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
       return addEvolutionExp(foodResult, expEarned);
     }
     case "LOG_WORKOUT": {
-      const { exercise, duration, expEarned } = action.payload;
+      const { exercise, duration, expEarned, totalVolume, totalSets, exercises } = action.payload;
       const caloriesBurned = Math.round(duration * 7.5); // rough estimate
       const entry: WorkoutLogEntry = {
         id: `workout-${Date.now()}`,
         exercise, duration, expEarned,
         timestamp: getLocalTimestamp(),
+        totalVolume,
+        totalSets,
+        exercises,
       };
       const workoutResult = {
         ...state,
