@@ -535,8 +535,9 @@ export default function HomeScreen() {
       const protein = aiAnalysisResult.totalProtein || 0;
       const carbs = aiAnalysisResult.totalCarbs || 0;
       const fat = aiAnalysisResult.totalFat || 0;
+      const sugar = aiAnalysisResult.totalAddedSugar || aiAnalysisResult.totalSugar || 0;
       const exp = Math.round(calories * 0.05);
-      logFood({ name: recordName.trim(), calories, protein, carbs, fat, sugar: 0, expEarned: exp });
+      logFood({ name: recordName.trim(), calories, protein, carbs, fat, sugar, expEarned: exp });
       // Auto-feed monster via caring system
       caringFeedMonster(calories, protein, carbs, fat, "meal").then((result) => {
         if (result) {

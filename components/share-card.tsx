@@ -11,6 +11,7 @@ import { useColors } from "@/hooks/use-colors";
 import { LinearGradient } from "expo-linear-gradient";
 import type { NutritionInfo, FoodLabel } from "@/types/nutrition";
 import { getFoodLabels } from "@/types/nutrition";
+import { useI18n } from "@/lib/i18n-context";
 
 const LABEL_COLORS: Record<string, { bg: string; text: string }> = {
   green: { bg: "#DCFCE7", text: "#166534" },
@@ -52,32 +53,34 @@ export function ShareCard({
   date,
 }: ShareCardProps) {
   const colors = useColors();
+  const { language } = useI18n();
+  const isEn = language === 'en';
   const foodLabels = nutrition ? getFoodLabels(nutrition) : [];
-  const dateStr = date ?? new Date().toLocaleDateString("zh-TW");
+  const dateStr = date ?? new Date().toLocaleDateString(isEn ? "en-US" : "zh-TW");
 
   const handleShare = useCallback(async () => {
     let message = "";
     if (type === "food") {
       message = `🍽️ ${title}\n`;
       if (nutrition) {
-        message += `🔥 ${nutrition.calories} kcal | 🥩 ${nutrition.protein}g 蛋白質\n`;
+        message += `🔥 ${nutrition.calories} kcal | 🥩 ${nutrition.protein}g ${isEn ? 'Protein' : '蛋白質'}\n`;
         if (nutrition.addedSugar !== undefined) {
-          message += `🍬 添加糖 ${nutrition.addedSugar}g\n`;
+          message += `🍬 ${isEn ? 'Sugar' : '添加糖'} ${nutrition.addedSugar}g\n`;
         }
       }
       if (healthScore) {
-        message += `💚 健康分數: ${healthScore}/10\n`;
+        message += `💚 ${isEn ? 'Health Score' : '健康分數'}: ${healthScore}/10\n`;
       }
     } else {
       message = `💪 ${title}\n`;
-      if (duration) message += `⏱️ ${duration} 分鐘\n`;
+      if (duration) message += `⏱️ ${duration} ${isEn ? 'min' : '分鐘'}\n`;
       if (calories) message += `🔥 ${calories} kcal\n`;
-      if (prCount && prCount > 0) message += `🏆 ${prCount} 個新 PR!\n`;
+      if (prCount && prCount > 0) message += `🏆 ${prCount} ${isEn ? 'New PRs!' : '個新 PR!'}\n`;
     }
     if (monsterName) {
-      message += `\n${monsterEmoji ?? "🐾"} ${monsterName} 的訓練師\n`;
+      message += `\n${monsterEmoji ?? "🐾"} ${isEn ? `${monsterName}'s Trainer` : `${monsterName} 的訓練師`}\n`;
     }
-    message += `📅 ${dateStr}\n\n#FitMonster #健身怪獸`;
+    message += `📅 ${dateStr}\n\n#FitMonster ${isEn ? '#Fitness' : '#健身怪獸'}`;
 
     try {
       await Share.share({ message });
@@ -117,15 +120,15 @@ export function ShareCard({
             </View>
             <View style={[styles.nutritionItem, { backgroundColor: "rgba(255,255,255,0.7)" }]}>
               <Text style={styles.nutritionValue}>{nutrition.protein}g</Text>
-              <Text style={styles.nutritionLabel}>蛋白質</Text>
+              <Text style={styles.nutritionLabel}>{isEn ? 'Protein' : '蛋白質'}</Text>
             </View>
             <View style={[styles.nutritionItem, { backgroundColor: "rgba(255,255,255,0.7)" }]}>
               <Text style={styles.nutritionValue}>{nutrition.carbs}g</Text>
-              <Text style={styles.nutritionLabel}>碳水</Text>
+              <Text style={styles.nutritionLabel}>{isEn ? 'Carbs' : '碳水'}</Text>
             </View>
             <View style={[styles.nutritionItem, { backgroundColor: "rgba(255,255,255,0.7)" }]}>
               <Text style={styles.nutritionValue}>{nutrition.fat}g</Text>
-              <Text style={styles.nutritionLabel}>脂肪</Text>
+              <Text style={styles.nutritionLabel}>{isEn ? 'Fat' : '脂肪'}</Text>
             </View>
           </View>
         )}
@@ -155,7 +158,7 @@ export function ShareCard({
             {duration !== undefined && (
               <View style={[styles.nutritionItem, { backgroundColor: "rgba(255,255,255,0.7)" }]}>
                 <Text style={styles.nutritionValue}>{duration}</Text>
-                <Text style={styles.nutritionLabel}>分鐘</Text>
+                <Text style={styles.nutritionLabel}>{isEn ? 'min' : '分鐘'}</Text>
               </View>
             )}
             {calories !== undefined && (
@@ -167,7 +170,7 @@ export function ShareCard({
             {prCount !== undefined && prCount > 0 && (
               <View style={[styles.nutritionItem, { backgroundColor: "rgba(255,255,255,0.7)" }]}>
                 <Text style={styles.nutritionValue}>🏆 {prCount}</Text>
-                <Text style={styles.nutritionLabel}>新 PR</Text>
+                <Text style={styles.nutritionLabel}>{isEn ? 'New PR' : '新 PR'}</Text>
               </View>
             )}
           </View>
@@ -176,7 +179,7 @@ export function ShareCard({
         {/* Health score */}
         {healthScore !== undefined && (
           <View style={styles.scoreRow}>
-            <Text style={styles.scoreLabel}>健康分數</Text>
+            <Text style={styles.scoreLabel}>{isEn ? 'Health Score' : '健康分數'}</Text>
             <View style={styles.scoreBar}>
               <View
                 style={[
@@ -201,7 +204,7 @@ export function ShareCard({
         {monsterName && (
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              {monsterEmoji ?? "🐾"} {monsterName} 的訓練師
+              {monsterEmoji ?? "🐾"} {isEn ? `${monsterName}'s Trainer` : `${monsterName} 的訓練師`}
             </Text>
           </View>
         )}
@@ -213,7 +216,7 @@ export function ShareCard({
         style={styles.shareBtn}
         activeOpacity={0.7}
       >
-        <Text style={styles.shareBtnText}>📤 分享</Text>
+        <Text style={styles.shareBtnText}>{isEn ? '📤 Share' : '📤 分享'}</Text>
       </TouchableOpacity>
     </View>
   );

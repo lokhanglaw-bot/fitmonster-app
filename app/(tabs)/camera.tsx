@@ -39,6 +39,7 @@ type FoodItem = {
   carbs: number;
   fat: number;
   fiber: number;
+  addedSugar?: number;
 };
 
 type AnalysisResult = {
@@ -47,9 +48,12 @@ type AnalysisResult = {
   totalProtein: number;
   totalCarbs: number;
   totalFat: number;
+  totalSugar?: number;
+  totalAddedSugar?: number;
   mealType: "breakfast" | "lunch" | "dinner" | "snack";
   healthScore: number;
   summary: string;
+  sugarWarning?: string | null;
 };
 
 type AnalysisState =
@@ -205,7 +209,7 @@ export default function CameraScreen() {
       protein: analysis.totalProtein,
       carbs: analysis.totalCarbs,
       fat: analysis.totalFat,
-      sugar: (analysis as any).totalSugar || 0,
+      sugar: analysis.totalAddedSugar || (analysis as any).totalSugar || 0,
       expEarned,
       mealType: selectedMealType,
       imageUri: imageUrl || selectedImageUri || undefined,
@@ -470,8 +474,21 @@ export default function CameraScreen() {
                   <Text style={[styles.totalValue, { color: "#8B5CF6" }]}>{analysisState.analysis.totalFat}g</Text>
                   <Text style={[styles.totalLabel, { color: colors.muted }]}>{t.fatShort}</Text>
                 </View>
+                {(analysisState.analysis.totalAddedSugar !== undefined && analysisState.analysis.totalAddedSugar > 0) && (
+                  <View style={[styles.totalItem, { backgroundColor: "#FFF7ED" }]}>
+                    <Text style={styles.totalEmoji}>🍬</Text>
+                    <Text style={[styles.totalValue, { color: "#EA580C" }]}>{analysisState.analysis.totalAddedSugar}g</Text>
+                    <Text style={[styles.totalLabel, { color: colors.muted }]}>{isEn ? 'Sugar' : '糖分'}</Text>
+                  </View>
+                )}
               </View>
             </View>
+
+            {analysisState.analysis.sugarWarning && (
+              <View style={{ backgroundColor: "#FFF7ED", borderColor: "#FB923C", borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 12 }}>
+                <Text style={{ color: "#EA580C", fontSize: 13, fontWeight: "600" }}>🍬 {analysisState.analysis.sugarWarning}</Text>
+              </View>
+            )}
 
             <View style={[styles.healthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.healthTitle, { color: colors.foreground }]}>{t.healthScore}</Text>
@@ -788,11 +805,11 @@ export default function CameraScreen() {
           const bLog = logs.find((l: any) => l.mealType === "breakfast");
           const lLog = logs.find((l: any) => l.mealType === "lunch");
           const dLog = logs.find((l: any) => l.mealType === "dinner");
-          const tCal = logs.reduce((s: number, l: any) => s + (l.calories || 0), 0);
-          const tProtein = logs.reduce((s: number, l: any) => s + (l.protein || 0), 0);
-          const tCarbs = logs.reduce((s: number, l: any) => s + (l.carbs || 0), 0);
-          const tFat = logs.reduce((s: number, l: any) => s + (l.fat || 0), 0);
-          const tSugar = logs.reduce((s: number, l: any) => s + (l.sugar || 0), 0);
+          const tCal = Math.round(logs.reduce((s: number, l: any) => s + (l.calories || 0), 0));
+          const tProtein = Math.round(logs.reduce((s: number, l: any) => s + (l.protein || 0), 0));
+          const tCarbs = Math.round(logs.reduce((s: number, l: any) => s + (l.carbs || 0), 0));
+          const tFat = Math.round(logs.reduce((s: number, l: any) => s + (l.fat || 0), 0));
+          const tSugar = Math.round(logs.reduce((s: number, l: any) => s + (l.sugar || 0), 0));
           const maxMacro = Math.max(tProtein, tCarbs, tFat, 1);
           const monsterName = cameraMonster?.name || cameraMonster?.type || (isEn ? "My Monster" : "我的怪獸");
           const mealItems = [
@@ -860,6 +877,7 @@ export default function CameraScreen() {
                     { label: isEn ? "Protein" : "蛋白質", value: tProtein, color: "#4ADE80" },
                     { label: isEn ? "Carbs" : "碳水", value: tCarbs, color: "#60A5FA" },
                     { label: isEn ? "Fat" : "脂肪", value: tFat, color: "#FBBF24" },
+                    { label: isEn ? "Sugar" : "糖分", value: tSugar, color: "#F97316" },
                   ].map((macro, i) => (
                     <View key={i} style={styles.shareCardMacroItem}>
                       <Text style={styles.shareCardMacroLabel}>{macro.label}</Text>
@@ -885,10 +903,10 @@ export default function CameraScreen() {
               </LinearGradient>
               </ViewShot>
               <TouchableOpacity style={[styles.shareCardShareBtn, { opacity: isCapturing ? 0.6 : 1 }]} onPress={handleShare} activeOpacity={0.8} disabled={isCapturing}>
-                <Text style={styles.shareCardShareBtnText}>{isCapturing ? "截圖中..." : "📸 分享圖片"}</Text>
+                <Text style={styles.shareCardShareBtnText}>{isCapturing ? (isEn ? "Capturing..." : "截圖中...") : (isEn ? "📸 Share Image" : "📸 分享圖片")}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.shareCardCloseBtn} onPress={() => setShowShareCard(false)} activeOpacity={0.8}>
-                <Text style={styles.shareCardCloseText}>關閉</Text>
+                <Text style={styles.shareCardCloseText}>{isEn ? "Close" : "關閉"}</Text>
               </TouchableOpacity>
             </View>
           );
@@ -1184,12 +1202,12 @@ const styles = StyleSheet.create({
   shareCardMealBox: { flex: 1, alignItems: "center" as const, gap: 4 },
   shareCardMealImg: { width: 80, height: 80, borderRadius: 12, borderWidth: 2, borderColor: "rgba(255,255,255,0.3)" },
   shareCardMealLabel: { fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: "600" },
-  shareCardMacros: { flexDirection: "row" as const, paddingHorizontal: 20, paddingVertical: 16, gap: 8 },
-  shareCardMacroItem: { flex: 1, alignItems: "center" as const, gap: 4 },
-  shareCardMacroLabel: { fontSize: 11, color: "rgba(255,255,255,0.7)" },
-  shareCardMacroBar: { width: "100%" as const, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.2)" },
-  shareCardMacroFill: { height: "100%" as const, borderRadius: 3 },
-  shareCardMacroValue: { fontSize: 12, color: "#fff", fontWeight: "700" },
+  shareCardMacros: { paddingHorizontal: 20, paddingVertical: 16, gap: 10 },
+  shareCardMacroItem: { flexDirection: "row" as const, alignItems: "center" as const, gap: 8 },
+  shareCardMacroLabel: { fontSize: 12, color: "rgba(255,255,255,0.7)", width: 52 },
+  shareCardMacroBar: { flex: 1, height: 8, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.15)" },
+  shareCardMacroFill: { height: "100%" as const, borderRadius: 4 },
+  shareCardMacroValue: { fontSize: 13, color: "#fff", fontWeight: "700", width: 50, textAlign: "right" as const },
   shareCardMonsterImg: { width: 100, height: 100 },
   shareCardKcal: { alignItems: "center" as const, paddingVertical: 8 },
   shareCardKcalText: { fontSize: 36, fontWeight: "900", color: "#fff" },

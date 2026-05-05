@@ -540,7 +540,7 @@ export default function DashboardScreen() {
               <View style={[styles.progressFill, { width: `${Math.min(((activity.todaySugar || 0) / 25) * 100, 100)}%`, backgroundColor: (activity.todaySugar || 0) > 25 ? colors.error : "#F59E0B" }]} />
             </View>
             {(activity.todaySugar || 0) > 25 && (
-              <Text style={{ color: colors.error, fontSize: 11, marginTop: 4 }}>⚠️ 超過 WHO 建議每日添加糖上限 (25g)</Text>
+              <Text style={{ color: colors.error, fontSize: 11, marginTop: 4 }}>{language === 'en' ? '⚠️ Exceeds WHO daily added sugar limit (25g)' : '⚠️ 超過 WHO 建議每日添加糖上限 (25g)'}</Text>
             )}
           </View>
 

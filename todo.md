@@ -1470,3 +1470,16 @@
 - [x] Fix food/dashboard today's meals section (今日三餐, 早餐/午餐/晚餐, 未記錄, etc.)
 - [x] Fix workout calendar showing Chinese exercise names in English mode
 - [x] Fix Personal Records not showing data from existing workout logs
+
+## Round 143 — Share Card Fix + Sugar Tracking + i18n
+- [x] Fix share card decimal precision overflow (400.1129.2000000000000 → Math.round all values)
+- [x] Fix share card Chinese buttons to bilingual (分享圖片→Share Image, 關閉→Close)
+- [x] Fix share card layout: change from grid to horizontal bar layout to prevent overlap
+- [x] Add sugar (糖分) to share card macros display
+- [x] Add sugar field to food scanner Total Nutrition grid (shows when totalAddedSugar > 0)
+- [x] Add sugar warning display when server returns sugarWarning
+- [x] Fix dashboard sugar not counting from food scans (index.tsx was passing sugar: 0)
+- [x] Fix camera.tsx logFood to pass totalAddedSugar from AI analysis
+- [x] Fix dashboard sugar warning text to bilingual
+- [x] Fix share-card.tsx all Chinese text to bilingual (蛋白質, 碳水, 脂肪, 分鐘, 新PR, 健康分數, 分享, etc.)
+- [x] Add totalSugar/totalAddedSugar to AnalysisResult type definition
