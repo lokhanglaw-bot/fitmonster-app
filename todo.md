@@ -1491,3 +1491,6 @@
 - [x] Remove Nearby and Arena buttons from Battle page
 - [x] Fix share card: "Breakfast" text wrapping to next line (numberOfLines={1} + adjustsFontSizeToFit)
 - [x] Replace share card bottom logo with monster battle image (monster-battle-logo.jpg)
+
+## Round 144b — Share Card Brand Layout Fix
+- [x] Fix share card bottom: logo image on left, "My Fit Monster" text on right (not full-width image only)
