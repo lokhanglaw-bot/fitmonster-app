@@ -868,7 +868,7 @@ export default function CameraScreen() {
                           <Text style={{ fontSize: 28 }}>{m.emoji}</Text>
                         </View>
                       )}
-                      <Text style={styles.shareCardMealLabel}>{m.label}</Text>
+                      <Text style={styles.shareCardMealLabel} numberOfLines={1} adjustsFontSizeToFit>{m.label}</Text>
                     </View>
                   ))}
                 </View>
@@ -898,7 +898,7 @@ export default function CameraScreen() {
                   </View>
                 )}
                 <View style={styles.shareCardBrand}>
-                  <Text style={styles.shareCardBrandText}>👾 My Fit Monster</Text>
+                  <Image source={require('@/assets/images/monster-battle-logo.jpg')} style={styles.shareCardBrandImg} contentFit="cover" />
                 </View>
               </LinearGradient>
               </ViewShot>
@@ -1214,8 +1214,8 @@ const styles = StyleSheet.create({
   shareCardKcalUnit: { fontSize: 14, color: "rgba(255,255,255,0.7)" },
   shareCardSugar: { alignItems: "center" as const, paddingBottom: 12 },
   shareCardSugarText: { fontSize: 16, fontWeight: "700", color: "#FBBF24" },
-  shareCardBrand: { flexDirection: "row" as const, justifyContent: "space-between" as const, alignItems: "center" as const, paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.1)" },
-  shareCardBrandText: { fontSize: 18, fontWeight: "900", color: "#4ADE80" },
+  shareCardBrand: { alignItems: "center" as const, paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.1)" },
+  shareCardBrandImg: { width: "100%" as const, height: 80, borderRadius: 8 },
   shareCardCloseBtn: { marginTop: 20, paddingVertical: 14, paddingHorizontal: 40, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
   shareCardCloseText: { color: "#fff", fontSize: 16, fontWeight: "600" },
   shareCardShareBtn: { marginTop: 16, paddingVertical: 14, paddingHorizontal: 40, borderRadius: 14, backgroundColor: "#22C55E" },

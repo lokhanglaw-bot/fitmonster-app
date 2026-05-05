@@ -1483,3 +1483,11 @@
 - [x] Fix dashboard sugar warning text to bilingual
 - [x] Fix share-card.tsx all Chinese text to bilingual (蛋白質, 碳水, 脂肪, 分鐘, 新PR, 健康分數, 分享, etc.)
 - [x] Add totalSugar/totalAddedSugar to AnalysisResult type definition
+
+## Round 144 — Set Tracker Fix + Battle UI + Share Card
+- [x] Fix Set Tracker: selecting exercise from list has no response
+- [x] Fix Set Tracker: search input has no response / doesn't filter
+- [x] Fix Set Tracker: keyboard blocks the exercise list (need KeyboardAvoidingView)
+- [x] Remove Nearby and Arena buttons from Battle page
+- [x] Fix share card: "Breakfast" text wrapping to next line (numberOfLines={1} + adjustsFontSizeToFit)
+- [x] Replace share card bottom logo with monster battle image (monster-battle-logo.jpg)
