@@ -1524,3 +1524,9 @@
 
 ## Round 150 — Update Website Screenshots
 - [x] Replace all old screenshots with 12 new ones on the landing page (Home, Food Scanner, Share Card, Dashboard, Workout, Exercises, Set Tracker, Rest Timer, Battle, Nearby, Chat, Monster Care)
+
+## Round 151 — Permanent Landing Page Deployment
+- [x] Integrate landing page into fitmonster-app server (served at /landing route via express.static)
+- [x] Copy all landing page assets (screenshots, monsters, images) to public/landing/
+- [x] Add path import to server core index.ts
+- [x] Verified all assets return 200 OK via API server

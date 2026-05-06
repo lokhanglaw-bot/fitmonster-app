@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Fit Monster — Your Fitness Adventure Awaits</title>
+  <meta name="description" content="Turn your fitness journey into a monster-raising adventure. AI food scanning, workout tracking, monster battles, and more.">
+  <meta property="og:title" content="My Fit Monster">
+  <meta property="og:description" content="Raise your monster through real workouts and healthy eating.">
+  <meta property="og:image" content="assets/images/app-icon.png">
+  <link rel="icon" type="image/png" href="assets/images/app-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+TC:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="#" class="nav-logo">
+        <img src="assets/images/app-icon.png" alt="My Fit Monster" class="nav-logo-img">
+        <span class="nav-logo-text">My Fit Monster</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features" data-en="Features" data-zh="功能特色">Features</a>
+        <a href="#monsters" data-en="Monsters" data-zh="怪獸圖鑑">Monsters</a>
+        <a href="#screenshots" data-en="Screenshots" data-zh="截圖預覽">Screenshots</a>
+        <a href="#download" data-en="Download" data-zh="下載">Download</a>
+        <button class="lang-toggle" id="langToggle" onclick="toggleLang()">
+          <span class="lang-icon">🌐</span>
+          <span id="langLabel">中文</span>
+        </button>
+      </div>
+      <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+      <a href="#features" onclick="closeMobileMenu()" data-en="Features" data-zh="功能特色">Features</a>
+      <a href="#monsters" onclick="closeMobileMenu()" data-en="Monsters" data-zh="怪獸圖鑑">Monsters</a>
+      <a href="#screenshots" onclick="closeMobileMenu()" data-en="Screenshots" data-zh="截圖預覽">Screenshots</a>
+      <a href="#download" onclick="closeMobileMenu()" data-en="Download" data-zh="下載">Download</a>
+      <button class="lang-toggle mobile-lang" onclick="toggleLang()">
+        <span class="lang-icon">🌐</span>
+        <span id="langLabelMobile">中文</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero" id="hero">
+    <div class="hero-bg-shapes">
+      <div class="shape shape-1"></div>
+      <div class="shape shape-2"></div>
+      <div class="shape shape-3"></div>
+    </div>
+    <div class="hero-container">
+      <div class="hero-content">
+        <div class="hero-badge" data-en="Free on App Store" data-zh="App Store 免費下載">Free on App Store</div>
+        <h1 class="hero-title">
+          <span data-en="Your Fitness" data-zh="你的健身">Your Fitness</span><br>
+          <span class="hero-title-highlight" data-en="Adventure Awaits" data-zh="冒險旅程">Adventure Awaits</span>
+        </h1>
+        <p class="hero-subtitle" data-en="Turn every workout, every meal, and every step into an exciting monster-raising journey. Your monster grows stronger as you get fitter." data-zh="將每一次訓練、每一餐飲食、每一步行走，化為刺激的怪獸養成冒險。你越健康，你的怪獸就越強大。">Turn every workout, every meal, and every step into an exciting monster-raising journey. Your monster grows stronger as you get fitter.</p>
+        <div class="hero-cta">
+          <a href="https://apps.apple.com/hk/app/my-fit-monster/id6759150998" target="_blank" class="cta-button primary">
+            <svg class="apple-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            <div>
+              <span class="cta-small" data-en="Download on the" data-zh="下載自">Download on the</span>
+              <span class="cta-big">App Store</span>
+            </div>
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat">
+            <span class="stat-number">5.0</span>
+            <span class="stat-label" data-en="App Store Rating" data-zh="App Store 評分">App Store Rating</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <span class="stat-number" data-en="Free" data-zh="免費">Free</span>
+            <span class="stat-label" data-en="No In-App Purchases" data-zh="無內購項目">No In-App Purchases</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <span class="stat-number">6</span>
+            <span class="stat-label" data-en="Monster Types" data-zh="怪獸種類">Monster Types</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="phone-mockup">
+          <div class="phone-frame">
+            <img src="assets/screenshots/app-screenshot-home.png" alt="My Fit Monster Home Screen" class="phone-screen">
+          </div>
+        </div>
+        <div class="floating-monsters">
+          <img src="assets/monsters/bodybuilder-stage1-happy.png" alt="Bodybuilder Monster" class="float-monster float-1">
+          <img src="assets/monsters/physique-stage1-happy.png" alt="Physique Monster" class="float-monster float-2">
+          <img src="assets/monsters/powerlifter-stage1-happy.png" alt="Powerlifter Monster" class="float-monster float-3">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features" id="features">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-tag" data-en="Why My Fit Monster?" data-zh="為什麼選擇 My Fit Monster？">Why My Fit Monster?</span>
+        <h2 class="section-title" data-en="Fitness Meets Gaming" data-zh="當健身遇上遊戲">Fitness Meets Gaming</h2>
+        <p class="section-desc" data-en="We combined real fitness tracking with addictive monster-raising mechanics. The result? A fitness app you'll actually want to use every day." data-zh="我們將真實的健身追蹤與令人上癮的怪獸養成機制結合。結果？一款你每天都想打開的健身 App。">We combined real fitness tracking with addictive monster-raising mechanics. The result? A fitness app you'll actually want to use every day.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📸</div>
+          <h3 data-en="AI Food Scanner" data-zh="AI 食物掃描">AI Food Scanner</h3>
+          <p data-en="Point your camera at any meal. Our AI instantly identifies the food and calculates calories, protein, carbs, fats, and sugar." data-zh="將相機對準任何餐點，AI 即時辨識食物並計算卡路里、蛋白質、碳水化合物、脂肪和糖分。">Point your camera at any meal. Our AI instantly identifies the food and calculates calories, protein, carbs, fats, and sugar.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💪</div>
+          <h3 data-en="Pro Workout Tracking" data-zh="專業訓練追蹤">Pro Workout Tracking</h3>
+          <p data-en="Log sets, reps, and weights for 55+ exercises. Built-in rest timer, personal records tracking, and monthly training calendar." data-zh="記錄 55+ 種運動的組數、次數和重量。內建休息計時器、個人紀錄追蹤和月度訓練日曆。">Log sets, reps, and weights for 55+ exercises. Built-in rest timer, personal records tracking, and monthly training calendar.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🐉</div>
+          <h3 data-en="Monster Evolution" data-zh="怪獸進化">Monster Evolution</h3>
+          <p data-en="Your monster evolves based on your real fitness data. 6 monster types, 3 evolution stages, and body-type variations that reflect your training style." data-zh="你的怪獸根據真實健身數據進化。6 種怪獸類型、3 個進化階段，以及反映你訓練風格的體型變化。">Your monster evolves based on your real fitness data. 6 monster types, 3 evolution stages, and body-type variations that reflect your training style.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚔️</div>
+          <h3 data-en="PvP Monster Battles" data-zh="PvP 怪獸對戰">PvP Monster Battles</h3>
+          <p data-en="Challenge nearby trainers or match with opponents worldwide. Your monster's combat power is fueled by your real fitness stats." data-zh="挑戰附近的訓練師或與全球對手配對。你的怪獸戰鬥力由你的真實健身數據驅動。">Challenge nearby trainers or match with opponents worldwide. Your monster's combat power is fueled by your real fitness stats.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3 data-en="Smart Dashboard" data-zh="智能儀表板">Smart Dashboard</h3>
+          <p data-en="Track steps, calories, macros, and sugar intake. Weekly trends, calorie charts, and shareable diet cards to show off your progress." data-zh="追蹤步數、卡路里、營養素和糖分攝取。每週趨勢、卡路里圖表，以及可分享的飲食卡片展示你的進步。">Track steps, calories, macros, and sugar intake. Weekly trends, calorie charts, and shareable diet cards to show off your progress.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🗺️</div>
+          <h3 data-en="Social & Nearby" data-zh="社交與附近">Social & Nearby</h3>
+          <p data-en="Discover trainers near you on the map, add friends, chat, and send battle challenges. Fitness is better together." data-zh="在地圖上發現附近的訓練師，添加好友、聊天並發送對戰挑戰。一起健身更有趣。">Discover trainers near you on the map, add friends, chat, and send battle challenges. Fitness is better together.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="how-it-works">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-tag" data-en="Getting Started" data-zh="開始使用">Getting Started</span>
+        <h2 class="section-title" data-en="3 Steps to Start Your Adventure" data-zh="3 步開啟你的冒險">3 Steps to Start Your Adventure</h2>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <div class="step-visual">
+            <img src="assets/monsters/egg.png" alt="Monster Egg" class="step-img">
+          </div>
+          <h3 data-en="Hatch Your Monster" data-zh="孵化你的怪獸">Hatch Your Monster</h3>
+          <p data-en="Choose from 6 unique monster types. Each has different strengths tied to various fitness styles." data-zh="從 6 種獨特怪獸中選擇。每種都有與不同健身風格相關的獨特優勢。">Choose from 6 unique monster types. Each has different strengths tied to various fitness styles.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <div class="step-visual">
+            <img src="assets/monsters/bodybuilder-stage2-happy.png" alt="Training Monster" class="step-img">
+          </div>
+          <h3 data-en="Train & Feed" data-zh="訓練與餵食">Train & Feed</h3>
+          <p data-en="Log workouts, scan meals, and sync your steps. Every real-world action powers up your monster." data-zh="記錄訓練、掃描餐點、同步步數。每一個真實世界的行動都能強化你的怪獸。">Log workouts, scan meals, and sync your steps. Every real-world action powers up your monster.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <div class="step-visual">
+            <img src="assets/monsters/bodybuilder-stage3-happy.png" alt="Evolved Monster" class="step-img">
+          </div>
+          <h3 data-en="Evolve & Battle" data-zh="進化與對戰">Evolve & Battle</h3>
+          <p data-en="Watch your monster evolve into powerful forms. Challenge other trainers and climb the ranks." data-zh="看著你的怪獸進化為強大的形態。挑戰其他訓練師，攀登排名。">Watch your monster evolve into powerful forms. Challenge other trainers and climb the ranks.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Monster Showcase -->
+  <section class="monsters" id="monsters">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-tag" data-en="Monster Collection" data-zh="怪獸圖鑑">Monster Collection</span>
+        <h2 class="section-title" data-en="Meet Your Monsters" data-zh="認識你的怪獸">Meet Your Monsters</h2>
+        <p class="section-desc" data-en="6 unique monster types, each with 3 evolution stages. Your training style shapes how they look and fight." data-zh="6 種獨特怪獸類型，每種有 3 個進化階段。你的訓練風格決定了牠們的外觀和戰鬥方式。">6 unique monster types, each with 3 evolution stages. Your training style shapes how they look and fight.</p>
+      </div>
+      <div class="monster-showcase">
+        <div class="monster-row">
+          <div class="monster-card">
+            <div class="monster-card-bg bg-fire"></div>
+            <img src="assets/monsters/bodybuilder-stage1-happy.png" alt="Thunder Rex" class="monster-img">
+            <div class="monster-info">
+              <h4 data-en="Thunder Rex" data-zh="雷霆暴龍">Thunder Rex</h4>
+              <span class="monster-type" data-en="Bodybuilder" data-zh="健體型">Bodybuilder</span>
+            </div>
+          </div>
+          <div class="monster-card">
+            <div class="monster-card-bg bg-water"></div>
+            <img src="assets/monsters/physique-stage1-happy.png" alt="Aqua Spirit" class="monster-img">
+            <div class="monster-info">
+              <h4 data-en="Aqua Spirit" data-zh="水靈精靈">Aqua Spirit</h4>
+              <span class="monster-type" data-en="Physique" data-zh="體態型">Physique</span>
+            </div>
+          </div>
+          <div class="monster-card">
+            <div class="monster-card-bg bg-earth"></div>
+            <img src="assets/monsters/powerlifter-stage1-happy.png" alt="Iron Titan" class="monster-img">
+            <div class="monster-info">
+              <h4 data-en="Iron Titan" data-zh="鋼鐵巨人">Iron Titan</h4>
+              <span class="monster-type" data-en="Powerlifter" data-zh="力量型">Powerlifter</span>
+            </div>
+          </div>
+        </div>
+        <div class="monster-row">
+          <div class="monster-card">
+            <div class="monster-card-bg bg-flame"></div>
+            <img src="assets/monsters/bodybuilder2-stage1-happy.png" alt="Fire Dragon" class="monster-img">
+            <div class="monster-info">
+              <h4 data-en="Fire Dragon" data-zh="烈焰龍">Fire Dragon</h4>
+              <span class="monster-type" data-en="Bodybuilder II" data-zh="健體型 II">Bodybuilder II</span>
+            </div>
+          </div>
+          <div class="monster-card">
+            <div class="monster-card-bg bg-jade"></div>
+            <img src="assets/monsters/physique2-stage1-happy.png" alt="Jade Fox" class="monster-img">
+            <div class="monster-info">
+              <h4 data-en="Jade Fox" data-zh="翠玉狐">Jade Fox</h4>
+              <span class="monster-type" data-en="Physique II" data-zh="體態型 II">Physique II</span>
+            </div>
+          </div>
+          <div class="monster-card">
+            <div class="monster-card-bg bg-steel"></div>
+            <img src="assets/monsters/powerlifter2-stage1-happy.png" alt="Power Bear" class="monster-img">
+            <div class="monster-info">
+              <h4 data-en="Power Bear" data-zh="力量熊">Power Bear</h4>
+              <span class="monster-type" data-en="Powerlifter II" data-zh="力量型 II">Powerlifter II</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Evolution showcase -->
+      <div class="evolution-showcase">
+        <h3 class="evo-title" data-en="Watch Them Evolve" data-zh="見證牠們進化">Watch Them Evolve</h3>
+        <div class="evo-row">
+          <div class="evo-stage">
+            <img src="assets/monsters/bodybuilder-stage1-happy.png" alt="Stage 1">
+            <span data-en="Stage 1" data-zh="第一階段">Stage 1</span>
+          </div>
+          <div class="evo-arrow">→</div>
+          <div class="evo-stage">
+            <img src="assets/monsters/bodybuilder-stage2-happy.png" alt="Stage 2">
+            <span data-en="Stage 2" data-zh="第二階段">Stage 2</span>
+          </div>
+          <div class="evo-arrow">→</div>
+          <div class="evo-stage">
+            <img src="assets/monsters/bodybuilder-stage3-happy.png" alt="Stage 3">
+            <span data-en="Stage 3" data-zh="第三階段">Stage 3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots Section -->
+  <section class="screenshots" id="screenshots">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-tag" data-en="App Preview" data-zh="App 預覽">App Preview</span>
+        <h2 class="section-title" data-en="See It In Action" data-zh="實際畫面">See It In Action</h2>
+      </div>
+      <div class="screenshots-scroll">
+        <div class="screenshot-item">
+          <img src="assets/screenshots/app-screenshot-home.png" alt="Home Screen" loading="lazy">
+          <span data-en="Home" data-zh="首頁">Home</span>
+        </div>
+        <div class="screenshot-item">
+          <img src="assets/screenshots/app-screenshot-food.png" alt="Food Scanner" loading="lazy">
+          <span data-en="Food Scanner" data-zh="食物掃描">Food Scanner</span>
+        </div>
+        <div class="screenshot-item">
+          <img src="assets/screenshots/app-screenshot-nutrition.png" alt="Share Card" loading="lazy">
+          <span data-en="Share Card" data-zh="分享卡片">Share Card</span>
+        </div>
+        <div class="screenshot-item">
+          <img src="assets/screenshots/app-screenshot-dashboard.png" alt="Dashboard" loading="lazy">
+          <span data-en="Dashboard" data-zh="儀表板">Dashboard</span>
+        </div>
+        <div class="screenshot-item">
+          <img src="assets/screenshots/app-screenshot-workout.png" alt="Workout" loading="lazy">
+          <span data-en="Workout" data-zh="訓練">Workout</span>
+        </div>
+        <div class="screenshot-item">
+          <img src="assets/screenshots/app-screenshot-exercises.png" alt="Exercise List" loading="lazy">
+          <span data-en="Exercises" data-zh="動作列表">Exercises</span>
+        </div>
+        <div class="screenshot-item">
+          <img src="assets/screenshots/app-screenshot-settracker.png" alt="Set Tracker" loading="lazy">
+          <span data-en="Set Tracker" data-zh="組數追蹤">Set Tracker</span>
+        </div>
+        <div class="screenshot-item">
+          <img src="assets/screenshots/app-screenshot-resttimer.png" alt="Rest Timer" loading="lazy">
+          <span data-en="Rest Timer" data-zh="休息計時">Rest Timer</span>
+        </div>
+        <div class="screenshot-item">
+          <img src="assets/screenshots/app-screenshot-battle.png" alt="Battle" loading="lazy">
+          <span data-en="Battle" data-zh="對戰">Battle</span>
+        </div>
+        <div class="screenshot-item">
+          <img src="assets/screenshots/app-screenshot-nearby.png" alt="Nearby Trainers" loading="lazy">
+          <span data-en="Nearby" data-zh="附近玩家">Nearby</span>
+        </div>
+        <div class="screenshot-item">
+          <img src="assets/screenshots/app-screenshot-chat.png" alt="Chat" loading="lazy">
+          <span data-en="Chat" data-zh="聊天">Chat</span>
+        </div>
+        <div class="screenshot-item">
+          <img src="assets/screenshots/app-screenshot-caring.png" alt="Monster Caring" loading="lazy">
+          <span data-en="Monster Care" data-zh="怪獸照顧">Monster Care</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download CTA Section -->
+  <section class="download-cta" id="download">
+    <div class="section-container">
+      <div class="download-content">
+        <div class="download-text">
+          <h2 data-en="Start Your Adventure Today" data-zh="今天就開始你的冒險">Start Your Adventure Today</h2>
+          <p data-en="Your monster is waiting. Download My Fit Monster for free and transform your fitness journey into an epic adventure." data-zh="你的怪獸正在等你。免費下載 My Fit Monster，將你的健身旅程化為史詩冒險。">Your monster is waiting. Download My Fit Monster for free and transform your fitness journey into an epic adventure.</p>
+          <a href="https://apps.apple.com/hk/app/my-fit-monster/id6759150998" target="_blank" class="cta-button primary large">
+            <svg class="apple-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            <div>
+              <span class="cta-small" data-en="Download on the" data-zh="下載自">Download on the</span>
+              <span class="cta-big">App Store</span>
+            </div>
+          </a>
+          <p class="download-note" data-en="Free · iOS 15.1+ · No ads · No in-app purchases" data-zh="免費 · iOS 15.1+ · 無廣告 · 無內購">Free · iOS 15.1+ · No ads · No in-app purchases</p>
+        </div>
+        <div class="download-visual">
+          <img src="assets/monsters/physique-stage3.png" alt="Evolved Monster" class="download-monster">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <img src="assets/images/app-icon.png" alt="My Fit Monster" class="footer-logo">
+          <span class="footer-name">My Fit Monster</span>
+          <p class="footer-tagline" data-en="Raise your fitness monster" data-zh="養成你的健身怪獸">Raise your fitness monster</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <h4 data-en="App" data-zh="應用">App</h4>
+            <a href="https://apps.apple.com/hk/app/my-fit-monster/id6759150998" target="_blank" data-en="Download" data-zh="下載">Download</a>
+            <a href="#features" data-en="Features" data-zh="功能">Features</a>
+            <a href="#screenshots" data-en="Screenshots" data-zh="截圖">Screenshots</a>
+          </div>
+          <div class="footer-col">
+            <h4 data-en="Legal" data-zh="法律">Legal</h4>
+            <a href="#" data-en="Privacy Policy" data-zh="隱私政策">Privacy Policy</a>
+            <a href="#" data-en="Terms of Service" data-zh="服務條款">Terms of Service</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Ken Law. <span data-en="All rights reserved." data-zh="版權所有。">All rights reserved.</span></p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

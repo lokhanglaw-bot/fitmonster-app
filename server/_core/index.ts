@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import path from "path";
 import rateLimit from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
@@ -129,6 +130,12 @@ async function startServer() {
         ].filter(Boolean),
       },
     }]);
+  });
+
+  // Serve landing page at /landing
+  app.use("/landing", express.static(path.join(process.cwd(), "public/landing")));
+  app.get("/landing", (_req, res) => {
+    res.sendFile(path.join(process.cwd(), "public/landing/index.html"));
   });
 
   // Account deletion page (Google Play compliance)
