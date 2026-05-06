@@ -1501,3 +1501,7 @@
 
 ## Round 146 — Set Tracker Delete Button Fix
 - [x] Fix red X delete button in Set Tracker not working (increased touch target, added hitSlop, always visible)
+
+## Round 147 — Monster Type Selection Fix
+- [x] Choose Monster Type modal only shows 3 types (Bodybuilder, Physique, Powerlifter)
+- [x] Selecting a type randomly assigns one of two monsters (BB→Thunder Rex/Fire Dragon, Physique→Aqua Spirit/Jade Fox, PL→Iron Titan/Power Bear)

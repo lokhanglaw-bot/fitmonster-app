@@ -123,14 +123,28 @@ export default function HomeScreen() {
   const isFocused = useIsFocused();
   const { language, setLanguage, t, tr } = useI18n();
 
+  // Only show 3 base types in the selection modal
+  // When user picks one, we randomly assign one of two possible monsters
   const MONSTER_TYPES = [
     { type: "Bodybuilder", icon: "💪", color: "#EF4444", desc: t.bodybuilderDesc, label: t.bodybuilder, gradient: ["#FEE2E2", "#FECACA"] as const },
     { type: "Physique", icon: "🏃", color: "#3B82F6", desc: t.physiqueDesc, label: t.physique, gradient: ["#DBEAFE", "#BFDBFE"] as const },
     { type: "Powerlifter", icon: "🏋️", color: "#F59E0B", desc: t.powerlifterDesc, label: t.powerlifter, gradient: ["#FEF3C7", "#FDE68A"] as const },
+  ];
+
+  // All monster types (including variants) for lookups
+  const ALL_MONSTER_TYPES = [
+    ...MONSTER_TYPES,
     { type: "Bodybuilder2", icon: "🐉", color: "#DC2626", desc: t.bodybuilder2Desc, label: t.bodybuilder2, gradient: ["#FEE2E2", "#FECACA"] as const },
     { type: "Physique2", icon: "🦊", color: "#14B8A6", desc: t.physique2Desc, label: t.physique2, gradient: ["#CCFBF1", "#99F6E4"] as const },
     { type: "Powerlifter2", icon: "🐻", color: "#92400E", desc: t.powerlifter2Desc, label: t.powerlifter2, gradient: ["#FEF3C7", "#FDE68A"] as const },
   ];
+
+  // Random monster assignment: each base type can hatch one of two monsters
+  const MONSTER_RANDOM_MAP: Record<string, string[]> = {
+    Bodybuilder: ["Bodybuilder", "Bodybuilder2"],   // Thunder Rex or Fire Dragon
+    Physique: ["Physique", "Physique2"],             // Aqua Spirit or Jade Fox
+    Powerlifter: ["Powerlifter", "Powerlifter2"],   // Iron Titan or Power Bear
+  };
 
   const AI_DAILY_TASKS = [
     {
@@ -371,8 +385,11 @@ export default function HomeScreen() {
     }
   }, [activeMonsterIdx, monsters, setActiveMonster, tr]);
 
-  const handleSelectType = useCallback((type: string) => {
-    setSelectedType(type);
+  const handleSelectType = useCallback((baseType: string) => {
+    // Randomly assign one of two possible monsters for this base type
+    const options = MONSTER_RANDOM_MAP[baseType] || [baseType];
+    const randomType = options[Math.floor(Math.random() * options.length)];
+    setSelectedType(randomType);
     setHatchStep("name");
   }, []);
 
@@ -392,6 +409,7 @@ export default function HomeScreen() {
         Powerlifter2: { str: 15, def: 13, agi: 7 },
       };
       const stats = baseStats[selectedType] || { str: 10, def: 10, agi: 10 };
+      const monsterLabel = ALL_MONSTER_TYPES.find((mt) => mt.type === selectedType)?.label || selectedType;
       const newMonster: Monster = {
         name: newMonsterName.trim(), type: selectedType, level: 1,
         currentHp: 100, maxHp: 100, currentExp: 0, expToNextLevel: 100,
@@ -599,7 +617,7 @@ export default function HomeScreen() {
             <Text style={styles.badgeText}>Lv.{monster.level}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: "#3B82F6" }]}>
-            <Text style={styles.badgeText}>{MONSTER_TYPES.find((mt) => mt.type === monster.type || mt.type.toLowerCase() === monster.type.toLowerCase())?.label || monster.type}</Text>
+            <Text style={styles.badgeText}>{ALL_MONSTER_TYPES.find((mt) => mt.type === monster.type || mt.type.toLowerCase() === monster.type.toLowerCase())?.label || monster.type}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: "#F59E0B" }]}>
             <Text style={styles.badgeText}>{monster.status === "Fighter" ? t.fighter : monster.status === "Rookie" ? t.rookie : monster.status}</Text>
@@ -1229,9 +1247,9 @@ export default function HomeScreen() {
             {hatchStep === "name" && (
               <>
                 <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t.nameYourMonster}</Text>
-                <Text style={[styles.modalSubtitle, { color: colors.muted }]}>{tr("giveYourMonsterName", { type: MONSTER_TYPES.find((mt) => mt.type === selectedType)?.label || selectedType })}</Text>
+                <Text style={[styles.modalSubtitle, { color: colors.muted }]}>{tr("giveYourMonsterName", { type: ALL_MONSTER_TYPES.find((mt) => mt.type === selectedType)?.label || selectedType })}</Text>
                 <View style={styles.eggPreview}>
-                  <LinearGradient colors={MONSTER_TYPES.find((t) => t.type === selectedType)?.gradient || ["#DCFCE7", "#BBF7D0"]} style={styles.eggGradient}>
+                  <LinearGradient colors={ALL_MONSTER_TYPES.find((t) => t.type === selectedType)?.gradient || ["#DCFCE7", "#BBF7D0"]} style={styles.eggGradient}>
                     <Image source={require("@/assets/monsters/egg.png")} style={styles.eggImage} contentFit="contain" />
                   </LinearGradient>
                 </View>
@@ -1267,7 +1285,7 @@ export default function HomeScreen() {
                   <Image source={MONSTER_IMAGES[`${selectedType}-1`]} style={styles.hatchedImage} contentFit="contain" />
                 </LinearGradient>
                 <Text style={[styles.hatchedTitle, { color: colors.foreground }]}>{tr("monsterBorn", { name: newMonsterName })}</Text>
-                <Text style={[styles.hatchedSubtitle, { color: colors.muted }]}>{tr("newMonsterJoins", { type: MONSTER_TYPES.find((mt) => mt.type === selectedType)?.label || selectedType })}</Text>
+                <Text style={[styles.hatchedSubtitle, { color: colors.muted }]}>{tr("newMonsterJoins", { type: ALL_MONSTER_TYPES.find((mt) => mt.type === selectedType)?.label || selectedType })}</Text>
                 <TouchableOpacity style={[styles.hatchConfirmBtn, { backgroundColor: colors.primary }]} onPress={handleCloseHatch}>
                   <Text style={styles.hatchConfirmText}>{t.awesome}</Text>
                 </TouchableOpacity>
