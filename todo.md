@@ -1518,3 +1518,6 @@
 ## Round 149c — Exercise Picker Category Pills Layout Fix
 - [x] Fix category pills overlapping with first exercise row (wrapped in View with marginBottom: 8)
 - [x] Fix category pills area stretching too tall when category selected (added flexGrow: 0 to ScrollView style)
+
+## Round 149d — Remove Cardio Category
+- [x] Remove Cardio/有氧 category from exercise picker (no exercises in that category)

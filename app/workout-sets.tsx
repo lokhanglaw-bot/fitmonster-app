@@ -509,7 +509,7 @@ export default function WorkoutSetsScreen() {
               { key: "shoulders", label: language === "zh" ? "肩" : "Shoulders" },
               { key: "arms", label: language === "zh" ? "手臂" : "Arms" },
               { key: "core", label: language === "zh" ? "核心" : "Core" },
-              { key: "cardio", label: language === "zh" ? "有氧" : "Cardio" },
+
             ].map((cat) => (
               <TouchableOpacity
                 key={cat.key}
