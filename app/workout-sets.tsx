@@ -535,7 +535,7 @@ export default function WorkoutSetsScreen() {
             keyExtractor={(item) => item.name}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            contentContainerStyle={{ paddingBottom: 40 }}
+            contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 0 }}
             ListEmptyComponent={
               <View style={{ alignItems: "center", paddingTop: 60 }}>
                 <Text style={{ color: colors.muted, fontSize: 15 }}>
@@ -726,9 +726,10 @@ const styles = StyleSheet.create({
   exerciseRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderBottomWidth: 0.5,
-    gap: 8,
+    gap: 12,
   },
   exerciseRowName: {
     fontSize: 15,

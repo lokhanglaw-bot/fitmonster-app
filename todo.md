@@ -1511,3 +1511,6 @@
 
 ## Round 149 — Exercise Picker TestFlight Fix
 - [x] Fix exercise picker not showing on TestFlight (replace transparent modal with pageSheet, remove KAV wrapper, remove Pressable overlay, remove maxHeight on FlatList)
+
+## Round 149b — Exercise Picker Text Cutoff Fix
+- [x] Fix exercise picker text being cut off on left side (added paddingHorizontal: 16 to exerciseRow, increased gap to 12)
