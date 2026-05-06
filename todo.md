@@ -1514,3 +1514,7 @@
 
 ## Round 149b — Exercise Picker Text Cutoff Fix
 - [x] Fix exercise picker text being cut off on left side (added paddingHorizontal: 16 to exerciseRow, increased gap to 12)
+
+## Round 149c — Exercise Picker Category Pills Layout Fix
+- [x] Fix category pills overlapping with first exercise row (wrapped in View with marginBottom: 8)
+- [x] Fix category pills area stretching too tall when category selected (added flexGrow: 0 to ScrollView style)

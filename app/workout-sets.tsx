@@ -499,7 +499,8 @@ export default function WorkoutSetsScreen() {
           </View>
 
           {/* Category filter */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 10 }} keyboardShouldPersistTaps="handled">
+          <View style={{ marginBottom: 8 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingVertical: 8, alignItems: "center" }} keyboardShouldPersistTaps="handled">
             {[
               { key: "all", label: language === "zh" ? "全部" : "All" },
               { key: "chest", label: language === "zh" ? "胸" : "Chest" },
@@ -528,6 +529,7 @@ export default function WorkoutSetsScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+          </View>
 
           {/* Exercise list */}
           <FlatList
