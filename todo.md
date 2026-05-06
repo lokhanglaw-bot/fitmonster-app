@@ -1508,3 +1508,6 @@
 
 ## Round 148 — Unify Share Card Design
 - [x] Dashboard "Share Today's Results" unified with Food page share card (dark bg, monster image top, food photos, macro bars with grams, total kcal, My Fit Monster logo+text at bottom)
+
+## Round 149 — Exercise Picker TestFlight Fix
+- [x] Fix exercise picker not showing on TestFlight (replace transparent modal with pageSheet, remove KAV wrapper, remove Pressable overlay, remove maxHeight on FlatList)

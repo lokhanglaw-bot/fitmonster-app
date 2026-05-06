@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/use-colors";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useActivity } from "@/lib/activity-context";
@@ -465,100 +466,102 @@ export default function WorkoutSetsScreen() {
       </View>
 
       {/* Exercise Picker Modal */}
-      <Modal visible={showExercisePicker} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1 }}
-        >
-          <Pressable style={styles.pickerOverlay} onPress={() => { Keyboard.dismiss(); }}>
-            <Pressable style={[styles.pickerSheet, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={() => {}}>
-              <View style={styles.pickerHandle} />
-              <Text style={[styles.pickerTitle, { color: colors.foreground }]}>{language === "zh" ? "選擇動作" : "Select Exercise"}</Text>
+      <Modal
+        visible={showExercisePicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowExercisePicker(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+          {/* Header */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <Text style={{ fontSize: 17, fontWeight: "600", color: colors.foreground }}>
+              {language === "zh" ? "選擇動作" : "Select Exercise"}
+            </Text>
+            <TouchableOpacity onPress={() => { setShowExercisePicker(false); setSearchQuery(""); setSelectedCategory("all"); }}>
+              <Text style={{ fontSize: 16, color: colors.muted }}>{language === "zh" ? "關閉" : "Close"}</Text>
+            </TouchableOpacity>
+          </View>
 
-              {/* Search */}
-              <TextInput
-                style={[styles.searchInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
-                placeholder={language === "zh" ? "搜尋動作名稱..." : "Search exercises..."}
-                placeholderTextColor={colors.muted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                returnKeyType="done"
-                autoCorrect={false}
-                autoCapitalize="none"
-              />
+          {/* Search */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
+            <TextInput
+              style={[styles.searchInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border }]}
+              placeholder={language === "zh" ? "搜尋動作名稱..." : "Search exercises..."}
+              placeholderTextColor={colors.muted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="done"
+              autoCorrect={false}
+              autoCapitalize="none"
+              clearButtonMode="while-editing"
+            />
+          </View>
 
-              {/* Category filter */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 4 }} keyboardShouldPersistTaps="handled">
-                {[
-                  { key: "all", label: language === "zh" ? "全部" : "All" },
-                  { key: "chest", label: language === "zh" ? "胸" : "Chest" },
-                  { key: "back", label: language === "zh" ? "背" : "Back" },
-                  { key: "legs", label: language === "zh" ? "腿" : "Legs" },
-                  { key: "shoulders", label: language === "zh" ? "肩" : "Shoulders" },
-                  { key: "arms", label: language === "zh" ? "手臂" : "Arms" },
-                  { key: "core", label: language === "zh" ? "核心" : "Core" },
-                ].map((cat) => (
-                  <TouchableOpacity
-                    key={cat.key}
-                    onPress={() => setSelectedCategory(cat.key)}
-                    style={[
-                      styles.catPill,
-                      {
-                        backgroundColor: selectedCategory === cat.key ? colors.primary : colors.surface,
-                        borderColor: selectedCategory === cat.key ? colors.primary : colors.border,
-                      },
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: selectedCategory === cat.key ? "#fff" : colors.muted }}>
-                      {cat.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              {/* Exercise list */}
-              <FlatList
-                data={filteredExercises}
-                keyExtractor={(item) => item.name}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    onPress={() => handleAddExercise(item)}
-                    style={[styles.exerciseRow, { borderColor: colors.border }]}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.exerciseRowName, { color: colors.foreground }]}>{language === "zh" ? item.nameZh : item.name}</Text>
-                      <Text style={{ fontSize: 12, color: colors.muted }}>{item.name} · {item.equipment}</Text>
-                    </View>
-                    <View style={[styles.exerciseRowCat, { backgroundColor: colors.primary + "15" }]}>
-                      <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "600" }}>
-                        {(language === "zh" ? CATEGORY_LABELS_ZH : CATEGORY_LABELS_EN)[item.category] || item.category}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-                contentContainerStyle={{ paddingBottom: 20 }}
-                style={{ flex: 1, maxHeight: 300 }}
-              />
-
-              {/* Close */}
+          {/* Category filter */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 10 }} keyboardShouldPersistTaps="handled">
+            {[
+              { key: "all", label: language === "zh" ? "全部" : "All" },
+              { key: "chest", label: language === "zh" ? "胸" : "Chest" },
+              { key: "back", label: language === "zh" ? "背" : "Back" },
+              { key: "legs", label: language === "zh" ? "腿" : "Legs" },
+              { key: "shoulders", label: language === "zh" ? "肩" : "Shoulders" },
+              { key: "arms", label: language === "zh" ? "手臂" : "Arms" },
+              { key: "core", label: language === "zh" ? "核心" : "Core" },
+              { key: "cardio", label: language === "zh" ? "有氧" : "Cardio" },
+            ].map((cat) => (
               <TouchableOpacity
-                onPress={() => {
-                  setShowExercisePicker(false);
-                  setSearchQuery("");
-                  Keyboard.dismiss();
-                }}
-                style={[styles.closePickerBtn, { borderColor: colors.border }]}
+                key={cat.key}
+                onPress={() => setSelectedCategory(cat.key)}
+                style={[
+                  styles.catPill,
+                  {
+                    backgroundColor: selectedCategory === cat.key ? colors.primary : colors.surface,
+                    borderColor: selectedCategory === cat.key ? colors.primary : colors.border,
+                  },
+                ]}
                 activeOpacity={0.7}
               >
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>{language === "zh" ? "關閉" : "Close"}</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: selectedCategory === cat.key ? "#fff" : colors.muted }}>
+                  {cat.label}
+                </Text>
               </TouchableOpacity>
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
+            ))}
+          </ScrollView>
+
+          {/* Exercise list */}
+          <FlatList
+            data={filteredExercises}
+            keyExtractor={(item) => item.name}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            contentContainerStyle={{ paddingBottom: 40 }}
+            ListEmptyComponent={
+              <View style={{ alignItems: "center", paddingTop: 60 }}>
+                <Text style={{ color: colors.muted, fontSize: 15 }}>
+                  {language === "zh" ? "找不到動作" : "No exercises found"}
+                </Text>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => handleAddExercise(item)}
+                style={[styles.exerciseRow, { borderColor: colors.border }]}
+                activeOpacity={0.6}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.exerciseRowName, { color: colors.foreground }]}>{language === "zh" ? item.nameZh : item.name}</Text>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{item.name} · {item.equipment}</Text>
+                </View>
+                <View style={[styles.exerciseRowCat, { backgroundColor: colors.primary + "15" }]}>
+                  <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "600" }}>
+                    {(language === "zh" ? CATEGORY_LABELS_ZH : CATEGORY_LABELS_EN)[item.category] || item.category}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          />
+        </SafeAreaView>
       </Modal>
 
       {/* Rest Timer */}
