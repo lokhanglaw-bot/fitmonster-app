@@ -210,7 +210,7 @@ function MealBoxes({ activity, colors, language }: { activity: any; colors: any;
   );
 }
 
-// ── Daily Share Card (matches reference design) ──
+// ── Daily Share Card (unified with Food page design) ──
 function DailyShareCard({
   meals,
   totalCal,
@@ -234,9 +234,18 @@ function DailyShareCard({
   todayExp: number;
   language: string;
 }) {
+  const { state: activity } = useActivity();
+  const { state: caringState } = useCaring();
+  const isEn = language === 'en';
+  const activeIdx = activity.activeMonsterIndex;
+  const activeMonster = activity.monsters.length > 0 && activeIdx < activity.monsters.length
+    ? activity.monsters[activeIdx]
+    : activity.monsters.length > 0 ? activity.monsters[0] : null;
+  const maxMacro = Math.max(totalProtein, totalCarbs, totalFat, totalSugar, 1);
+
   const handleShare = useCallback(async () => {
     const { Share } = require("react-native");
-    const msg = language === 'en'
+    const msg = isEn
       ? `🍽️ Today's Results\n` +
         `🔥 ${totalCal} kcal\n` +
         `🥩 Protein ${totalProtein}g | 🍚 Carbs ${totalCarbs}g | 🧈 Fat ${totalFat}g\n` +
@@ -252,18 +261,27 @@ function DailyShareCard({
     try {
       await Share.share({ message: msg });
     } catch {}
-  }, [totalCal, totalProtein, totalCarbs, totalFat, totalSugar, monsterName, monsterLevel, todayExp, language]);
+  }, [totalCal, totalProtein, totalCarbs, totalFat, totalSugar, monsterName, monsterLevel, todayExp, isEn]);
 
   return (
     <View style={shareStyles.card}>
       <LinearGradient
-        colors={["#0F2027", "#203A43", "#2C5364"]}
+        colors={["#1a1a2e", "#16213e", "#0f3460"]}
         style={shareStyles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.5, y: 1 }}
       >
-        {/* Title */}
-        <Text style={shareStyles.title}>{language === 'en' ? "Today's Results" : "今日操野成果"}</Text>
+        {/* Monster Image + Name */}
+        <View style={shareStyles.headerSection}>
+          {activeMonster && (
+            <Image
+              source={getMonsterImageForCaringState(activeMonster.type, activeMonster.stage, caringState.fullness, caringState.energy, caringState.mood, caringState.peakStateBuff)}
+              style={shareStyles.monsterImg}
+              contentFit="contain"
+            />
+          )}
+          <Text style={shareStyles.monsterNameText}>{monsterName}</Text>
+        </View>
 
         {/* 3 Meal Photos */}
         <View style={shareStyles.mealRow}>
@@ -276,61 +294,56 @@ function DailyShareCard({
                   <Text style={{ fontSize: 24 }}>{MEAL_LABELS[type].emoji}</Text>
                 </View>
               )}
-              <Text style={shareStyles.mealPhotoLabel}>{language === 'en' ? MEAL_LABELS[type].labelEn : MEAL_LABELS[type].label}</Text>
+              <Text style={shareStyles.mealPhotoLabel}>{isEn ? MEAL_LABELS[type].labelEn : MEAL_LABELS[type].label}</Text>
             </View>
           ))}
         </View>
 
-        {/* Macro Bars */}
+        {/* Macro Bars (grams, not percentage) */}
         <View style={shareStyles.macroRow}>
-          <MacroBar label="Protein" value={Math.min(totalProtein / 120, 1)} percent={Math.round((totalProtein / 120) * 100)} color="#22C55E" />
-          <MacroBar label="Carbs" value={Math.min(totalCarbs / 250, 1)} percent={Math.round((totalCarbs / 250) * 100)} color="#3B82F6" />
-          <MacroBar label="Fat" value={Math.min(totalFat / 65, 1)} percent={Math.round((totalFat / 65) * 100)} color="#F59E0B" />
-        </View>
-
-        {/* Monster + Stats */}
-        <View style={shareStyles.statsSection}>
-          <View style={shareStyles.monsterInfo}>
-            <Text style={shareStyles.monsterName}>🐾 {monsterName}</Text>
-            <Text style={shareStyles.levelBadge}>Level {monsterLevel} ⬆</Text>
-            <Text style={shareStyles.expBadge}>+{todayExp} EXP</Text>
-          </View>
+          {[
+            { label: isEn ? "Protein" : "蛋白質", value: totalProtein, color: "#4ADE80" },
+            { label: isEn ? "Carbs" : "碳水", value: totalCarbs, color: "#60A5FA" },
+            { label: isEn ? "Fat" : "脂肪", value: totalFat, color: "#FBBF24" },
+            { label: isEn ? "Sugar" : "糖分", value: totalSugar, color: "#F97316" },
+          ].map((macro, i) => (
+            <View key={i} style={shareStyles.macroItem}>
+              <Text style={shareStyles.macroLabel}>{macro.label}</Text>
+              <View style={shareStyles.macroBarBg}>
+                <View style={[shareStyles.macroBarFill, { width: `${Math.min((macro.value / maxMacro) * 100, 100)}%`, backgroundColor: macro.color }]} />
+              </View>
+              <Text style={shareStyles.macroValue}>{macro.value}g</Text>
+            </View>
+          ))}
         </View>
 
         {/* Total Calories */}
-        <Text style={shareStyles.totalCal}>{totalCal.toLocaleString()}</Text>
-        <Text style={shareStyles.totalCalUnit}>KCAL</Text>
+        <View style={shareStyles.kcalSection}>
+          <Text style={shareStyles.totalCal}>{totalCal}</Text>
+          <Text style={shareStyles.totalCalUnit}>{isEn ? 'kcal Total' : 'kcal 總熱量'}</Text>
+        </View>
 
         {/* Sugar Warning */}
         {totalSugar > 25 && (
-          <Text style={shareStyles.sugarWarning}>{language === 'en' ? `⚠️ Sugar ${totalSugar}g ⚠️` : `⚠️ 糖份 ${totalSugar}g ⚠️`}</Text>
+          <Text style={shareStyles.sugarWarning}>{isEn ? `⚠️ Sugar ${totalSugar}g over limit!` : `⚠️ 糖分 ${totalSugar}g 超過建議量!`}</Text>
         )}
 
-        {/* Branding */}
+        {/* Branding - logo left, text right */}
         <View style={shareStyles.branding}>
-          <Text style={shareStyles.brandName}>My Fit{"\n"}Monster</Text>
+          <Image source={require('@/assets/images/monster-battle-logo.jpg')} style={shareStyles.brandImg} contentFit="cover" />
+          <Text style={shareStyles.brandName}>My Fit Monster</Text>
         </View>
-
-        {/* Share action */}
-        <TouchableOpacity style={shareStyles.shareAction} onPress={handleShare} activeOpacity={0.7}>
-          <Text style={shareStyles.shareActionText}>{language === 'en' ? '📤 Share to Social Media' : '📤 分享到社交媒體'}</Text>
-        </TouchableOpacity>
       </LinearGradient>
+
+      {/* Share action */}
+      <TouchableOpacity style={shareStyles.shareAction} onPress={handleShare} activeOpacity={0.7}>
+        <Text style={shareStyles.shareActionText}>{isEn ? '📸 Share Image' : '📸 分享圖片'}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
-function MacroBar({ label, value, percent, color }: { label: string; value: number; percent: number; color: string }) {
-  return (
-    <View style={shareStyles.macroItem}>
-      <Text style={shareStyles.macroLabel}>{label}</Text>
-      <View style={shareStyles.macroBarBg}>
-        <View style={[shareStyles.macroBarFill, { width: `${Math.min(percent, 100)}%`, backgroundColor: color }]} />
-      </View>
-      <Text style={shareStyles.macroPercent}>{percent}%</Text>
-    </View>
-  );
-}
+
 
 export default function DashboardScreen() {
   const colors = useColors();
@@ -1048,27 +1061,33 @@ const mealStyles = StyleSheet.create({
 
 const shareStyles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 24,
     overflow: "hidden",
   },
   gradient: {
     padding: 20,
-    gap: 14,
+    gap: 12,
     alignItems: "center",
   },
-  title: {
-    fontSize: 24,
+  headerSection: {
+    alignItems: "center",
+    gap: 8,
+    paddingTop: 4,
+  },
+  monsterImg: {
+    width: 100,
+    height: 100,
+  },
+  monsterNameText: {
+    fontSize: 22,
     fontWeight: "900",
-    color: "#4ADE80",
-    textAlign: "center",
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 4,
+    color: "#fff",
   },
   mealRow: {
     flexDirection: "row",
     gap: 8,
     width: "100%",
+    paddingHorizontal: 4,
   },
   mealPhotoBox: {
     flex: 1,
@@ -1078,9 +1097,9 @@ const shareStyles = StyleSheet.create({
   mealPhoto: {
     width: "100%",
     height: 80,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: "#4ADE80",
+    borderColor: "rgba(255,255,255,0.3)",
   },
   mealPhotoEmpty: {
     backgroundColor: "rgba(255,255,255,0.1)",
@@ -1094,7 +1113,9 @@ const shareStyles = StyleSheet.create({
   },
   macroRow: {
     width: "100%",
-    gap: 6,
+    gap: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
   },
   macroItem: {
     flexDirection: "row",
@@ -1105,92 +1126,76 @@ const shareStyles = StyleSheet.create({
     width: 55,
     fontSize: 12,
     fontWeight: "600",
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(255,255,255,0.7)",
   },
   macroBarBg: {
     flex: 1,
-    height: 10,
-    borderRadius: 5,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: "rgba(255,255,255,0.15)",
     overflow: "hidden",
   },
   macroBarFill: {
     height: "100%",
-    borderRadius: 5,
+    borderRadius: 4,
   },
-  macroPercent: {
-    width: 36,
-    fontSize: 12,
+  macroValue: {
+    width: 50,
+    fontSize: 13,
     fontWeight: "700",
     color: "#fff",
     textAlign: "right",
   },
-  statsSection: {
-    width: "100%",
+  kcalSection: {
     alignItems: "center",
-    gap: 8,
-  },
-  monsterInfo: {
-    alignItems: "center",
-    gap: 4,
-  },
-  monsterName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#fff",
-  },
-  levelBadge: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: "#4ADE80",
-  },
-  expBadge: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#FFD700",
+    paddingVertical: 8,
   },
   totalCal: {
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: "900",
     color: "#fff",
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 6,
-    marginTop: -4,
   },
   totalCalUnit: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "rgba(255,255,255,0.6)",
-    marginTop: -8,
+    fontSize: 14,
+    color: "rgba(255,255,255,0.7)",
   },
   sugarWarning: {
-    fontSize: 18,
-    fontWeight: "800",
+    fontSize: 16,
+    fontWeight: "700",
     color: "#FBBF24",
     textAlign: "center",
   },
   branding: {
-    marginTop: 8,
-    alignItems: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 4,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.1)",
     width: "100%",
+    gap: 12,
+  },
+  brandImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
   },
   brandName: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "900",
     color: "#4ADE80",
-    lineHeight: 26,
   },
   shareAction: {
-    backgroundColor: "rgba(255,255,255,0.15)",
-    paddingVertical: 12,
+    backgroundColor: "#22C55E",
+    paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: 14,
+    marginTop: 12,
     width: "100%",
     alignItems: "center",
   },
   shareActionText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
     color: "#fff",
   },

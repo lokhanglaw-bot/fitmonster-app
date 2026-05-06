@@ -1505,3 +1505,6 @@
 ## Round 147 — Monster Type Selection Fix
 - [x] Choose Monster Type modal only shows 3 types (Bodybuilder, Physique, Powerlifter)
 - [x] Selecting a type randomly assigns one of two monsters (BB→Thunder Rex/Fire Dragon, Physique→Aqua Spirit/Jade Fox, PL→Iron Titan/Power Bear)
+
+## Round 148 — Unify Share Card Design
+- [x] Dashboard "Share Today's Results" unified with Food page share card (dark bg, monster image top, food photos, macro bars with grams, total kcal, My Fit Monster logo+text at bottom)
