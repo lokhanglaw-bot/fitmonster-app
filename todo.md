@@ -1521,3 +1521,6 @@
 
 ## Round 149d — Remove Cardio Category
 - [x] Remove Cardio/有氧 category from exercise picker (no exercises in that category)
+
+## Round 150 — Update Website Screenshots
+- [x] Replace all old screenshots with 12 new ones on the landing page (Home, Food Scanner, Share Card, Dashboard, Workout, Exercises, Set Tracker, Rest Timer, Battle, Nearby, Chat, Monster Care)
