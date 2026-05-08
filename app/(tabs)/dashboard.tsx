@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, StyleSheet, TouchableOpacity, Linking, Modal } from "react-native";
+import { ScrollView, Text, View, StyleSheet, TouchableOpacity, Linking, Modal, Alert, Platform } from "react-native";
 import { useState, useCallback, useMemo, useRef } from "react";
 import type { FoodLogEntry } from "@/lib/activity-context";
 import { Image } from "expo-image";
@@ -13,6 +13,7 @@ import { useCaring } from "@/lib/caring-context";
 import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
+import * as MediaLibrary from "expo-media-library";
 
 function WeeklyWorkoutStatsCard() {
   const colors = useColors();
@@ -197,6 +198,8 @@ function MealBoxes({ activity, colors, language }: { activity: any; colors: any;
               monsterLevel={activity.monsters?.[activity.activeMonsterIndex]?.level || 1}
               todayExp={activity.todayTotalExp}
               language={language}
+              caloriesBurned={activity.todayCaloriesBurned || 0}
+              workoutMinutes={activity.todayWorkoutMinutes || 0}
             />
             <TouchableOpacity
               style={[mealStyles.closeBtn, { backgroundColor: colors.primary }]}
@@ -224,6 +227,8 @@ function DailyShareCard({
   monsterLevel,
   todayExp,
   language,
+  caloriesBurned,
+  workoutMinutes,
 }: {
   meals: { type: "breakfast" | "lunch" | "dinner"; log?: FoodLogEntry }[];
   totalCal: number;
@@ -235,6 +240,8 @@ function DailyShareCard({
   monsterLevel: number;
   todayExp: number;
   language: string;
+  caloriesBurned: number;
+  workoutMinutes: number;
 }) {
   const { state: activity } = useActivity();
   const { state: caringState } = useCaring();
@@ -246,6 +253,16 @@ function DailyShareCard({
   const maxMacro = Math.max(totalProtein, totalCarbs, totalFat, totalSugar, 1);
   const viewShotRef = useRef<any>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Format today's date
+  const todayDate = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}/${m}/${d}`;
+  }, []);
 
   const handleShare = useCallback(async () => {
     try {
@@ -261,14 +278,48 @@ function DailyShareCard({
         // Fallback to text share if image capture fails
         const { Share } = require("react-native");
         const msg = isEn
-          ? `🍽️ Today's Results\n🔥 ${totalCal} kcal\n🥩 Protein ${totalProtein}g | 🍚 Carbs ${totalCarbs}g | 🧈 Fat ${totalFat}g\n🐾 ${monsterName} Lv.${monsterLevel} | +${todayExp} EXP\n#MyFitMonster`
-          : `🍽️ 今日操野成果\n🔥 ${totalCal} kcal\n🥩 蛋白質 ${totalProtein}g | 🍚 碳水 ${totalCarbs}g | 🧈 脂肪 ${totalFat}g\n🐾 ${monsterName} Lv.${monsterLevel} | +${todayExp} EXP\n#MyFitMonster #健身怪獸`;
+          ? `🍽️ Today's Results (${todayDate})\n🔥 ${totalCal} kcal\n🥩 Protein ${totalProtein}g | 🍚 Carbs ${totalCarbs}g | 🧈 Fat ${totalFat}g\n💪 Burned ${caloriesBurned} kcal | ${workoutMinutes} min\n🐾 ${monsterName} Lv.${monsterLevel} | +${todayExp} EXP\n#MyFitMonster`
+          : `🍽️ 今日操野成果 (${todayDate})\n🔥 ${totalCal} kcal\n🥩 蛋白質 ${totalProtein}g | 🍚 碳水 ${totalCarbs}g | 🧈 脂肪 ${totalFat}g\n💪 消耗 ${caloriesBurned} kcal | ${workoutMinutes} 分鐘\n🐾 ${monsterName} Lv.${monsterLevel} | +${todayExp} EXP\n#MyFitMonster #健身怪獸`;
         await Share.share({ message: msg });
       }
     } catch {
       setIsCapturing(false);
     }
-  }, [totalCal, totalProtein, totalCarbs, totalFat, totalSugar, monsterName, monsterLevel, todayExp, isEn]);
+  }, [totalCal, totalProtein, totalCarbs, totalFat, totalSugar, monsterName, monsterLevel, todayExp, isEn, caloriesBurned, workoutMinutes, todayDate]);
+
+  const handleSaveToAlbum = useCallback(async () => {
+    try {
+      if (Platform.OS === "web") {
+        Alert.alert(isEn ? "Not Available" : "不可用", isEn ? "Save to album is only available on mobile devices" : "儲存到相簿僅在手機上可用");
+        return;
+      }
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(isEn ? "Permission Required" : "需要權限", isEn ? "Please allow access to save images to your album" : "請允許存取相簿以儲存圖片");
+        return;
+      }
+      setIsSaving(true);
+      const uri = await (viewShotRef.current as any)?.capture?.();
+      if (uri) {
+        await MediaLibrary.saveToLibraryAsync(uri);
+        Alert.alert(isEn ? "Saved!" : "已儲存！", isEn ? "Image saved to your photo album" : "圖片已儲存到相簿");
+      }
+      setIsSaving(false);
+    } catch {
+      setIsSaving(false);
+      Alert.alert(isEn ? "Error" : "錯誤", isEn ? "Failed to save image" : "儲存圖片失敗");
+    }
+  }, [isEn]);
+
+  // Format workout duration
+  const formatDuration = (minutes: number) => {
+    if (minutes >= 60) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return m > 0 ? `${h}h ${m}min` : `${h}h`;
+    }
+    return `${minutes} min`;
+  };
 
   return (
     <View style={shareStyles.card}>
@@ -279,6 +330,9 @@ function DailyShareCard({
         start={{ x: 0, y: 0 }}
         end={{ x: 0.5, y: 1 }}
       >
+        {/* Date watermark */}
+        <Text style={shareStyles.dateWatermark}>{todayDate}</Text>
+
         {/* Monster Image + Name */}
         <View style={shareStyles.headerSection}>
           {activeMonster && (
@@ -331,6 +385,33 @@ function DailyShareCard({
           <Text style={shareStyles.totalCalUnit}>{isEn ? 'kcal Total' : 'kcal 總熱量'}</Text>
         </View>
 
+        {/* Workout Data Section */}
+        <View style={shareStyles.workoutSection}>
+          <View style={shareStyles.workoutItem}>
+            <Text style={shareStyles.workoutIcon}>💪</Text>
+            <View>
+              <Text style={shareStyles.workoutValue}>{caloriesBurned} kcal</Text>
+              <Text style={shareStyles.workoutLabel}>{isEn ? 'Burned' : '消耗'}</Text>
+            </View>
+          </View>
+          <View style={shareStyles.workoutDivider} />
+          <View style={shareStyles.workoutItem}>
+            <Text style={shareStyles.workoutIcon}>⏱️</Text>
+            <View>
+              <Text style={shareStyles.workoutValue}>{formatDuration(workoutMinutes)}</Text>
+              <Text style={shareStyles.workoutLabel}>{isEn ? 'Workout' : '運動時長'}</Text>
+            </View>
+          </View>
+          <View style={shareStyles.workoutDivider} />
+          <View style={shareStyles.workoutItem}>
+            <Text style={shareStyles.workoutIcon}>⭐</Text>
+            <View>
+              <Text style={shareStyles.workoutValue}>+{todayExp}</Text>
+              <Text style={shareStyles.workoutLabel}>EXP</Text>
+            </View>
+          </View>
+        </View>
+
         {/* Sugar Warning */}
         {totalSugar > 25 && (
           <Text style={shareStyles.sugarWarning}>{isEn ? `⚠️ Sugar ${totalSugar}g over limit!` : `⚠️ 糖分 ${totalSugar}g 超過建議量!`}</Text>
@@ -344,10 +425,15 @@ function DailyShareCard({
       </LinearGradient>
       </ViewShot>
 
-      {/* Share action */}
-      <TouchableOpacity style={[shareStyles.shareAction, { opacity: isCapturing ? 0.6 : 1 }]} onPress={handleShare} activeOpacity={0.7} disabled={isCapturing}>
-        <Text style={shareStyles.shareActionText}>{isCapturing ? (isEn ? 'Capturing...' : '截圖中...') : (isEn ? '📸 Share Image' : '📸 分享圖片')}</Text>
-      </TouchableOpacity>
+      {/* Action buttons row */}
+      <View style={shareStyles.actionRow}>
+        <TouchableOpacity style={[shareStyles.saveAction, { opacity: isSaving ? 0.6 : 1 }]} onPress={handleSaveToAlbum} activeOpacity={0.7} disabled={isSaving}>
+          <Text style={shareStyles.saveActionText}>{isSaving ? (isEn ? 'Saving...' : '儲存中...') : (isEn ? '💾 Save to Album' : '💾 儲存到相簿')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[shareStyles.shareAction, { opacity: isCapturing ? 0.6 : 1 }]} onPress={handleShare} activeOpacity={0.7} disabled={isCapturing}>
+          <Text style={shareStyles.shareActionText}>{isCapturing ? (isEn ? 'Capturing...' : '截圖中...') : (isEn ? '📸 Share Image' : '📸 分享圖片')}</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -1194,17 +1280,74 @@ const shareStyles = StyleSheet.create({
     fontWeight: "900",
     color: "#4ADE80",
   },
+  dateWatermark: {
+    position: "absolute" as const,
+    top: 12,
+    right: 16,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.5)",
+  },
+  workoutSection: {
+    flexDirection: "row" as const,
+    width: "100%",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: "center" as const,
+    justifyContent: "space-around" as const,
+  },
+  workoutItem: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+  },
+  workoutIcon: {
+    fontSize: 20,
+  },
+  workoutValue: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#fff",
+  },
+  workoutLabel: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.6)",
+  },
+  workoutDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  actionRow: {
+    flexDirection: "row" as const,
+    gap: 10,
+    marginTop: 12,
+  },
+  saveAction: {
+    flex: 1,
+    backgroundColor: "#3B82F6",
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    alignItems: "center" as const,
+  },
+  saveActionText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#fff",
+  },
   shareAction: {
+    flex: 1,
     backgroundColor: "#22C55E",
     paddingVertical: 14,
-    paddingHorizontal: 24,
+    paddingHorizontal: 12,
     borderRadius: 14,
-    marginTop: 12,
-    width: "100%",
-    alignItems: "center",
+    alignItems: "center" as const,
   },
   shareActionText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: "#fff",
   },

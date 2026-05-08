@@ -1541,3 +1541,8 @@
 ## Round 153 — Dashboard Share Fix (Share Image Instead of Text)
 - [x] Fix Dashboard share button to share an image (like Food page) instead of just text
 - [x] Both Dashboard and Food page share should produce an image via share sheet
+
+## Round 154 — Dashboard Share Card Enhancements
+- [x] Add date watermark on share card image (e.g. 2026/05/08)
+- [x] Add "Save to Album" button to save the share card image to device photo library
+- [x] Add workout data section at bottom of share card (calories burned, workout duration)
