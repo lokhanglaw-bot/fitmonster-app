@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -97,6 +98,8 @@ export default function WorkoutSetsScreen() {
   const { logWorkout } = useActivity();
   const { exerciseMonster } = useCaring();
 
+  const STORAGE_KEY = "@fitmonster_workout_session";
+
   // Exercise blocks (each block = one exercise with multiple sets)
   const [blocks, setBlocks] = useState<ExerciseBlock[]>([]);
   const [showExercisePicker, setShowExercisePicker] = useState(false);
@@ -104,11 +107,49 @@ export default function WorkoutSetsScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restTimerDefault, setRestTimerDefault] = useState(90);
+  const [isRestored, setIsRestored] = useState(false);
 
   // Workout timer
-  const [startTime] = useState(Date.now());
+  const [startTime, setStartTime] = useState(Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Restore saved session on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const session = JSON.parse(saved);
+          if (session.blocks && session.blocks.length > 0) {
+            setBlocks(session.blocks);
+            // Restore original start time so elapsed time is accurate
+            if (session.startTime) {
+              setStartTime(session.startTime);
+            }
+          }
+        }
+      } catch (e) {
+        // Ignore restore errors
+      } finally {
+        setIsRestored(true);
+      }
+    })();
+  }, []);
+
+  // Auto-save session whenever blocks change (after initial restore)
+  useEffect(() => {
+    if (!isRestored) return;
+    const saveSession = async () => {
+      try {
+        const session = { blocks, startTime, savedAt: Date.now() };
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      } catch (e) {
+        // Ignore save errors
+      }
+    };
+    saveSession();
+  }, [blocks, isRestored, startTime]);
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -293,6 +334,9 @@ export default function WorkoutSetsScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
 
+    // Clear saved session on completion
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+
     // Navigate to workout summary with details
     router.replace({
       pathname: "/workout-summary" as any,
@@ -317,6 +361,8 @@ export default function WorkoutSetsScreen() {
           text: language === "zh" ? "取消" : "Cancel",
           style: "destructive",
           onPress: () => {
+            // Clear saved session on cancel
+            AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
             if (router.canGoBack()) router.back();
             else router.replace("/(tabs)");
           },

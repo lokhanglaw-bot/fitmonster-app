@@ -1530,3 +1530,8 @@
 - [x] Copy all landing page assets (screenshots, monsters, images) to public/landing/
 - [x] Add path import to server core index.ts
 - [x] Verified all assets return 200 OK via API server
+
+## Round 152 — Set Tracker Auto-Save (Persist In-Progress Workout)
+- [x] Auto-save workout session state to AsyncStorage on every change (exercises, sets, timer)
+- [x] Restore in-progress workout on app reopen / component remount
+- [x] Clear saved session only when user explicitly completes or cancels workout
