@@ -1535,3 +1535,5 @@
 - [x] Auto-save workout session state to AsyncStorage on every change (exercises, sets, timer)
 - [x] Restore in-progress workout on app reopen / component remount
 - [x] Clear saved session only when user explicitly completes or cancels workout
+- [x] Fix restore bug: pass initialData prop to SetTrackerCard so weight/reps/completed state is restored on remount
+- [x] Add onDataChange callback to save partial input (before user taps ✓) to blocks for auto-save

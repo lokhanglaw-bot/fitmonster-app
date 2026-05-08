@@ -239,6 +239,22 @@ export default function WorkoutSetsScreen() {
     []
   );
 
+  // Update set data without completing (for auto-save of partial input)
+  const handleSetDataChange = useCallback(
+    (blockIndex: number, setIndex: number, data: WorkoutSetData) => {
+      setBlocks((prev) => {
+        const updated = [...prev];
+        const block = { ...updated[blockIndex] };
+        const sets = [...block.sets];
+        sets[setIndex] = { ...sets[setIndex], ...data };
+        block.sets = sets;
+        updated[blockIndex] = block;
+        return updated;
+      });
+    },
+    []
+  );
+
   // Remove a set
   const handleRemoveSet = useCallback(
     (blockIndex: number, setIndex: number) => {
@@ -448,7 +464,9 @@ export default function WorkoutSetsScreen() {
                   exerciseName={block.exerciseName}
                   setNumber={set.setNumber}
                   lastSessionSet={block.lastSession?.sets[setIdx]}
+                  initialData={set.weight != null || set.reps != null ? set : undefined}
                   onComplete={(data) => handleSetComplete(blockIdx, setIdx, data)}
+                  onDataChange={(data) => handleSetDataChange(blockIdx, setIdx, data)}
                   onRemove={() => handleRemoveSet(blockIdx, setIdx)}
                 />
               ))}

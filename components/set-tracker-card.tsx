@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -17,7 +17,11 @@ interface SetTrackerCardProps {
   exerciseName: string;
   setNumber: number;
   lastSessionSet?: WorkoutSetData;
+  /** Saved data from a restored session — used to pre-fill inputs on remount */
+  initialData?: WorkoutSetData;
   onComplete: (data: WorkoutSetData) => void;
+  /** Called whenever input values change (for auto-save of partial progress) */
+  onDataChange?: (data: WorkoutSetData) => void;
   onRemove?: () => void;
 }
 
@@ -25,21 +29,62 @@ export function SetTrackerCard({
   exerciseName,
   setNumber,
   lastSessionSet,
+  initialData,
   onComplete,
+  onDataChange,
   onRemove,
 }: SetTrackerCardProps) {
   const colors = useColors();
   const { language } = useI18n();
   const isEn = language === 'en';
+
+  // If we have initialData (from restored session), use it to pre-fill
+  // Otherwise fall back to lastSessionSet (previous workout hint)
   const [weight, setWeight] = useState(
-    lastSessionSet?.weight?.toString() ?? ""
+    initialData?.weight != null
+      ? String(initialData.weight)
+      : lastSessionSet?.weight?.toString() ?? ""
   );
-  const [reps, setReps] = useState(lastSessionSet?.reps?.toString() ?? "");
+  const [reps, setReps] = useState(
+    initialData?.reps != null
+      ? String(initialData.reps)
+      : lastSessionSet?.reps?.toString() ?? ""
+  );
   const [setType, setSetType] = useState<SetType>(
-    lastSessionSet?.setType ?? "working"
+    initialData?.setType ?? lastSessionSet?.setType ?? "working"
   );
-  const [rpe, setRpe] = useState("");
-  const [completed, setCompleted] = useState(false);
+  const [rpe, setRpe] = useState(
+    initialData?.rpe != null
+      ? String(initialData.rpe)
+      : ""
+  );
+  // If initialData has weight or reps, it was already completed
+  const [completed, setCompleted] = useState(
+    initialData != null && (initialData.weight != null || initialData.reps != null)
+  );
+
+  // Track if this is the initial mount to avoid triggering onDataChange immediately
+  const isInitialMount = useRef(true);
+
+  // Report partial data changes to parent for auto-save
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (completed) return; // Already completed sets are already in blocks
+    if (onDataChange && (weight || reps)) {
+      const data: WorkoutSetData = {
+        setNumber,
+        setType,
+        weight: weight ? parseFloat(weight) : undefined,
+        reps: reps ? parseInt(reps, 10) : undefined,
+        rpe: rpe ? parseFloat(rpe) : undefined,
+        isPR: false,
+      };
+      onDataChange(data);
+    }
+  }, [weight, reps, setType, rpe]);
 
   const handleComplete = useCallback(() => {
     if (!weight && !reps) return;
