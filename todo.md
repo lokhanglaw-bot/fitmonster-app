@@ -1537,3 +1537,7 @@
 - [x] Clear saved session only when user explicitly completes or cancels workout
 - [x] Fix restore bug: pass initialData prop to SetTrackerCard so weight/reps/completed state is restored on remount
 - [x] Add onDataChange callback to save partial input (before user taps ✓) to blocks for auto-save
+
+## Round 153 — Dashboard Share Fix (Share Image Instead of Text)
+- [x] Fix Dashboard share button to share an image (like Food page) instead of just text
+- [x] Both Dashboard and Food page share should produce an image via share sheet

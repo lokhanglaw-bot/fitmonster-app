@@ -1,5 +1,5 @@
 import { ScrollView, Text, View, StyleSheet, TouchableOpacity, Linking, Modal } from "react-native";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import type { FoodLogEntry } from "@/lib/activity-context";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -11,6 +11,8 @@ import { useActivity } from "@/lib/activity-context";
 import { useProfileData } from "@/hooks/use-profile-data";
 import { useCaring } from "@/lib/caring-context";
 import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
+import ViewShot from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 
 function WeeklyWorkoutStatsCard() {
   const colors = useColors();
@@ -242,29 +244,35 @@ function DailyShareCard({
     ? activity.monsters[activeIdx]
     : activity.monsters.length > 0 ? activity.monsters[0] : null;
   const maxMacro = Math.max(totalProtein, totalCarbs, totalFat, totalSugar, 1);
+  const viewShotRef = useRef<any>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
 
   const handleShare = useCallback(async () => {
-    const { Share } = require("react-native");
-    const msg = isEn
-      ? `🍽️ Today's Results\n` +
-        `🔥 ${totalCal} kcal\n` +
-        `🥩 Protein ${totalProtein}g | 🍚 Carbs ${totalCarbs}g | 🧈 Fat ${totalFat}g\n` +
-        (totalSugar > 25 ? `⚠️ Sugar ${totalSugar}g\n` : `🍬 Sugar ${totalSugar}g\n`) +
-        `\n🐾 ${monsterName} Lv.${monsterLevel} | +${todayExp} EXP\n` +
-        `\n#MyFitMonster`
-      : `🍽️ 今日操野成果\n` +
-        `🔥 ${totalCal} kcal\n` +
-        `🥩 蛋白質 ${totalProtein}g | 🍚 碳水 ${totalCarbs}g | 🧈 脂肪 ${totalFat}g\n` +
-        (totalSugar > 25 ? `⚠️ 糖份 ${totalSugar}g\n` : `🍬 糖份 ${totalSugar}g\n`) +
-        `\n🐾 ${monsterName} Lv.${monsterLevel} | +${todayExp} EXP\n` +
-        `\n#MyFitMonster #健身怪獸`;
     try {
-      await Share.share({ message: msg });
-    } catch {}
+      setIsCapturing(true);
+      const uri = await (viewShotRef.current as any)?.capture?.();
+      setIsCapturing(false);
+      if (uri && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "image/png",
+          dialogTitle: isEn ? `${monsterName}'s Daily Results` : `${monsterName} 的今日成果`,
+        });
+      } else {
+        // Fallback to text share if image capture fails
+        const { Share } = require("react-native");
+        const msg = isEn
+          ? `🍽️ Today's Results\n🔥 ${totalCal} kcal\n🥩 Protein ${totalProtein}g | 🍚 Carbs ${totalCarbs}g | 🧈 Fat ${totalFat}g\n🐾 ${monsterName} Lv.${monsterLevel} | +${todayExp} EXP\n#MyFitMonster`
+          : `🍽️ 今日操野成果\n🔥 ${totalCal} kcal\n🥩 蛋白質 ${totalProtein}g | 🍚 碳水 ${totalCarbs}g | 🧈 脂肪 ${totalFat}g\n🐾 ${monsterName} Lv.${monsterLevel} | +${todayExp} EXP\n#MyFitMonster #健身怪獸`;
+        await Share.share({ message: msg });
+      }
+    } catch {
+      setIsCapturing(false);
+    }
   }, [totalCal, totalProtein, totalCarbs, totalFat, totalSugar, monsterName, monsterLevel, todayExp, isEn]);
 
   return (
     <View style={shareStyles.card}>
+      <ViewShot ref={viewShotRef} options={{ format: "png", quality: 1 }}>
       <LinearGradient
         colors={["#1a1a2e", "#16213e", "#0f3460"]}
         style={shareStyles.gradient}
@@ -334,10 +342,11 @@ function DailyShareCard({
           <Text style={shareStyles.brandName}>My Fit Monster</Text>
         </View>
       </LinearGradient>
+      </ViewShot>
 
       {/* Share action */}
-      <TouchableOpacity style={shareStyles.shareAction} onPress={handleShare} activeOpacity={0.7}>
-        <Text style={shareStyles.shareActionText}>{isEn ? '📸 Share Image' : '📸 分享圖片'}</Text>
+      <TouchableOpacity style={[shareStyles.shareAction, { opacity: isCapturing ? 0.6 : 1 }]} onPress={handleShare} activeOpacity={0.7} disabled={isCapturing}>
+        <Text style={shareStyles.shareActionText}>{isCapturing ? (isEn ? 'Capturing...' : '截圖中...') : (isEn ? '📸 Share Image' : '📸 分享圖片')}</Text>
       </TouchableOpacity>
     </View>
   );
