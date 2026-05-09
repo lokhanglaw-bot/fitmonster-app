@@ -219,6 +219,9 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
     case "SYNC_HEALTH_DATA": {
       const { steps, caloriesBurned, workoutMinutes, workoutLogs, stepsExp } = action.payload;
       const now = getLocalTimestamp();
+      // Filter out old health-sync workout logs to avoid duplicates
+      const existingNonHealthLogs = state.todayWorkoutLogs.filter(l => !l.id.startsWith("health-workout-"));
+      const existingAllNonHealthLogs = state.allWorkoutLogs.filter(l => !l.id.startsWith("health-workout-") || !l.timestamp.startsWith(getToday()));
       const newWorkoutEntries: WorkoutLogEntry[] = workoutLogs.map((w, i) => ({
         id: `health-workout-${Date.now()}-${i}`,
         exercise: w.exercise,
@@ -228,15 +231,24 @@ function activityReducer(state: ActivityState, action: Action): ActivityState {
       }));
       const totalWorkoutExp = workoutLogs.reduce((sum, w) => sum + w.expEarned, 0);
       const totalExp = stepsExp + totalWorkoutExp;
+      // Calculate non-health EXP already earned today (from manual workouts + food)
+      const existingNonHealthExp = existingNonHealthLogs.reduce((sum, l) => sum + l.expEarned, 0)
+        + state.todayFoodLogs.reduce((sum, l) => sum + l.expEarned, 0);
+      // Calculate non-health calories burned (from manual workouts)
+      const manualCaloriesBurned = existingNonHealthLogs.reduce((sum, l) => {
+        // Rough estimate: 5 kcal per minute for manual workouts
+        return sum + Math.round(l.duration * 5);
+      }, 0);
+      const manualWorkoutMinutes = existingNonHealthLogs.reduce((sum, l) => sum + l.duration, 0);
       let healthResult = {
         ...state,
-        todaySteps: state.todaySteps + steps,
-        todayCaloriesBurned: state.todayCaloriesBurned + caloriesBurned,
-        todayWorkoutMinutes: state.todayWorkoutMinutes + workoutMinutes,
-        todayTotalExp: state.todayTotalExp + totalExp,
-        todayWorkoutLogs: [...state.todayWorkoutLogs, ...newWorkoutEntries],
-        allWorkoutLogs: [...state.allWorkoutLogs, ...newWorkoutEntries],
-        weeklyWorkout: updateWeeklyLast(state.weeklyWorkout, workoutMinutes),
+        todaySteps: steps, // Replace, not accumulate (health sync gives full day total)
+        todayCaloriesBurned: manualCaloriesBurned + caloriesBurned, // manual + health
+        todayWorkoutMinutes: manualWorkoutMinutes + workoutMinutes, // manual + health
+        todayTotalExp: existingNonHealthExp + totalExp, // non-health EXP + health EXP
+        todayWorkoutLogs: [...existingNonHealthLogs, ...newWorkoutEntries],
+        allWorkoutLogs: [...existingAllNonHealthLogs, ...newWorkoutEntries],
+        weeklyWorkout: updateWeeklyLast(state.weeklyWorkout, manualWorkoutMinutes + workoutMinutes),
       };
       // Add EXP to active monster
       if (totalExp > 0) {

@@ -1558,3 +1558,7 @@
 - [x] Create version check utility that queries App Store for latest version
 - [x] Show update prompt dialog on app launch if new version available
 - [x] Allow user to dismiss or go to App Store to update
+
+## Round 158 — Fix Dashboard Share Card Workout Data (Today Only)
+- [x] Ensure workout data on share card shows only today's calories burned, workout duration, and EXP (not cumulative)
+- [x] Fix SYNC_HEALTH_DATA to replace values instead of accumulating (root cause of inflated numbers)
