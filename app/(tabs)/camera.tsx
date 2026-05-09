@@ -30,6 +30,7 @@ import { getMonsterImageForCaringState } from "@/lib/monster-expressions";
 import * as Linking from "expo-linking";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
+import * as MediaLibrary from "expo-media-library";
 
 type FoodItem = {
   name: string;
@@ -817,10 +818,13 @@ export default function CameraScreen() {
             { emoji: "☀️", label: isEn ? "Lunch" : "午餐", log: lLog },
             { emoji: "🌙", label: isEn ? "Dinner" : "晚餐", log: dLog },
           ];
+          // Date watermark
+          const now = new Date();
+          const todayDate = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+
           const handleShare = async () => {
             try {
               setIsCapturing(true);
-              // Capture the share card as an image
               const uri = await (shareCardRef.current as any)?.capture?.();
               setIsCapturing(false);
               if (uri && await Sharing.isAvailableAsync()) {
@@ -829,27 +833,49 @@ export default function CameraScreen() {
                   dialogTitle: isEn ? `${monsterName}'s Daily Diet` : `${monsterName} 的今日飲食`,
                 });
               } else {
-                // Fallback to text share if image capture fails
                 const shareMsg = isEn
-                  ? `🍕 ${monsterName}'s Daily Diet\n━━━━━━━━━━\n🌅 Breakfast: ${bLog ? `${bLog.calories} kcal` : "None"}\n☀️ Lunch: ${lLog ? `${lLog.calories} kcal` : "None"}\n🌙 Dinner: ${dLog ? `${dLog.calories} kcal` : "None"}\n━━━━━━━━━━\n🔥 Total: ${tCal} kcal\nProtein: ${tProtein}g | Carbs: ${tCarbs}g | Fat: ${tFat}g${tSugar > 25 ? `\n⚠️ Sugar: ${tSugar}g (Over limit!)` : `\n🍬 Sugar: ${tSugar}g`}\n\n— My Fit Monster 👾`
-                  : `🍕 ${monsterName} 的今日飲食\n━━━━━━━━━━\n🌅 早餐: ${bLog ? `${bLog.calories} kcal` : "未記錄"}\n☀️ 午餐: ${lLog ? `${lLog.calories} kcal` : "未記錄"}\n🌙 晚餐: ${dLog ? `${dLog.calories} kcal` : "未記錄"}\n━━━━━━━━━━\n🔥 總熱量: ${tCal} kcal\n蛋白質: ${tProtein}g | 碳水: ${tCarbs}g | 脂肪: ${tFat}g${tSugar > 25 ? `\n⚠️ 糖分: ${tSugar}g (超標!)` : `\n🍬 糖分: ${tSugar}g`}\n\n— My Fit Monster 👾`;
+                  ? `🍕 ${monsterName}'s Daily Diet (${todayDate})\n━━━━━━━━━━\n🌅 Breakfast: ${bLog ? `${bLog.calories} kcal` : "None"}\n☀️ Lunch: ${lLog ? `${lLog.calories} kcal` : "None"}\n🌙 Dinner: ${dLog ? `${dLog.calories} kcal` : "None"}\n━━━━━━━━━━\n🔥 Total: ${tCal} kcal\nProtein: ${tProtein}g | Carbs: ${tCarbs}g | Fat: ${tFat}g${tSugar > 25 ? `\n⚠️ Sugar: ${tSugar}g (Over limit!)` : `\n🍬 Sugar: ${tSugar}g`}\n\n— My Fit Monster 👾`
+                  : `🍕 ${monsterName} 的今日飲食 (${todayDate})\n━━━━━━━━━━\n🌅 早餐: ${bLog ? `${bLog.calories} kcal` : "未記錄"}\n☀️ 午餐: ${lLog ? `${lLog.calories} kcal` : "未記錄"}\n🌙 晚餐: ${dLog ? `${dLog.calories} kcal` : "未記錄"}\n━━━━━━━━━━\n🔥 總熱量: ${tCal} kcal\n蛋白質: ${tProtein}g | 碳水: ${tCarbs}g | 脂肪: ${tFat}g${tSugar > 25 ? `\n⚠️ 糖分: ${tSugar}g (超標!)` : `\n🍬 糖分: ${tSugar}g`}\n\n— My Fit Monster 👾`;
                 await Share.share({ message: shareMsg });
               }
             } catch (_e) {
               setIsCapturing(false);
-              // Fallback to text share
               try {
                 const shareMsg = isEn
-                  ? `🍕 ${monsterName}'s Daily Diet\n━━━━━━━━━━\n🌅 Breakfast: ${bLog ? `${bLog.calories} kcal` : "None"}\n☀️ Lunch: ${lLog ? `${lLog.calories} kcal` : "None"}\n🌙 Dinner: ${dLog ? `${dLog.calories} kcal` : "None"}\n━━━━━━━━━━\n🔥 Total: ${tCal} kcal\nProtein: ${tProtein}g | Carbs: ${tCarbs}g | Fat: ${tFat}g${tSugar > 25 ? `\n⚠️ Sugar: ${tSugar}g (Over limit!)` : `\n🍬 Sugar: ${tSugar}g`}\n\n— My Fit Monster 👾`
-                  : `🍕 ${monsterName} 的今日飲食\n━━━━━━━━━━\n🌅 早餐: ${bLog ? `${bLog.calories} kcal` : "未記錄"}\n☀️ 午餐: ${lLog ? `${lLog.calories} kcal` : "未記錄"}\n🌙 晚餐: ${dLog ? `${dLog.calories} kcal` : "未記錄"}\n━━━━━━━━━━\n🔥 總熱量: ${tCal} kcal\n蛋白質: ${tProtein}g | 碳水: ${tCarbs}g | 脂肪: ${tFat}g${tSugar > 25 ? `\n⚠️ 糖分: ${tSugar}g (超標!)` : `\n🍬 糖分: ${tSugar}g`}\n\n— My Fit Monster 👾`;
+                  ? `🍕 ${monsterName}'s Daily Diet (${todayDate})\n🔥 Total: ${tCal} kcal\n\n— My Fit Monster 👾`
+                  : `🍕 ${monsterName} 的今日飲食 (${todayDate})\n🔥 總熱量: ${tCal} kcal\n\n— My Fit Monster 👾`;
                 await Share.share({ message: shareMsg });
               } catch (_e2) { /* user cancelled */ }
+            }
+          };
+          const handleSaveToAlbum = async () => {
+            try {
+              if (Platform.OS === "web") {
+                Alert.alert(isEn ? "Not Available" : "不可用", isEn ? "Save to album is only available on mobile devices" : "儲存到相簿僅在手機上可用");
+                return;
+              }
+              const { status } = await MediaLibrary.requestPermissionsAsync();
+              if (status !== "granted") {
+                Alert.alert(isEn ? "Permission Required" : "需要權限", isEn ? "Please allow access to save images to your album" : "請允許存取相簿以儲存圖片");
+                return;
+              }
+              setIsCapturing(true);
+              const uri = await (shareCardRef.current as any)?.capture?.();
+              if (uri) {
+                await MediaLibrary.saveToLibraryAsync(uri);
+                Alert.alert(isEn ? "Saved!" : "已儲存！", isEn ? "Image saved to your photo album" : "圖片已儲存到相簿");
+              }
+              setIsCapturing(false);
+            } catch {
+              setIsCapturing(false);
+              Alert.alert(isEn ? "Error" : "錯誤", isEn ? "Failed to save image" : "儲存圖片失敗");
             }
           };
           return (
             <View style={styles.shareOverlay}>
               <ViewShot ref={shareCardRef} options={{ format: "png", quality: 1 }}>
               <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.shareCardContainer}>
+                <Text style={styles.shareCardDateWatermark}>{todayDate}</Text>
                 <View style={styles.shareCardHeader}>
                   <Image
                     source={getMonsterImageForCaringState(cameraMonster?.type || "bodybuilder", cameraMonster?.stage || 1, caringState.fullness, caringState.energy, caringState.mood, caringState.peakStateBuff)}
@@ -903,9 +929,14 @@ export default function CameraScreen() {
                 </View>
               </LinearGradient>
               </ViewShot>
-              <TouchableOpacity style={[styles.shareCardShareBtn, { opacity: isCapturing ? 0.6 : 1 }]} onPress={handleShare} activeOpacity={0.8} disabled={isCapturing}>
-                <Text style={styles.shareCardShareBtnText}>{isCapturing ? (isEn ? "Capturing..." : "截圖中...") : (isEn ? "📸 Share Image" : "📸 分享圖片")}</Text>
-              </TouchableOpacity>
+              <View style={styles.shareCardActionRow}>
+                <TouchableOpacity style={[styles.shareCardSaveBtn, { opacity: isCapturing ? 0.6 : 1 }]} onPress={handleSaveToAlbum} activeOpacity={0.8} disabled={isCapturing}>
+                  <Text style={styles.shareCardSaveBtnText}>{isEn ? "💾 Save to Album" : "💾 儲存到相簿"}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.shareCardShareBtn, { opacity: isCapturing ? 0.6 : 1 }]} onPress={handleShare} activeOpacity={0.8} disabled={isCapturing}>
+                  <Text style={styles.shareCardShareBtnText}>{isCapturing ? (isEn ? "Capturing..." : "截圖中...") : (isEn ? "📸 Share" : "📸 分享圖片")}</Text>
+                </TouchableOpacity>
+              </View>
               <TouchableOpacity style={styles.shareCardCloseBtn} onPress={() => setShowShareCard(false)} activeOpacity={0.8}>
                 <Text style={styles.shareCardCloseText}>{isEn ? "Close" : "關閉"}</Text>
               </TouchableOpacity>
@@ -1218,8 +1249,12 @@ const styles = StyleSheet.create({
   shareCardBrand: { flexDirection: "row" as const, alignItems: "center" as const, paddingHorizontal: 20, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.1)", gap: 12 },
   shareCardBrandImg: { width: 44, height: 44, borderRadius: 10 },
   shareCardBrandText: { fontSize: 18, fontWeight: "900", color: "#4ADE80" },
-  shareCardCloseBtn: { marginTop: 20, paddingVertical: 14, paddingHorizontal: 40, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
+  shareCardCloseBtn: { marginTop: 16, paddingVertical: 14, paddingHorizontal: 40, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
   shareCardCloseText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  shareCardShareBtn: { marginTop: 16, paddingVertical: 14, paddingHorizontal: 40, borderRadius: 14, backgroundColor: "#22C55E" },
-  shareCardShareBtnText: { color: "#fff", fontSize: 16, fontWeight: "700", textAlign: "center" as const },
+  shareCardDateWatermark: { position: "absolute" as const, top: 12, right: 16, fontSize: 12, fontWeight: "600", color: "rgba(255,255,255,0.5)", zIndex: 10 },
+  shareCardActionRow: { flexDirection: "row" as const, gap: 10, marginTop: 16, width: "100%" as const, paddingHorizontal: 20 },
+  shareCardSaveBtn: { flex: 1, paddingVertical: 14, borderRadius: 14, backgroundColor: "#3B82F6", alignItems: "center" as const },
+  shareCardSaveBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  shareCardShareBtn: { flex: 1, paddingVertical: 14, borderRadius: 14, backgroundColor: "#22C55E", alignItems: "center" as const },
+  shareCardShareBtnText: { color: "#fff", fontSize: 14, fontWeight: "700", textAlign: "center" as const },
 });

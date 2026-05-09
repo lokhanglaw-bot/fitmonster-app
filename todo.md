@@ -1546,3 +1546,7 @@
 - [x] Add date watermark on share card image (e.g. 2026/05/08)
 - [x] Add "Save to Album" button to save the share card image to device photo library
 - [x] Add workout data section at bottom of share card (calories burned, workout duration)
+
+## Round 155 — Food Page Share Card Sync with Dashboard
+- [x] Add date watermark to Food page share card
+- [x] Add "Save to Album" button to Food page share card
