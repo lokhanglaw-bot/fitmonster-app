@@ -1565,3 +1565,6 @@
 
 ## Round 159 — Remove Workout Data from Dashboard Share Card
 - [x] Remove workout data section (calories burned, duration, EXP) from Dashboard share card only
+
+## Round 160 — Remove Workout Data from Food Page Share Card
+- [x] Remove workout data section from Food page share card to match Dashboard

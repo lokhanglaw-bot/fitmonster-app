@@ -918,32 +918,6 @@ export default function CameraScreen() {
                   <Text style={styles.shareCardKcalText}>{tCal}</Text>
                   <Text style={styles.shareCardKcalUnit}>{isEn ? 'kcal Total' : 'kcal 總熱量'}</Text>
                 </View>
-                {/* Workout Data Section */}
-                <View style={styles.shareCardWorkoutSection}>
-                  <View style={styles.shareCardWorkoutItem}>
-                    <Text style={styles.shareCardWorkoutIcon}>💪</Text>
-                    <View>
-                      <Text style={styles.shareCardWorkoutValue}>{activityState.todayCaloriesBurned || 0} kcal</Text>
-                      <Text style={styles.shareCardWorkoutLabel}>{isEn ? 'Burned' : '消耗'}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.shareCardWorkoutDivider} />
-                  <View style={styles.shareCardWorkoutItem}>
-                    <Text style={styles.shareCardWorkoutIcon}>⏱️</Text>
-                    <View>
-                      <Text style={styles.shareCardWorkoutValue}>{(activityState.todayWorkoutMinutes || 0) >= 60 ? `${Math.floor((activityState.todayWorkoutMinutes || 0) / 60)}h ${(activityState.todayWorkoutMinutes || 0) % 60}min` : `${activityState.todayWorkoutMinutes || 0} min`}</Text>
-                      <Text style={styles.shareCardWorkoutLabel}>{isEn ? 'Workout' : '運動時長'}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.shareCardWorkoutDivider} />
-                  <View style={styles.shareCardWorkoutItem}>
-                    <Text style={styles.shareCardWorkoutIcon}>⭐</Text>
-                    <View>
-                      <Text style={styles.shareCardWorkoutValue}>+{activityState.todayTotalExp || 0}</Text>
-                      <Text style={styles.shareCardWorkoutLabel}>EXP</Text>
-                    </View>
-                  </View>
-                </View>
                 {tSugar > 25 && (
                   <View style={styles.shareCardSugar}>
                     <Text style={styles.shareCardSugarText}>{isEn ? `⚠️ Sugar ${tSugar}g over limit!` : `⚠️ 糖分 ${tSugar}g 超過建議量!`}</Text>
