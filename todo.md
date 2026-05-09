@@ -1575,3 +1575,8 @@
 ## Round 161 — Remove Today's Meals from Dashboard
 - [x] Remove Today's Meals section/component from Dashboard page
 - [x] Ensure Food page Today's Meals functionality remains unaffected
+
+## Round 162 — Remove Weekly Workout Stats & Steps/Calories from Dashboard
+- [x] Remove Weekly Workout Stats card from Dashboard
+- [x] Remove Today's Steps and Burned Calories section from Dashboard
+- [x] Ensure Home page Today's Steps functionality remains unaffected
