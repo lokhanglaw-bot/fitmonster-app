@@ -1553,3 +1553,8 @@
 
 ## Round 156 — Food Page Share Card: Add Workout Data Section
 - [x] Add workout data section (calories burned, duration, EXP) to Food page share card to match Dashboard
+
+## Round 157 — In-App Version Check
+- [x] Create version check utility that queries App Store for latest version
+- [x] Show update prompt dialog on app launch if new version available
+- [x] Allow user to dismiss or go to App Store to update

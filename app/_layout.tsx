@@ -26,6 +26,7 @@ import { WorkoutTimerProvider } from "@/lib/workout-timer-context";
 import { NotificationProvider } from "@/lib/notification-provider";
 import { CaringProvider } from "@/lib/caring-context";
 import { registerBackgroundNotificationTask } from "@/lib/background-notifications";
+import { useVersionCheck } from "@/hooks/use-version-check";
 
 // Wrapper that passes userId from auth context to ActivityProvider
 function AuthenticatedActivityProvider({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,13 @@ const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
 export const unstable_settings = {
   anchor: "(tabs)",
 };
+
+// Inner component that has access to I18n context for version check
+function VersionCheckWrapper({ children }: { children: React.ReactNode }) {
+  const { language } = useI18n();
+  useVersionCheck(language);
+  return <>{children}</>;
+}
 
 export default function RootLayout() {
   const initialInsets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
@@ -123,6 +131,7 @@ export default function RootLayout() {
           <WorkoutTimerProvider>
           <NotificationProvider>
           <AuthGate>
+          <VersionCheckWrapper>
             {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
             {/* If a screen needs the native header, explicitly enable it and set a human title via Stack.Screen options. */}
             {/* in order for ios apps tab switching to work properly, use presentation: "fullScreenModal" for login page, whenever you decide to use presentation: "modal*/}
@@ -138,6 +147,7 @@ export default function RootLayout() {
               <Stack.Screen name="edit-profile" options={{ presentation: Platform.OS === 'ios' ? 'fullScreenModal' : 'card', gestureEnabled: true }} />
             </Stack>
             <StatusBar style="auto" />
+          </VersionCheckWrapper>
           </AuthGate>
           </NotificationProvider>
           </WorkoutTimerProvider>
