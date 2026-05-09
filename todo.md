@@ -1562,3 +1562,6 @@
 ## Round 158 — Fix Dashboard Share Card Workout Data (Today Only)
 - [x] Ensure workout data on share card shows only today's calories burned, workout duration, and EXP (not cumulative)
 - [x] Fix SYNC_HEALTH_DATA to replace values instead of accumulating (root cause of inflated numbers)
+
+## Round 159 — Remove Workout Data from Dashboard Share Card
+- [x] Remove workout data section (calories burned, duration, EXP) from Dashboard share card only

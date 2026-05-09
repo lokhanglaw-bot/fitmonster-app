@@ -385,32 +385,6 @@ function DailyShareCard({
           <Text style={shareStyles.totalCalUnit}>{isEn ? 'kcal Total' : 'kcal 總熱量'}</Text>
         </View>
 
-        {/* Workout Data Section */}
-        <View style={shareStyles.workoutSection}>
-          <View style={shareStyles.workoutItem}>
-            <Text style={shareStyles.workoutIcon}>💪</Text>
-            <View>
-              <Text style={shareStyles.workoutValue}>{caloriesBurned} kcal</Text>
-              <Text style={shareStyles.workoutLabel}>{isEn ? 'Burned' : '消耗'}</Text>
-            </View>
-          </View>
-          <View style={shareStyles.workoutDivider} />
-          <View style={shareStyles.workoutItem}>
-            <Text style={shareStyles.workoutIcon}>⏱️</Text>
-            <View>
-              <Text style={shareStyles.workoutValue}>{formatDuration(workoutMinutes)}</Text>
-              <Text style={shareStyles.workoutLabel}>{isEn ? 'Workout' : '運動時長'}</Text>
-            </View>
-          </View>
-          <View style={shareStyles.workoutDivider} />
-          <View style={shareStyles.workoutItem}>
-            <Text style={shareStyles.workoutIcon}>⭐</Text>
-            <View>
-              <Text style={shareStyles.workoutValue}>+{todayExp}</Text>
-              <Text style={shareStyles.workoutLabel}>EXP</Text>
-            </View>
-          </View>
-        </View>
 
         {/* Sugar Warning */}
         {totalSugar > 25 && (
