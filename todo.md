@@ -1550,3 +1550,6 @@
 ## Round 155 — Food Page Share Card Sync with Dashboard
 - [x] Add date watermark to Food page share card
 - [x] Add "Save to Album" button to Food page share card
+
+## Round 156 — Food Page Share Card: Add Workout Data Section
+- [x] Add workout data section (calories burned, duration, EXP) to Food page share card to match Dashboard

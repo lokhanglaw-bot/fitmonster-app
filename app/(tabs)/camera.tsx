@@ -918,6 +918,32 @@ export default function CameraScreen() {
                   <Text style={styles.shareCardKcalText}>{tCal}</Text>
                   <Text style={styles.shareCardKcalUnit}>{isEn ? 'kcal Total' : 'kcal 總熱量'}</Text>
                 </View>
+                {/* Workout Data Section */}
+                <View style={styles.shareCardWorkoutSection}>
+                  <View style={styles.shareCardWorkoutItem}>
+                    <Text style={styles.shareCardWorkoutIcon}>💪</Text>
+                    <View>
+                      <Text style={styles.shareCardWorkoutValue}>{activityState.todayCaloriesBurned || 0} kcal</Text>
+                      <Text style={styles.shareCardWorkoutLabel}>{isEn ? 'Burned' : '消耗'}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.shareCardWorkoutDivider} />
+                  <View style={styles.shareCardWorkoutItem}>
+                    <Text style={styles.shareCardWorkoutIcon}>⏱️</Text>
+                    <View>
+                      <Text style={styles.shareCardWorkoutValue}>{(activityState.todayWorkoutMinutes || 0) >= 60 ? `${Math.floor((activityState.todayWorkoutMinutes || 0) / 60)}h ${(activityState.todayWorkoutMinutes || 0) % 60}min` : `${activityState.todayWorkoutMinutes || 0} min`}</Text>
+                      <Text style={styles.shareCardWorkoutLabel}>{isEn ? 'Workout' : '運動時長'}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.shareCardWorkoutDivider} />
+                  <View style={styles.shareCardWorkoutItem}>
+                    <Text style={styles.shareCardWorkoutIcon}>⭐</Text>
+                    <View>
+                      <Text style={styles.shareCardWorkoutValue}>+{activityState.todayTotalExp || 0}</Text>
+                      <Text style={styles.shareCardWorkoutLabel}>EXP</Text>
+                    </View>
+                  </View>
+                </View>
                 {tSugar > 25 && (
                   <View style={styles.shareCardSugar}>
                     <Text style={styles.shareCardSugarText}>{isEn ? `⚠️ Sugar ${tSugar}g over limit!` : `⚠️ 糖分 ${tSugar}g 超過建議量!`}</Text>
@@ -1252,6 +1278,12 @@ const styles = StyleSheet.create({
   shareCardCloseBtn: { marginTop: 16, paddingVertical: 14, paddingHorizontal: 40, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
   shareCardCloseText: { color: "#fff", fontSize: 16, fontWeight: "600" },
   shareCardDateWatermark: { position: "absolute" as const, top: 12, right: 16, fontSize: 12, fontWeight: "600", color: "rgba(255,255,255,0.5)", zIndex: 10 },
+  shareCardWorkoutSection: { flexDirection: "row" as const, width: "100%" as const, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 12, paddingVertical: 12, paddingHorizontal: 8, alignItems: "center" as const, justifyContent: "space-around" as const },
+  shareCardWorkoutItem: { flexDirection: "row" as const, alignItems: "center" as const, gap: 6 },
+  shareCardWorkoutIcon: { fontSize: 20 },
+  shareCardWorkoutValue: { fontSize: 14, fontWeight: "800", color: "#fff" },
+  shareCardWorkoutLabel: { fontSize: 10, color: "rgba(255,255,255,0.6)" },
+  shareCardWorkoutDivider: { width: 1, height: 28, backgroundColor: "rgba(255,255,255,0.2)" },
   shareCardActionRow: { flexDirection: "row" as const, gap: 10, marginTop: 16, width: "100%" as const, paddingHorizontal: 20 },
   shareCardSaveBtn: { flex: 1, paddingVertical: 14, borderRadius: 14, backgroundColor: "#3B82F6", alignItems: "center" as const },
   shareCardSaveBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
