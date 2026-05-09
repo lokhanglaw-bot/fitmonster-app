@@ -1568,3 +1568,6 @@
 
 ## Round 160 — Remove Workout Data from Food Page Share Card
 - [x] Remove workout data section from Food page share card to match Dashboard
+- [x] Fix iOS build failure: downgrade expo-media-library from 55.0.16 to ~18.2.1 (SDK 54 compatible)
+- [x] Fix iOS build failure: downgrade react-native-view-shot from 5.0.1 to 4.0.3 (SDK 54 compatible)
+- [x] Update other patch-level dependencies to match Expo SDK 54 expectations
