@@ -10,6 +10,7 @@ import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
 import * as chatDb from "./chat-db";
 import { invokeLLM } from "./_core/llm";
+import { invokeDeepSeek } from "./deepseek";
 import { storagePut } from "./storage";
 import { getFoodAnalysisPrompt, getFoodAnalysisUserPrompt } from "./food-prompt";
 import { sendToUser, getOnlineStatuses, isUserOnline } from "./websocket";
@@ -653,8 +654,8 @@ export const appRouter = router({
         const fileKey = `food-analysis/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
         const { url: imageUrl } = await storagePut(fileKey, imageBuffer, input.mimeType);
 
-        // 2. Call LLM with the image for food analysis
-        const response = await invokeLLM({
+        // 2. Call DeepSeek with the image for food analysis
+        const response = await invokeDeepSeek({
           messages: [
             {
               role: "system",
@@ -742,7 +743,7 @@ Always return valid JSON.`;
           ? `我吃了：${input.description}\n\n請分析營養資訊，用繁體中文回答。`
           : `I ate: ${input.description}\n\nPlease analyze the nutrition information.`;
 
-        const response = await invokeLLM({
+        const response = await invokeDeepSeek({
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
@@ -1321,9 +1322,9 @@ Always return valid JSON.`;
           return { dialogue, source: "quick" as const };
         }
 
-        // Call LLM for personalized advice
+        // Call DeepSeek for personalized advice
         try {
-          const response = await invokeLLM({
+          const response = await invokeDeepSeek({
             messages: [
               {
                 role: "system",

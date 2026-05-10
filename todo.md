@@ -1580,3 +1580,10 @@
 - [x] Remove Weekly Workout Stats card from Dashboard
 - [x] Remove Today's Steps and Burned Calories section from Dashboard
 - [x] Ensure Home page Today's Steps functionality remains unaffected
+
+## Round 163 — Switch Food Scanning AI to DeepSeek API
+- [x] Set up DeepSeek API key as environment variable
+- [x] Replace Manus built-in LLM with DeepSeek API for food image analysis
+- [x] Replace Manus built-in LLM with DeepSeek API for text food analysis
+- [x] Replace Manus built-in LLM with DeepSeek API for monster advice
+- [x] Ensure food scanning still returns correct nutrition data format
