@@ -1587,3 +1587,7 @@
 - [x] Replace Manus built-in LLM with DeepSeek API for text food analysis
 - [x] Replace Manus built-in LLM with DeepSeek API for monster advice
 - [x] Ensure food scanning still returns correct nutrition data format
+
+## Round 164 — Revert Image Analysis to Manus LLM (DeepSeek has no vision)
+- [x] Revert food image analysis back to Manus invokeLLM (supports vision)
+- [x] Keep DeepSeek for text-only calls (text food analysis, monster advice)

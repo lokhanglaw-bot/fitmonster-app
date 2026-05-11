@@ -654,8 +654,8 @@ export const appRouter = router({
         const fileKey = `food-analysis/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
         const { url: imageUrl } = await storagePut(fileKey, imageBuffer, input.mimeType);
 
-        // 2. Call DeepSeek with the image for food analysis
-        const response = await invokeDeepSeek({
+        // 2. Call Manus LLM with the image for food analysis (supports vision)
+        const response = await invokeLLM({
           messages: [
             {
               role: "system",
